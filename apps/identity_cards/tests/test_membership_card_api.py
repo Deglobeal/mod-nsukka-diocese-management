@@ -137,12 +137,14 @@ class MembershipCardIssueAPITests(TestCase):
         )
 
     def test_unexpected_fields_are_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+
         response = self.client.post(
             self.url,
             {
                 "member_id": self.member.pk,
                 "official_membership_id": "TEST-MOD-001",
-                "issued_by": self.user.pk,
+                "issued_by": self.admin_user.pk,
             },
             format="json",
         )
