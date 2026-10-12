@@ -19,7 +19,13 @@ SESSION_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", "False").lower() == "
 CSRF_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", "False").lower() == "true"
 
 
-# Allow the hostname assigned to this Vercel deployment.
+# Allow the permanent Vercel domain and deployment-specific hostname.
 VERCEL_URL = os.getenv("VERCEL_URL", "").strip()
-if VERCEL_URL and VERCEL_URL not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS = [*ALLOWED_HOSTS, VERCEL_URL]
+
+PRODUCTION_HOSTS = ["modnsukkadiocese.vercel.app"]
+
+ALLOWED_HOSTS = list(dict.fromkeys([
+    *ALLOWED_HOSTS,
+    *PRODUCTION_HOSTS,
+    *([VERCEL_URL] if VERCEL_URL else []),
+]))
