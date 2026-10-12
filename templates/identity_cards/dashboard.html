@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Membership Cards | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/identity-card-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="card-dashboard">
+    <header class="dashboard-header">
+        <p class="dashboard-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
+        <h1 class="dashboard-title">Membership identity management</h1>
+        <p class="dashboard-description">
+            Issue official membership identities and access QR verification
+            codes for members approved by the Diocese.
+        </p>
+        <div class="diocese-label">
+            <span class="diocese-label-caption">Your authorized Diocese</span>
+            <strong>{{ diocese.name }}</strong>
+        </div>
+    </header>
+
+    {% if messages %}
+        <div class="dashboard-messages" aria-live="polite">
+            {% for message in messages %}
+                <p class="dashboard-message dashboard-message-{{ message.tags }}">
+                    {{ message }}
+                </p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="dashboard-stats">
+        <article class="stat-card">
+            <span class="stat-label">Eligible members</span>
+            <strong class="stat-value">{{ eligible_member_count }}</strong>
+            <span class="stat-note">Approved and awaiting card issuance</span>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Issued identities</span>
+            <strong class="stat-value">{{ issued_card_count }}</strong>
+            <span class="stat-note">Cards recorded in this Diocese</span>
+        </article>
+    </div>
+
+    <section class="dashboard-panel" aria-labelledby="issue-card-heading">
+        <div class="panel-heading">
+            <p class="panel-eyebrow">ISSUANCE</p>
+            <h2 id="issue-card-heading">Issue a membership identity</h2>
+            <p>Select an eligible member and enter their official membership ID.</p>
+        </div>
+
+        <form method="post" class="issuance-form">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="form-errors" role="alert">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="form-field">
+                <label for="{{ form.member.id_for_label }}">Member</label>
+                {{ form.member }}
+                {% for error in form.member.errors %}
+                    <p class="field-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.official_membership_id.id_for_label }}">
+                    Official membership ID
+                </label>
+                {{ form.official_membership_id }}
+                <p class="field-help">
+                    Use the official number assigned under the approved
+                    membership-numbering rules.
+                </p>
+                {% for error in form.official_membership_id.errors %}
+                    <p class="field-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <button class="dashboard-button" type="submit">
+                Issue membership identity
+            </button>
+        </form>
+    </section>
+
+    <section class="dashboard-panel" aria-labelledby="issued-cards-heading">
+        <div class="panel-heading">
+            <p class="panel-eyebrow">MEMBERSHIP REGISTER</p>
+            <h2 id="issued-cards-heading">Issued identities</h2>
+            <p>Membership identities issued within your authorized Diocese.</p>
+        </div>
+
+        {% if cards %}
+            <div class="table-wrapper">
+                <table class="membership-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Member</th>
+                            <th scope="col">Official ID</th>
+                            <th scope="col">Uniform ID</th>
+                            <th scope="col">Parish</th>
+                            <th scope="col">Date issued</th>
+                            <th scope="col">QR code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for card in cards %}
+                            <tr>
+                                <td data-label="Member">
+                                    <strong>{{ card.member.full_name }}</strong>
+                                </td>
+                                <td data-label="Official ID">
+                                    {{ card.official_membership_id }}
+                                </td>
+                                <td data-label="Uniform ID">
+                                    <span class="uniform-id">{{ card.uniform_id }}</span>
+                                </td>
+                                <td data-label="Parish">{{ card.member.parish.name }}</td>
+                                <td data-label="Date issued">
+                                    {{ card.issued_at|date:"j M Y" }}
+                                </td>
+                                <td data-label="QR code">
+                                    <a class="table-link"
+                                       href="{% url 'api:identity_cards:download-membership-qr' card.pk %}">
+                                        Download QR
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No membership identities issued yet</h3>
+                <p>Issued identities will appear here after the first successful issuance.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <footer class="dashboard-footer">
+        <p>
+            Access is restricted to your active Diocese Administrator
+            assignment. QR downloads require a valid public HTTPS base URL
+            in the application configuration.
+        </p>
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button class="logout-button" type="submit">Sign out</button>
+        </form>
+    </footer>
+</section>
+{% endblock %}

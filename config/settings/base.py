@@ -83,7 +83,7 @@ PRIVATE_MEDIA_ROOT = BASE_DIR / "private_media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "dashboard"
+LOGIN_REDIRECT_URL = "identity_cards_web:dashboard"
 LOGOUT_REDIRECT_URL = "public_home"
 
 REST_FRAMEWORK = {

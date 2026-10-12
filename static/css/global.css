@@ -1,0 +1,46 @@
+:root {
+    --color-primary: #6b21a8;
+    --color-primary-hover: #581c87;
+    --color-text: #172033;
+    --color-text-muted: #64748b;
+    --color-border: #e5e7eb;
+    --color-surface: #ffffff;
+    --color-page: #f8fafc;
+    --color-danger-background: #fef2f2;
+    --color-danger-text: #991b1b;
+    --color-danger-border: #fca5a5;
+    --color-success-border: #86efac;
+    --color-success-background: #f0fdf4;
+    --color-success-text: #166534;
+    --color-input-border: #cbd5e1;
+    --color-on-primary: #ffffff;
+    --color-focus-ring: rgb(107 33 168 / 15%);
+    --radius-card: 12px;
+    --radius-control: 6px;
+    --shadow-card: 0 12px 32px rgb(15 23 42 / 7%);
+    --content-width: 1120px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-text);
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.5;
+}
+
+.site-main {
+    width: 100%;
+    max-width: var(--content-width);
+    margin-inline: auto;
+}
