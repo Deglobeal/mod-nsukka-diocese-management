@@ -1,5 +1,5 @@
-"""Model package for members. Keep each Django model in its own module.
+"""Member models, with each model defined in its own module."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .member import Member
+
+__all__ = ["Member"]

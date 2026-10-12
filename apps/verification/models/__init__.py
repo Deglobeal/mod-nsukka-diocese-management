@@ -1,5 +1,6 @@
-"""Model package for verification. Keep each Django model in its own module.
+"""Verification and membership application models."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .membership_application import MembershipApplication
+from .membership_review import MembershipReview
+
+__all__ = ["MembershipApplication", "MembershipReview"]

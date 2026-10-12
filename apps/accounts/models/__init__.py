@@ -1,5 +1,5 @@
-"""Model package for accounts. Keep each Django model in its own module.
+"""Account-related models, each defined in its own module."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .office_assignment import OfficeAssignment
+
+__all__ = ["OfficeAssignment"]

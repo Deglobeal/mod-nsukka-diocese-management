@@ -1,5 +1,8 @@
-"""Model package for organizations. Keep each Django model in its own module.
+"""Organization models; each model is defined in its own module."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .deanery import Deanery
+from .diocese import Diocese
+from .parish import Parish
+from .station import Station
+
+__all__ = ["Deanery", "Diocese", "Parish", "Station"]
