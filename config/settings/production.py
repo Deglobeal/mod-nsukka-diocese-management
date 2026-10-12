@@ -17,3 +17,9 @@ CSRF_COOKIE_HTTPONLY = True
 SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
 SESSION_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", "False").lower() == "true"
 CSRF_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", "False").lower() == "true"
+
+
+# Allow the hostname assigned to this Vercel deployment.
+VERCEL_URL = os.getenv("VERCEL_URL", "").strip()
+if VERCEL_URL and VERCEL_URL not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, VERCEL_URL]
