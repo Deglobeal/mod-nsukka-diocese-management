@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -155,31 +155,20 @@ class MembershipVerificationAPITests(TestCase):
             )
         )
 
-    @override_settings(
-        REST_FRAMEWORK={
-            "DEFAULT_THROTTLE_RATES": {
-                "public_membership_verification": "2/min",
-            },
-        }
-    )
     def test_public_lookup_is_rate_limited(self):
         cache.clear()
         try:
-            first = self.client.get(
-                self.url,
-                {"identifier": self.card.official_membership_id},
-            )
-            second = self.client.get(
-                self.url,
-                {"identifier": self.card.official_membership_id},
-            )
-            third = self.client.get(
-                self.url,
-                {"identifier": self.card.official_membership_id},
-            )
+            responses = [
+                self.client.get(
+                    self.url,
+                    {"identifier": self.card.official_membership_id},
+                )
+                for _ in range(31)
+            ]
 
-            self.assertEqual(first.status_code, 200)
-            self.assertEqual(second.status_code, 200)
-            self.assertEqual(third.status_code, 429)
+            self.assertTrue(
+                all(response.status_code == 200 for response in responses[:30])
+            )
+            self.assertEqual(responses[30].status_code, 429)
         finally:
             cache.clear()
