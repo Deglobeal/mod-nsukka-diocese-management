@@ -1,4 +1,6 @@
-from django.urls import path
+from django.urls import include, path
 
 app_name = "api"
-urlpatterns = []
+urlpatterns = [
+    path("verification/", include("apps.verification.urls")),
+]

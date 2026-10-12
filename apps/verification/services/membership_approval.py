@@ -35,11 +35,7 @@ def record_membership_review(
     decision,
     comments="",
 ):
-    """Record one review and advance the application when appropriate.
-
-    This service enforces stage order, but reviewer permissions and
-    organizational scope must also be checked before production use.
-    """
+    """Record a review, enforce authorization, and advance the workflow."""
     if reviewer is None or not getattr(reviewer, "is_authenticated", False):
         raise ValidationError("An authenticated reviewer is required.")
 
