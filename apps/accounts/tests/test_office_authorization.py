@@ -129,6 +129,44 @@ class OfficeAuthorizationTests(TestCase):
                 review_level="deanery",
             )
 
+    def test_deanery_admin_cannot_review_another_deanery(self):
+        other_deanery_member = Member.objects.create(
+            first_name="Chika",
+            last_name="Nwosu",
+            parish=self.other_parish,
+        )
+        other_deanery_application = MembershipApplication.objects.create(
+            member=other_deanery_member,
+        )
+
+        with self.assertRaises(PermissionDenied):
+            authorize_membership_reviewer(
+                user=self.deanery_admin,
+                application=other_deanery_application,
+                review_level="deanery",
+            )
+
+    def test_diocese_admin_cannot_review_another_diocese(self):
+        other_diocese_parish = Parish.objects.create(
+            deanery=self.other_diocese_deanery,
+            name="Other Diocese Parish",
+        )
+        other_diocese_member = Member.objects.create(
+            first_name="Ngozi",
+            last_name="Eze",
+            parish=other_diocese_parish,
+        )
+        other_diocese_application = MembershipApplication.objects.create(
+            member=other_diocese_member,
+        )
+
+        with self.assertRaises(PermissionDenied):
+            authorize_membership_reviewer(
+                user=self.diocese_admin,
+                application=other_diocese_application,
+                review_level="diocese",
+            )
+
     def test_inactive_assignment_is_not_authorized(self):
         assignment = OfficeAssignment.objects.get(user=self.parish_admin)
         assignment.is_active = False

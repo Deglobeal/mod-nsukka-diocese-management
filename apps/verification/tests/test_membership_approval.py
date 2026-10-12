@@ -196,6 +196,33 @@ class MembershipApprovalServiceTests(TestCase):
         self.member.refresh_from_db()
         self.assertEqual(self.member.status, Member.Status.PENDING_REVIEW)
 
+    def test_previous_review_history_is_preserved_after_later_approval(self):
+        first_review = self.review(
+            MembershipReview.ReviewLevel.PARISH,
+            MembershipReview.Decision.APPROVED,
+            comments="Parish review completed.",
+        )
+        first_review_id = first_review.pk
+        first_reviewed_at = first_review.reviewed_at
+        first_comments = first_review.comments
+
+        self.review(
+            MembershipReview.ReviewLevel.DEANERY,
+            MembershipReview.Decision.APPROVED,
+            comments="Deanery review completed.",
+        )
+        self.review(
+            MembershipReview.ReviewLevel.DIOCESE,
+            MembershipReview.Decision.APPROVED,
+            comments="Final approval granted.",
+        )
+
+        first_review.refresh_from_db()
+        self.assertEqual(first_review.pk, first_review_id)
+        self.assertEqual(first_review.comments, first_comments)
+        self.assertEqual(first_review.reviewed_at, first_reviewed_at)
+        self.assertEqual(self.application.reviews.count(), 3)
+
     def test_unauthenticated_reviewer_is_rejected(self):
         with self.assertRaises(ValidationError):
             record_membership_review(
