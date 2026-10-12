@@ -24,3 +24,6 @@ staticfiles/
 .idea/
 .vscode/
 *.swp
+
+# Private membership evidence — never commit uploaded documents.
+private_media/
