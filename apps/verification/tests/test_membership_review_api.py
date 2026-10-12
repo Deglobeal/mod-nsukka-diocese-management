@@ -134,6 +134,38 @@ class MembershipReviewAPITests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self.application.reviews.count(), 0)
 
+    def test_non_string_comments_returns_400(self):
+        self.client.force_authenticate(user=self.parish_admin)
+        response = self.client.post(
+            self.url, self.payload(comments=["not", "a", "string"]), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.application.reviews.count(), 0)
+
+    def test_comments_over_5000_characters_returns_400(self):
+        self.client.force_authenticate(user=self.parish_admin)
+        response = self.client.post(
+            self.url, self.payload(comments="x" * 5001), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.application.reviews.count(), 0)
+
+    def test_unknown_fields_are_rejected(self):
+        self.client.force_authenticate(user=self.parish_admin)
+        response = self.client.post(
+            self.url, self.payload(unexpected_field="value"), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.application.reviews.count(), 0)
+
+    def test_reviewer_id_cannot_override_authenticated_reviewer(self):
+        self.client.force_authenticate(user=self.parish_admin)
+        response = self.client.post(
+            self.url, self.payload(reviewer_id=self.unassigned_user.pk), format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.application.reviews.count(), 0)
+
     def test_authorized_parish_review_succeeds(self):
         self.client.force_authenticate(user=self.parish_admin)
         response = self.client.post(
@@ -185,7 +217,7 @@ class MembershipReviewAPITests(TestCase):
         self.client.force_authenticate(user=self.parish_admin)
         response = self.client.post(
             self.url,
-            self.payload(reviewer_id=self.unassigned_user.pk),
+            self.payload(),
             format="json",
         )
         self.assertEqual(response.status_code, 201)

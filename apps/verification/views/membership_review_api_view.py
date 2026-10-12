@@ -16,6 +16,20 @@ class MembershipReviewAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, application_id):
+        allowed_fields = {"decision", "comments", "review_level"}
+        if not hasattr(request.data, "keys"):
+            return Response(
+                {"detail": "A JSON object containing review fields is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        unknown_fields = set(request.data.keys()) - allowed_fields
+        if unknown_fields:
+            return Response(
+                {"detail": "Unexpected fields: " + ", ".join(sorted(unknown_fields))},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         decision = request.data.get("decision")
         comments = request.data.get("comments", "")
         review_level = request.data.get("review_level")
@@ -35,6 +49,12 @@ class MembershipReviewAPIView(APIView):
         if not isinstance(comments, str):
             return Response(
                 {"detail": "Comments must be a string."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(comments) > 5000:
+            return Response(
+                {"detail": "Comments must not exceed 5000 characters."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
