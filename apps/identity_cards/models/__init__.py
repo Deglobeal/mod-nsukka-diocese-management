@@ -1,5 +1,5 @@
-"""Model package for identity_cards. Keep each Django model in its own module.
+"""Identity-card and membership-identity models."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .membership_card import MembershipCard
+
+__all__ = ["MembershipCard"]
