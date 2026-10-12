@@ -1,5 +1,6 @@
-"""Model package for transfers. Keep each Django model in its own module.
+"""Transfer models."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .transfer_request import TransferRequest
+from .transfer_review import TransferReview
+
+__all__ = ["TransferRequest", "TransferReview"]
