@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 from apps.accounts.models import OfficeAssignment
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
-from apps.verification.models import MembershipApplication
+from apps.verification.models import MembershipApplication, MembershipReview
 
 
 class MembershipSubmissionAPITests(APITestCase):
@@ -141,6 +141,64 @@ class MembershipSubmissionAPITests(APITestCase):
                     format="json",
                 )
                 self.assertEqual(response.status_code, 400)
+
+    def test_reapplication_preserves_rejected_application_history(self):
+        self.client.force_authenticate(user=self.parish_admin)
+
+        original = MembershipApplication.objects.create(
+            member=self.member,
+            stage=MembershipApplication.Stage.REJECTED,
+            final_decision_reason="Original application was incomplete.",
+        )
+        from django.utils import timezone
+        original.final_decision_at = timezone.now()
+        original.save(update_fields=["final_decision_at"])
+
+        original_review = MembershipReview.objects.create(
+            application=original,
+            reviewer=self.parish_admin,
+            review_level=MembershipReview.ReviewLevel.PARISH,
+            decision=MembershipReview.Decision.REJECTED,
+            comments="Signed application was missing.",
+        )
+        original_review_id = original_review.pk
+        original_reviewed_at = original_review.reviewed_at
+        original_decision_at = original.final_decision_at
+
+        response = self.client.post(
+            self.url,
+            {"member_id": self.member.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertNotEqual(response.data["application_id"], original.pk)
+
+        original.refresh_from_db()
+        original_review.refresh_from_db()
+
+        self.assertEqual(original.stage, MembershipApplication.Stage.REJECTED)
+        self.assertEqual(
+            original.final_decision_reason,
+            "Original application was incomplete.",
+        )
+        self.assertEqual(original.final_decision_at, original_decision_at)
+        self.assertEqual(original_review.pk, original_review_id)
+        self.assertEqual(
+            original_review.comments,
+            "Signed application was missing.",
+        )
+        self.assertEqual(original_review.reviewed_at, original_reviewed_at)
+        self.assertEqual(original.reviews.count(), 1)
+
+        new_application = MembershipApplication.objects.get(
+            pk=response.data["application_id"],
+        )
+        self.assertEqual(
+            new_application.stage,
+            MembershipApplication.Stage.PARISH_REVIEW,
+        )
+        self.assertEqual(new_application.reviews.count(), 0)
 
     def test_member_can_have_multiple_applications(self):
         self.client.force_authenticate(user=self.parish_admin)
