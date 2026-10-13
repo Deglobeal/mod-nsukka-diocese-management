@@ -29,3 +29,34 @@ ALLOWED_HOSTS = list(dict.fromkeys([
     *PRODUCTION_HOSTS,
     *([VERCEL_URL] if VERCEL_URL else []),
 ]))
+# Use the managed PostgreSQL database when DATABASE_URL is configured.
+# Local development continues to use the database settings in base.py.
+from urllib.parse import parse_qs, unquote, urlsplit
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL:
+    parsed_database_url = urlsplit(DATABASE_URL)
+
+    if parsed_database_url.scheme not in ("postgres", "postgresql"):
+        raise ValueError("DATABASE_URL must use PostgreSQL.")
+
+    if not parsed_database_url.hostname or not parsed_database_url.path.strip("/"):
+        raise ValueError("DATABASE_URL must include a database host and name.")
+
+    database_query = parse_qs(parsed_database_url.query)
+
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(parsed_database_url.path.lstrip("/")),
+            "USER": unquote(parsed_database_url.username or ""),
+            "PASSWORD": unquote(parsed_database_url.password or ""),
+            "HOST": parsed_database_url.hostname,
+            "PORT": parsed_database_url.port or 5432,
+            "CONN_MAX_AGE": 0,
+            "OPTIONS": {
+                "sslmode": database_query.get("sslmode", ["require"])[0],
+            },
+        }
+    }
