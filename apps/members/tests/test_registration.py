@@ -43,6 +43,7 @@ class MembershipRegistrationTests(TestCase):
             "email": "ada@example.com",
             "phone_number": "+2348012345678",
             "category": MembershipApplication.Category.REGULAR_MEMBER,
+            "deanery": str(self.deanery.pk),
             "parish": str(self.parish.pk),
             "station": "",
         }
@@ -57,6 +58,7 @@ class MembershipRegistrationTests(TestCase):
         self.assertContains(response, "Regular Member")
         self.assertContains(response, "Patron")
         self.assertContains(response, "Chaplain")
+        self.assertContains(response, "Select your deanery")
 
     def test_valid_application_is_recorded_for_parish_review(self):
         response = self.client.post(
@@ -95,6 +97,29 @@ class MembershipRegistrationTests(TestCase):
             email="ada@example.com"
         )
         self.assertIsNone(application.station)
+
+
+    def test_parish_from_another_deanery_is_rejected(self):
+        other_deanery = Deanery.objects.create(
+            diocese=self.diocese,
+            name="Another Registration Deanery",
+        )
+        other_parish = Parish.objects.create(
+            deanery=other_deanery,
+            name="Another Deanery Parish",
+        )
+
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(parish=str(other_parish.pk)),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            MembershipApplication.objects.filter(
+                email="ada@example.com"
+            ).exists()
+        )
 
     def test_station_from_another_parish_is_rejected(self):
         response = self.client.post(

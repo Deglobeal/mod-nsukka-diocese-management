@@ -16,7 +16,6 @@
             Complete the basic form to submit your membership application
             to M.O.D. Nsukka Diocese.
         </p>
-
         <p class="registration-notice">
             Your application will be reviewed by the appropriate church
             authorities. Submitting this form does not create a portal
@@ -25,7 +24,6 @@
 
         <form method="post" novalidate>
             {% csrf_token %}
-
             {% if form.non_field_errors %}
                 <div class="registration-error" role="alert">
                     {{ form.non_field_errors }}
@@ -43,13 +41,10 @@
                                 <span class="registration-optional">(optional)</span>
                             {% endif %}
                         </label>
-
                         {{ field }}
-
                         {% if field.help_text %}
                             <p class="registration-help">{{ field.help_text }}</p>
                         {% endif %}
-
                         {% for error in field.errors %}
                             <p class="registration-field-error" role="alert">
                                 {{ error }}
@@ -70,4 +65,44 @@
         </p>
     </div>
 </section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const deanery = document.getElementById("id_deanery");
+    const parish = document.getElementById("id_parish");
+    const station = document.getElementById("id_station");
+
+    function filterOptions(select, attribute, selectedValue) {
+        if (!select) return;
+
+        Array.from(select.options).forEach(function (option) {
+            const parentValue = option.dataset[attribute];
+            const allowed = !option.value || !selectedValue ||
+                parentValue === selectedValue;
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+        });
+
+        const current = select.selectedOptions[0];
+        if (current && current.disabled) select.value = "";
+    }
+
+    function updateStations() {
+        filterOptions(
+            station, "parishId", parish ? parish.value : ""
+        );
+    }
+
+    function updateParishes() {
+        filterOptions(
+            parish, "deaneryId", deanery ? deanery.value : ""
+        );
+        updateStations();
+    }
+
+    if (deanery) deanery.addEventListener("change", updateParishes);
+    if (parish) parish.addEventListener("change", updateStations);
+    updateParishes();
+});
+</script>
 {% endblock %}
