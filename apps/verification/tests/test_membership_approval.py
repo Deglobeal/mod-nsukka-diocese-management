@@ -4,7 +4,7 @@ from django.test import TestCase
 
 from apps.accounts.models import OfficeAssignment
 from apps.members.models import Member
-from apps.organizations.models import Diocese, Deanery, Parish
+from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.services.membership_approval import (
     record_membership_review,
@@ -233,3 +233,40 @@ class MembershipApprovalServiceTests(TestCase):
             )
 
         self.assertEqual(self.application.reviews.count(), 0)
+
+    def test_final_approval_rejects_station_from_another_parish(self):
+        other_parish = Parish.objects.create(
+            deanery=self.deanery,
+            name="Other Test Parish",
+        )
+        other_station = Station.objects.create(
+            parish=other_parish,
+            name="Other Parish Station",
+        )
+
+        application = MembershipApplication.objects.create(
+            first_name="Chika",
+            last_name="Eze",
+            parish=self.parish,
+            station=other_station,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+
+        members_before = Member.objects.count()
+
+        with self.assertRaises(ValidationError):
+            self.review(
+                MembershipReview.ReviewLevel.DIOCESE,
+                MembershipReview.Decision.APPROVED,
+                application_id=application.pk,
+            )
+
+        application.refresh_from_db()
+
+        self.assertEqual(
+            application.stage,
+            MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+        self.assertIsNone(application.member_id)
+        self.assertEqual(Member.objects.count(), members_before)
+        self.assertEqual(application.reviews.count(), 0)

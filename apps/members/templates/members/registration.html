@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Membership Registration | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="registration-page">
+    <div class="registration-card">
+        <p class="registration-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
+        <h1 class="registration-title">Membership registration</h1>
+        <p class="registration-description">
+            Complete the basic form to submit your membership application
+            to M.O.D. Nsukka Diocese.
+        </p>
+
+        <p class="registration-notice">
+            Your application will be reviewed by the appropriate church
+            authorities. Submitting this form does not create a portal
+            login account or mean your membership has been approved.
+        </p>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="registration-error" role="alert">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="registration-grid">
+                {% for field in form %}
+                    <div class="registration-field{% if field.name == 'middle_name' or field.name == 'station' %} registration-field-optional{% endif %}">
+                        <label for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                            {% if field.field.required %}
+                                <span aria-hidden="true">*</span>
+                            {% else %}
+                                <span class="registration-optional">(optional)</span>
+                            {% endif %}
+                        </label>
+
+                        {{ field }}
+
+                        {% if field.help_text %}
+                            <p class="registration-help">{{ field.help_text }}</p>
+                        {% endif %}
+
+                        {% for error in field.errors %}
+                            <p class="registration-field-error" role="alert">
+                                {{ error }}
+                            </p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button class="registration-button" type="submit">
+                Submit application
+            </button>
+        </form>
+
+        <p class="registration-footer">
+            Fields marked with * are required. Please ensure your contact
+            details are correct.
+        </p>
+    </div>
+</section>
+{% endblock %}

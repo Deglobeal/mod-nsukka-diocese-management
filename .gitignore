@@ -27,3 +27,6 @@ staticfiles/
 
 # Private membership evidence — never commit uploaded documents.
 private_media/
+
+# Local database backups — never commit database dumps.
+backups/

@@ -89,7 +89,12 @@ class MembershipReviewAPIView(APIView):
                 "review_level": review.review_level,
                 "decision": review.decision,
                 "stage": review.application.stage,
-                "member_status": review.application.member.status,
+                "member_id": review.application.member_id,
+                "member_status": (
+                    review.application.member.status
+                    if review.application.member_id
+                    else None
+                ),
                 "reviewed_at": review.reviewed_at,
             },
             status=status.HTTP_201_CREATED,

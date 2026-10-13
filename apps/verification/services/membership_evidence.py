@@ -26,6 +26,9 @@ def get_authorized_evidence_application(*, application_id, user):
         MembershipApplication.objects
         .select_related(
             "member",
+            "parish",
+            "parish__deanery",
+            "parish__deanery__diocese",
             "member__parish",
             "member__parish__deanery",
             "member__parish__deanery__diocese",

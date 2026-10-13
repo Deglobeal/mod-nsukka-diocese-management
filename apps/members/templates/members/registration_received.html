@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Application Received | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="registration-page">
+    <div class="registration-card registration-success">
+        <p class="registration-eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1 class="registration-title">Application received</h1>
+        <p class="registration-description">
+            Your membership application has been recorded for review.
+        </p>
+
+        <p class="registration-notice">
+            Your reference number is
+            <strong>{{ application.pk }}</strong>.
+            Keep it for your records. Your application is pending review;
+            this is not an approval or a portal login account.
+        </p>
+
+        <a class="registration-button registration-link"
+           href="{% url 'public_home' %}">
+            Return to homepage
+        </a>
+    </div>
+</section>
+{% endblock %}

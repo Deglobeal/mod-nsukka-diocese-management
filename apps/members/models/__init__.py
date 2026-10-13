@@ -1,4 +1,4 @@
-"""Member models, with each model defined in its own module."""
+"""Member models."""
 
 from .member import Member
 

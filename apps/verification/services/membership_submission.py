@@ -15,17 +15,15 @@ def submit_membership_application(*, member_id, submitted_by):
     ):
         raise PermissionDenied("An authenticated submitter is required.")
 
-    try:
-        member = (
-            Member.objects.select_related(
-                "parish",
-                "parish__deanery",
-                "parish__deanery__diocese",
-            )
-            .get(pk=member_id)
+    member = (
+        Member.objects.select_related(
+            "parish",
+            "parish__deanery",
+            "parish__deanery__diocese",
+            "station",
         )
-    except Member.DoesNotExist:
-        raise
+        .get(pk=member_id)
+    )
 
     authorized = OfficeAssignment.objects.filter(
         user=submitted_by,
@@ -43,5 +41,10 @@ def submit_membership_application(*, member_id, submitted_by):
 
     return MembershipApplication.objects.create(
         member=member,
+        first_name=member.first_name,
+        middle_name=member.middle_name,
+        last_name=member.last_name,
+        parish=member.parish,
+        station=member.station,
         stage=MembershipApplication.Stage.PARISH_REVIEW,
     )

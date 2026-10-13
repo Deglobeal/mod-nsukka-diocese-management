@@ -54,6 +54,6 @@ class MembershipReview(models.Model):
     def __str__(self):
         return (
             f"{self.get_review_level_display()} review — "
-            f"{self.application.member.full_name} — "
+            f"{self.application.applicant_name or f'Application #{self.application_id}'} — "
             f"{self.get_decision_display()}"
         )

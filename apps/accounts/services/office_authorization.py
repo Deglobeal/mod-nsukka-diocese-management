@@ -15,7 +15,7 @@ ROLE_FOR_STAGE = {
 
 
 def authorize_membership_reviewer(*, user, application, review_level):
-    """Require an active assignment at the correct organizational level."""
+    """Require an active assignment at the application's review level."""
     if user is None or not getattr(user, "is_authenticated", False):
         raise PermissionDenied("An authenticated reviewer is required.")
 
@@ -36,21 +36,26 @@ def authorize_membership_reviewer(*, user, application, review_level):
             "The review level does not match the application's current stage."
         )
 
+    parish = application.parish
+    if parish is None and application.member_id:
+        parish = application.member.parish
+
+    if parish is None:
+        raise PermissionDenied(
+            "This application has no parish assigned for review."
+        )
+
     assignments = OfficeAssignment.objects.filter(
         user=user,
         role=expected_role,
-        diocese_id=application.member.parish.deanery.diocese_id,
+        diocese_id=parish.deanery.diocese_id,
         is_active=True,
     )
 
     if application.stage == MembershipApplication.Stage.PARISH_REVIEW:
-        assignments = assignments.filter(
-            parish_id=application.member.parish_id,
-        )
+        assignments = assignments.filter(parish_id=parish.pk)
     elif application.stage == MembershipApplication.Stage.DEANERY_REVIEW:
-        assignments = assignments.filter(
-            deanery_id=application.member.parish.deanery_id,
-        )
+        assignments = assignments.filter(deanery_id=parish.deanery_id)
 
     if not assignments.exists():
         raise PermissionDenied(
