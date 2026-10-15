@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}M.O.D. Nsukka Diocese | Man of Order and Discipline{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/home.css' %}">
+{% endblock %}
+
+{% block content %}
+<header class="home-header">
+    <a class="home-brand" href="{% url 'public_home' %}" aria-label="M.O.D. Nsukka Diocese home">
+        <span class="home-brand-mark" aria-hidden="true">M</span>
+        <span class="home-brand-copy">
+            <strong>M.O.D.</strong>
+            <span>NSUKKA DIOCESE</span>
+        </span>
+    </a>
+
+    <nav class="home-nav" aria-label="Main navigation">
+        <a href="#about">About</a>
+        <a href="#structure">Structure</a>
+        <a href="#membership">Membership</a>
+        <a class="home-nav-login" href="{% url 'accounts:login' %}">Staff sign in</a>
+        <a class="home-nav-register" href="{% url 'members:register' %}">Join the movement <span aria-hidden="true">↗</span></a>
+    </nav>
+</header>
+
+{% url 'members:register' as membership_url %}
+{% url 'accounts:login' as staff_login_url %}
+{% include "components/hero.html" with eyebrow="MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA" title_line_one="Order in our lives." title_line_two="Discipline in our service." description="Welcome to M.O.D. Nsukka Diocese — a community committed to order, discipline, service and responsible membership within the Catholic diocesan structure." primary_url=membership_url primary_label="Apply for membership" secondary_url="#about" secondary_label="Discover M.O.D." note="Membership applications are reviewed through the appropriate diocesan structure." show_emblem=True bottom_left="FAITHFUL SERVICE" bottom_right="RESPONSIBLE MEMBERSHIP" %}
+
+<section class="home-about home-section" id="about">
+    <div class="home-section-label"><span>01</span> ABOUT THE MOVEMENT</div>
+    <div class="home-about-grid">
+        <div>
+            <h2>A community built on <span>order and discipline.</span></h2>
+        </div>
+        <div class="home-about-copy">
+            <p>
+                The Man of Order and Discipline Movement of Nigeria brings
+                members together around a shared commitment to discipline,
+                responsibility and service.
+            </p>
+            <p>
+                This diocesan platform supports membership applications,
+                organizational coordination and access to relevant
+                membership information through an accountable process.
+            </p>
+            <a class="home-text-link" href="{% url 'members:register' %}">
+                Begin your membership application <span aria-hidden="true">→</span>
+            </a>
+        </div>
+    </div>
+    <div class="home-principles">
+        <article class="home-principle">
+            <span class="home-principle-number">01</span>
+            <h3>Order</h3>
+            <p>Respect for structure, responsibility and proper channels.</p>
+        </article>
+        <article class="home-principle">
+            <span class="home-principle-number">02</span>
+            <h3>Discipline</h3>
+            <p>Personal commitment, consistency and accountable conduct.</p>
+        </article>
+        <article class="home-principle">
+            <span class="home-principle-number">03</span>
+            <h3>Service</h3>
+            <p>Working together to support the movement and its community.</p>
+        </article>
+    </div>
+</section>
+
+<section class="home-structure home-section" id="structure">
+    <div class="home-section-label home-section-label-light"><span>02</span> HOW WE ARE ORGANIZED</div>
+    <div class="home-structure-heading">
+        <h2>A clear structure.<br><span>A connected community.</span></h2>
+        <p>
+            The diocesan structure connects local communities to the wider
+            diocese, with each level serving a distinct organizational role.
+        </p>
+    </div>
+
+    <div class="home-hierarchy" aria-label="Organization hierarchy">
+        <article class="home-hierarchy-card home-hierarchy-diocese">
+            <span class="home-hierarchy-index">01</span>
+            <span class="home-hierarchy-symbol" aria-hidden="true">✦</span>
+            <div>
+                <span class="home-hierarchy-level">DIOCESAN LEVEL</span>
+                <h3>Diocese</h3>
+                <p>The diocesan level of the movement.</p>
+            </div>
+        </article>
+        <div class="home-hierarchy-connector" aria-hidden="true">↓</div>
+        <article class="home-hierarchy-card">
+            <span class="home-hierarchy-index">02</span>
+            <span class="home-hierarchy-symbol" aria-hidden="true">◇</span>
+            <div>
+                <span class="home-hierarchy-level">REGIONAL LEVEL</span>
+                <h3>Deaneries</h3>
+                <p>Groups of parishes within the structure.</p>
+            </div>
+        </article>
+        <div class="home-hierarchy-connector" aria-hidden="true">↓</div>
+        <article class="home-hierarchy-card">
+            <span class="home-hierarchy-index">03</span>
+            <span class="home-hierarchy-symbol" aria-hidden="true">⌂</span>
+            <div>
+                <span class="home-hierarchy-level">LOCAL CHURCH LEVEL</span>
+                <h3>Parishes</h3>
+                <p>Local communities within a deanery.</p>
+            </div>
+        </article>
+        <div class="home-hierarchy-connector" aria-hidden="true">↓</div>
+        <article class="home-hierarchy-card">
+            <span class="home-hierarchy-index">04</span>
+            <span class="home-hierarchy-symbol" aria-hidden="true">⌖</span>
+            <div>
+                <span class="home-hierarchy-level">COMMUNITY LEVEL</span>
+                <h3>Stations</h3>
+                <p>Stations associated with their respective parishes.</p>
+            </div>
+        </article>
+    </div>
+</section>
+
+<section class="home-membership home-section" id="membership">
+    <div class="home-section-label"><span>03</span> MEMBERSHIP</div>
+    <div class="home-membership-heading">
+        <h2>One movement.<br><span>Different ways to serve.</span></h2>
+        <p>Select the membership category that describes your application.</p>
+    </div>
+
+    <div class="home-membership-grid">
+        <article class="home-membership-card">
+            <span class="home-membership-index">01 / MEMBERSHIP</span>
+            <div class="home-membership-icon" aria-hidden="true">◎</div>
+            <h3>Regular Member</h3>
+            <p>For individuals applying to join the movement as members.</p>
+            <a href="{% url 'members:register' %}">Apply as a member <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="home-membership-card home-membership-card-featured">
+            <span class="home-membership-index">02 / SUPPORT</span>
+            <div class="home-membership-icon" aria-hidden="true">✧</div>
+            <h3>Patron</h3>
+            <p>For individuals applying under the patron membership category.</p>
+            <a href="{% url 'members:register' %}">Apply as a patron <span aria-hidden="true">→</span></a>
+        </article>
+        <article class="home-membership-card">
+            <span class="home-membership-index">03 / CHAPLAINCY</span>
+            <div class="home-membership-icon" aria-hidden="true">✦</div>
+            <h3>Chaplain</h3>
+            <p>For clergy applying under the chaplain membership category.</p>
+            <a href="{% url 'members:register' %}">Apply as a chaplain <span aria-hidden="true">→</span></a>
+        </article>
+    </div>
+
+    <div class="home-ranks">
+        <div>
+            <span class="home-ranks-eyebrow">MEMBERSHIP RANKS</span>
+            <h3>Recognizing stages of service</h3>
+        </div>
+        <div class="home-rank-list">
+            <span>Major</span>
+            <span>Major General</span>
+            <span>Supreme General</span>
+        </div>
+        <p>Ranks are distinct from office assignments and leadership positions.</p>
+    </div>
+</section>
+
+<section class="home-cta">
+    <div>
+        <span class="home-cta-eyebrow">YOUR NEXT STEP</span>
+        <h2>Ready to begin your<br>membership journey?</h2>
+        <p>Submit your application and follow the review process through the appropriate levels.</p>
+    </div>
+    <a class="home-button home-button-gold" href="{% url 'members:register' %}">
+        Start your application <span aria-hidden="true">↗</span>
+    </a>
+</section>
+
+<footer class="home-footer">
+    <a class="home-brand home-brand-footer" href="{% url 'public_home' %}">
+        <span class="home-brand-mark" aria-hidden="true">M</span>
+        <span class="home-brand-copy">
+            <strong>M.O.D.</strong>
+            <span>NSUKKA DIOCESE</span>
+        </span>
+    </a>
+    <p>Man of Order and Discipline Movement of Nigeria</p>
+    <div class="home-footer-links">
+        <a href="#about">About</a>
+        <a href="#structure">Structure</a>
+        <a href="{% url 'members:register' %}">Membership application</a>
+        <a href="{% url 'accounts:login' %}">Staff sign in</a>
+    </div>
+    <span class="home-footer-copy">M.O.D. Nsukka Diocese</span>
+</footer>
+{% endblock %}

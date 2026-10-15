@@ -1,0 +1,65 @@
+<section class="mod-hero{% if hero_variant %} mod-hero--{{ hero_variant }}{% endif %}" aria-labelledby="mod-hero-title">
+    <div class="mod-hero__content">
+        {% if eyebrow %}
+            <p class="mod-hero__eyebrow"><span aria-hidden="true"></span>{{ eyebrow }}</p>
+        {% endif %}
+
+        <h1 class="mod-hero__title" id="mod-hero-title">
+            {{ title_line_one }}
+            {% if title_line_two %}
+                <br><span>{{ title_line_two }}</span>
+            {% endif %}
+        </h1>
+
+        {% if description %}
+            <p class="mod-hero__description">{{ description }}</p>
+        {% endif %}
+
+        {% if primary_url or secondary_url %}
+            <div class="mod-hero__actions">
+                {% if primary_url and primary_label %}
+                    <a class="mod-hero__button mod-hero__button--primary" href="{{ primary_url }}">
+                        {{ primary_label }} <span aria-hidden="true">→</span>
+                    </a>
+                {% endif %}
+
+                {% if secondary_url and secondary_label %}
+                    <a class="mod-hero__button mod-hero__button--secondary" href="{{ secondary_url }}">
+                        {{ secondary_label }} <span aria-hidden="true">↗</span>
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if note %}
+            <div class="mod-hero__note">
+                <span class="mod-hero__note-icon" aria-hidden="true">✦</span>
+                <span>{{ note }}</span>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if show_emblem %}
+        <div class="mod-hero__art" aria-hidden="true">
+            <div class="mod-hero__ring mod-hero__ring--outer"></div>
+            <div class="mod-hero__ring mod-hero__ring--inner"></div>
+            <div class="mod-hero__emblem">
+                <span class="mod-hero__emblem-label">M.O.D.</span>
+                <span class="mod-hero__emblem-letter">M</span>
+                <span class="mod-hero__emblem-rule"></span>
+                <span class="mod-hero__emblem-diocese">NSUKKA DIOCESE</span>
+            </div>
+            <span class="mod-hero__star mod-hero__star--one">✦</span>
+            <span class="mod-hero__star mod-hero__star--two">✧</span>
+            <span class="mod-hero__art-caption">ORDER · DISCIPLINE · SERVICE</span>
+        </div>
+    {% endif %}
+
+    {% if bottom_left or bottom_right %}
+        <div class="mod-hero__bottom" aria-hidden="true">
+            {% if bottom_left %}<span>{{ bottom_left }}</span>{% endif %}
+            {% if bottom_left and bottom_right %}<span class="mod-hero__bottom-line"></span>{% endif %}
+            {% if bottom_right %}<span>{{ bottom_right }}</span>{% endif %}
+        </div>
+    {% endif %}
+</section>

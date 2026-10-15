@@ -1,12 +1,11 @@
-from django.http import HttpResponse
+from django.shortcuts import render
 from django.views import View
 
 
 class HomeView(View):
-    """Temporary project landing page; replace with the designed public homepage."""
+    """Public homepage for M.O.D. Nsukka Diocese."""
+
+    template_name = "home.html"
 
     def get(self, request):
-        return HttpResponse(
-            "M.O.D. Nsukka Diocese Membership Management System — project scaffold ready.",
-            content_type="text/plain; charset=utf-8",
-        )
+        return render(request, self.template_name)
