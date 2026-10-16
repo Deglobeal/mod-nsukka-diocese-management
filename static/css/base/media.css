@@ -1,0 +1,5 @@
+/* Responsive media defaults */
+img,
+svg {
+    max-width: 100%;
+}

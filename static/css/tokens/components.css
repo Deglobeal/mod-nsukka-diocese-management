@@ -1,0 +1,74 @@
+:root {
+    /* Buttons: dimensions and spacing */
+    --button-height: 44px;
+    --button-height-compact: 36px;
+    --button-min-width: 0;
+    --button-gap: var(--space-2);
+    --button-padding-block: var(--space-3);
+    --button-padding-inline: var(--space-4);
+    --button-radius: var(--radius-control);
+    --button-border-width: var(--border-width-thin);
+
+    /* Buttons: typography */
+    --button-font-family: var(--font-family-base);
+    --button-font-size: var(--font-size-button);
+    --button-font-weight: var(--font-weight-semibold);
+    --button-line-height: var(--line-height-tight);
+    --button-letter-spacing: var(--letter-spacing-normal);
+
+    /* Buttons: primary state */
+    --button-primary-background: var(--color-primary);
+    --button-primary-background-hover: var(--color-primary-hover);
+    --button-primary-background-active: var(--color-primary-active);
+    --button-primary-text: var(--color-on-primary);
+    --button-primary-border: var(--color-primary);
+    --button-primary-border-hover: var(--color-primary-hover);
+
+    /* Buttons: secondary state */
+    --button-secondary-background: transparent;
+    --button-secondary-background-hover: var(--color-primary-subtle);
+    --button-secondary-text: var(--color-primary);
+    --button-secondary-text-hover: var(--color-primary-hover);
+    --button-secondary-border: var(--color-border-strong);
+    --button-secondary-border-hover: var(--color-primary);
+
+    /* Buttons: accent state */
+    --button-accent-background: var(--color-accent);
+    --button-accent-background-hover: var(--color-accent-hover);
+    --button-accent-text: var(--color-on-accent);
+    --button-accent-border: var(--color-accent);
+
+    /* Buttons: focus, disabled and motion */
+    --button-focus-ring: var(--color-focus-ring);
+    --button-disabled-opacity: 0.55;
+    --button-transition:
+        background var(--transition-fast),
+        color var(--transition-fast),
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+
+    /* Form controls */
+    --input-height: 44px;
+    --input-padding-block: var(--space-3);
+    --input-padding-inline: var(--space-3);
+    --input-radius: var(--radius-control);
+    --input-border-width: var(--border-width-thin);
+    --input-border-color: var(--color-input-border);
+    --input-border-color-focus: var(--color-primary);
+    --input-background: var(--color-input-background);
+    --input-text: var(--color-text);
+    --input-placeholder: var(--color-input-placeholder);
+    --input-font-family: var(--font-family-base);
+    --input-font-size: var(--font-size-base);
+    --input-transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+
+    /* Cards */
+    --card-padding: var(--space-6);
+    --card-radius: var(--radius-card);
+    --card-border-width: var(--border-width-thin);
+    --card-border-color: var(--color-border);
+    --card-background: var(--color-surface);
+    --card-shadow: var(--shadow-card);
+}

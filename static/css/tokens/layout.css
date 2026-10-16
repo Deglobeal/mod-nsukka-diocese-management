@@ -1,0 +1,17 @@
+:root {
+    /* Content widths */
+    --content-width: 1120px;
+    --content-width-wide: 1280px;
+    --content-width-narrow: 720px;
+
+    /* Page layout */
+    --page-gutter: var(--space-8);
+    --page-gutter-compact: var(--space-4);
+    --page-content-width: var(--content-width);
+
+    /* Structural dimensions */
+    --header-height: 76px;
+    --navigation-height: 64px;
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 76px;
+}

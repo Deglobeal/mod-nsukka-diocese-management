@@ -1,0 +1,15 @@
+:root {
+    /* Typography compatibility */
+    --font-heading: var(--font-family-heading);
+
+    /* Layout compatibility */
+    --layout-width-xl: 1240px;
+
+    /* Spacing compatibility */
+    --spacing-lg: var(--space-6);
+
+    /* Legacy color aliases */
+    --color-text-primary: #24342B;
+    --color-text-secondary: #58665D;
+    --color-surface-subtle: #F5F7F4;
+}

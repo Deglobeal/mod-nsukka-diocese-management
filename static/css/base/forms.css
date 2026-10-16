@@ -1,0 +1,15 @@
+/* Preserve inherited typography across native controls */
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+    -webkit-tap-highlight-color: transparent;
+}

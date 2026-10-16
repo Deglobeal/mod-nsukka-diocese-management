@@ -1,0 +1,6 @@
+/* Shared site layout */
+.site-main {
+    width: 100%;
+    max-width: var(--content-width);
+    margin-inline: auto;
+}

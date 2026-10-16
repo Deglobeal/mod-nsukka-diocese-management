@@ -1,0 +1,15 @@
+:root {
+    /* Durations */
+    --duration-fast: 150ms;
+    --duration-base: 220ms;
+    --duration-slow: 300ms;
+
+    /* Easing */
+    --easing-standard: ease;
+    --easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+    /* Existing transition names */
+    --transition-fast: var(--duration-fast) var(--easing-standard);
+    --transition-base: var(--duration-base) var(--easing-standard);
+    --transition-slow: var(--duration-slow) var(--easing-standard);
+}

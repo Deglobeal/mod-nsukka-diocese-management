@@ -1,0 +1,9 @@
+/* Site-wide link defaults */
+a {
+    color: var(--color-link);
+    transition: color var(--transition-fast);
+}
+
+a:hover {
+    color: var(--color-link-hover);
+}

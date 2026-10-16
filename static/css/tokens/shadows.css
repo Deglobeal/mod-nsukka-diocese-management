@@ -1,0 +1,11 @@
+:root {
+    /* Elevation */
+    --shadow-sm: 0 2px 8px rgb(11 45 32 / 5%);
+    --shadow-card: 0 12px 32px rgb(11 45 32 / 7%);
+    --shadow-lg: 0 20px 48px rgb(11 45 32 / 12%);
+
+    /* Semantic aliases */
+    --shadow-control: var(--shadow-sm);
+    --shadow-surface: var(--shadow-card);
+    --shadow-overlay: var(--shadow-lg);
+}

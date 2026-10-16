@@ -1,0 +1,14 @@
+:root {
+    /* Border widths */
+    --border-width-thin: 1px;
+    --border-width-medium: 2px;
+
+    /* Existing corner radii */
+    --radius-sm: 4px;
+    --radius-control: 6px;
+    --radius-md: 8px;
+    --radius-card: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-pill: 999px;
+}
