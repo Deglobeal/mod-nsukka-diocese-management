@@ -53,21 +53,13 @@
         </div>
     </div>
     <div class="home-principles">
+        {% for card in principles %}
         <article class="home-principle">
-            <span class="home-principle-number">01</span>
-            <h3>Order</h3>
-            <p>Respect for structure, responsibility and proper channels.</p>
+            <span class="home-principle-number">{{ card.principle_number }}</span>
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.description }}</p>
         </article>
-        <article class="home-principle">
-            <span class="home-principle-number">02</span>
-            <h3>Discipline</h3>
-            <p>Personal commitment, consistency and accountable conduct.</p>
-        </article>
-        <article class="home-principle">
-            <span class="home-principle-number">03</span>
-            <h3>Service</h3>
-            <p>Working together to support the movement and its community.</p>
-        </article>
+        {% endfor %}
     </div>
 </section>
 
@@ -82,45 +74,20 @@
     </div>
 
     <div class="home-hierarchy" aria-label="Organization hierarchy">
-        <article class="home-hierarchy-card home-hierarchy-diocese">
-            <span class="home-hierarchy-index">01</span>
-            <span class="home-hierarchy-symbol" aria-hidden="true">✦</span>
+        {% for card in hierarchy %}
+        <article class="home-hierarchy-card{% if forloop.first %} home-hierarchy-diocese{% endif %}">
+            <span class="home-hierarchy-index">{{ card.level_number }}</span>
+            <span class="home-hierarchy-symbol" aria-hidden="true">{{ card.symbol }}</span>
             <div>
-                <span class="home-hierarchy-level">DIOCESAN LEVEL</span>
-                <h3>Diocese</h3>
-                <p>The diocesan level of the movement.</p>
+                <span class="home-hierarchy-level">{{ card.level_label }}</span>
+                <h3>{{ card.title }}</h3>
+                <p>{{ card.description }}</p>
             </div>
         </article>
+        {% if not forloop.last %}
         <div class="home-hierarchy-connector" aria-hidden="true">↓</div>
-        <article class="home-hierarchy-card">
-            <span class="home-hierarchy-index">02</span>
-            <span class="home-hierarchy-symbol" aria-hidden="true">◇</span>
-            <div>
-                <span class="home-hierarchy-level">REGIONAL LEVEL</span>
-                <h3>Deaneries</h3>
-                <p>Groups of parishes within the structure.</p>
-            </div>
-        </article>
-        <div class="home-hierarchy-connector" aria-hidden="true">↓</div>
-        <article class="home-hierarchy-card">
-            <span class="home-hierarchy-index">03</span>
-            <span class="home-hierarchy-symbol" aria-hidden="true">⌂</span>
-            <div>
-                <span class="home-hierarchy-level">LOCAL CHURCH LEVEL</span>
-                <h3>Parishes</h3>
-                <p>Local communities within a deanery.</p>
-            </div>
-        </article>
-        <div class="home-hierarchy-connector" aria-hidden="true">↓</div>
-        <article class="home-hierarchy-card">
-            <span class="home-hierarchy-index">04</span>
-            <span class="home-hierarchy-symbol" aria-hidden="true">⌖</span>
-            <div>
-                <span class="home-hierarchy-level">COMMUNITY LEVEL</span>
-                <h3>Stations</h3>
-                <p>Stations associated with their respective parishes.</p>
-            </div>
-        </article>
+        {% endif %}
+        {% endfor %}
     </div>
 </section>
 
@@ -132,27 +99,15 @@
     </div>
 
     <div class="home-membership-grid">
-        <article class="home-membership-card">
-            <span class="home-membership-index">01 / MEMBERSHIP</span>
-            <div class="home-membership-icon" aria-hidden="true">◎</div>
-            <h3>Regular Member</h3>
-            <p>For individuals applying to join the movement as members.</p>
-            <a href="{% url 'members:register' %}">Apply as a member <span aria-hidden="true">→</span></a>
+        {% for card in membership_categories %}
+        <article class="home-membership-card{% if card.variant == 'featured' %} home-membership-card-featured{% endif %}">
+            <span class="home-membership-index">{{ card.category_code }} / {{ card.category_label }}</span>
+            <div class="home-membership-icon" aria-hidden="true">{{ card.icon }}</div>
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.description }}</p>
+            <a href="{{ card.application_url }}">{{ card.application_label }} <span aria-hidden="true">→</span></a>
         </article>
-        <article class="home-membership-card home-membership-card-featured">
-            <span class="home-membership-index">02 / SUPPORT</span>
-            <div class="home-membership-icon" aria-hidden="true">✧</div>
-            <h3>Patron</h3>
-            <p>For individuals applying under the patron membership category.</p>
-            <a href="{% url 'members:register' %}">Apply as a patron <span aria-hidden="true">→</span></a>
-        </article>
-        <article class="home-membership-card">
-            <span class="home-membership-index">03 / CHAPLAINCY</span>
-            <div class="home-membership-icon" aria-hidden="true">✦</div>
-            <h3>Chaplain</h3>
-            <p>For clergy applying under the chaplain membership category.</p>
-            <a href="{% url 'members:register' %}">Apply as a chaplain <span aria-hidden="true">→</span></a>
-        </article>
+        {% endfor %}
     </div>
 
     <div class="home-ranks">

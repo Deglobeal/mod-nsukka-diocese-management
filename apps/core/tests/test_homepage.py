@@ -30,3 +30,36 @@ class PublicHomepageTests(TestCase):
         ):
             with self.subTest(label=label):
                 self.assertContains(response, label)
+
+    def test_homepage_renders_three_principle_cards(self):
+        response = self.client.get(reverse("public_home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.content.count(b'class="home-principle"'),
+            3,
+        )
+
+    def test_homepage_renders_four_hierarchy_cards(self):
+        response = self.client.get(reverse("public_home"))
+
+        self.assertEqual(
+            response.content.count(b'class="home-hierarchy-card'),
+            4,
+        )
+        self.assertEqual(
+            response.content.count(b'class="home-hierarchy-connector"'),
+            3,
+        )
+
+    def test_homepage_renders_three_membership_cards_with_featured_patron(self):
+        response = self.client.get(reverse("public_home"))
+
+        self.assertEqual(
+            response.content.count(b'class="home-membership-card'),
+            3,
+        )
+        self.assertContains(
+            response,
+            'class="home-membership-card home-membership-card-featured"',
+        )
