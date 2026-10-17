@@ -134,6 +134,10 @@ class MembershipRegistrationForm(forms.ModelForm):
                 "type": "date",
                 "autocomplete": "bday",
             }),
+            "passport_photo": forms.ClearableFileInput(attrs={
+                "accept": "image/*",
+                "capture": "user",
+            }),
             "current_rank_date": forms.DateInput(attrs={
                 "type": "date",
             }),
@@ -167,6 +171,116 @@ class MembershipRegistrationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Temporary form-only fields. Database persistence and sponsor
+        # verification will be implemented and tested in a later step.
+        self.fields["baptized_catholic"] = forms.ChoiceField(
+            label="Baptized Catholic?",
+            choices=[("", "Select an answer"), ("yes", "Yes"), ("no", "No")],
+            required=True,
+        )
+        self.fields["confirmed"] = forms.ChoiceField(
+            label="Confirmed?",
+            choices=[("", "Select an answer"), ("yes", "Yes"), ("no", "No")],
+            required=True,
+        )
+        self.fields["previous_diocese"] = forms.CharField(
+            label="Previous Diocese / Transfer Diocese",
+            max_length=150,
+            required=False,
+            widget=forms.TextInput(attrs={
+                "placeholder": "Enter previous diocese, if applicable",
+            }),
+        )
+        self.fields["sponsor_membership_id"] = forms.CharField(
+            label="Sponsor's official M.O.D. ID number",
+            max_length=100,
+            required=True,
+            widget=forms.TextInput(attrs={
+                "placeholder": "Enter sponsor's official M.O.D. ID",
+                "autocomplete": "off",
+            }),
+            help_text=(
+                "The sponsor lookup is not connected yet. Entering an ID "
+                "here does not verify the sponsor."
+            ),
+        )
+        self.fields["sponsor_additional_phone"] = forms.CharField(
+            label="Additional sponsor contact number",
+            max_length=30,
+            required=False,
+            widget=forms.TelInput(attrs={
+                "placeholder": "Additional phone number (optional)",
+            }),
+        )
+        self.fields["sponsor_rank"] = forms.ChoiceField(
+            label="Sponsor's rank",
+            choices=[
+                ("", "Select rank (optional)"),
+                ("Major", "Major"),
+                ("Major General", "Major General"),
+                ("Supreme General", "Supreme General"),
+            ],
+            required=False,
+        )
+        self.fields["marital_status"] = forms.ChoiceField(
+            label="Marital status",
+            choices=[("", "Select marital status"), ("Single", "Single"), ("Married", "Married"), ("Widowed", "Widowed")],
+            required=True,
+        )
+
+
+        # Additional approved form fields. These new values are not persisted yet.
+        self.fields["next_of_kin_relationship"] = forms.CharField(label="Next of Kin — Relationship", max_length=100, required=False)
+        self.fields["emergency_contact_relationship"] = forms.CharField(label="Emergency Contact 1 — Relationship", max_length=100, required=False)
+        self.fields["emergency_contact_2_name"] = forms.CharField(label="Emergency Contact 2 — Full name", max_length=200, required=False)
+        self.fields["emergency_contact_2_phone"] = forms.CharField(label="Emergency Contact 2 — Phone number", max_length=30, required=False, widget=forms.TelInput())
+        self.fields["emergency_contact_2_relationship"] = forms.CharField(label="Emergency Contact 2 — Relationship", max_length=100, required=False)
+        self.fields["medical_evidence"] = forms.FileField(
+            label="Medical or laboratory evidence (private upload)", required=False,
+            help_text="Private storage and access controls must be implemented before this upload is used operationally.",
+        )
+        self.fields["medical_confidentiality_acknowledged"] = forms.BooleanField(
+            label="I acknowledge the confidential handling of my medical information under the Diocese's approved privacy policy.",
+            required=True,
+        )
+
+        # Labels, requiredness and controls from the approved form.
+        self.fields["last_name"].label = "Surname"
+        self.fields["last_name"].required = True
+        self.fields["first_name"].label = "First name"
+        self.fields["first_name"].required = True
+        self.fields["middle_name"].label = "Middle name"
+        self.fields["middle_name"].required = True
+        self.fields["email"].label = "Email address (optional)"
+        self.fields["email"].required = False
+        self.fields["phone_number"].label = "Phone number"
+        self.fields["category"].label = "Membership category"
+        self.fields["category"].widget = forms.Select()
+        category_labels = {
+            "regular_member": "Regular Member",
+            "regular member": "Regular Member",
+            "patron": "Patron / Matron",
+            "matron": "Patron / Matron",
+            "chaplain": "Chaplain",
+            "chapline": "Chaplain",
+        }
+        self.fields["category"].choices = [
+            (value, category_labels.get(str(value).strip().lower(), label))
+            for value, label in self.fields["category"].choices
+        ]
+        self.fields["baptized_catholic"].widget = forms.RadioSelect()
+        self.fields["confirmed"].widget = forms.RadioSelect()
+        rank_choices = [("", "Select rank"), ("Major", "Major"), ("Major General", "Major General"), ("Supreme General", "Supreme General")]
+        for rank_field in ("first_rank", "current_rank"):
+            self.fields[rank_field] = forms.ChoiceField(
+                label="First rank" if rank_field == "first_rank" else "Current rank",
+                choices=rank_choices, required=False,
+                initial=getattr(self.instance, rank_field, "") or "",
+            )
+        self.fields["previous_diocese"].label = "Previous Diocese / Transfer Diocese"
+        self.fields["sponsor_membership_id"].label = "Sponsor's official M.O.D. ID number"
+        self.fields["sponsor_additional_phone"].label = "Additional sponsor contact number (optional)"
+        self.fields["sponsor_rank"].label = "Sponsor's rank"
 
         self.fields["deanery"].queryset = Deanery.objects.filter(
             is_active=True,

@@ -310,3 +310,44 @@ body[data-mod-theme="command"] .registration-button:hover {
     color: #F5F5F2;
     -webkit-text-fill-color: #F5F5F2;
 }
+
+/* Accessible summary for registration validation errors. */
+.registration-error-summary {
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid var(--color-danger-text);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+}
+
+.registration-error-summary h2 {
+    margin: 0 0 var(--space-2);
+    font-size: 18px;
+}
+
+.registration-error-summary p {
+    margin: 0 0 var(--space-3);
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+
+.registration-error-summary ul {
+    margin: 0;
+    padding-left: var(--space-5);
+}
+
+.registration-error-summary li + li {
+    margin-top: var(--space-2);
+}
+
+.registration-error-summary a {
+    color: var(--color-danger-text);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+.registration-error-summary a:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 3px;
+}

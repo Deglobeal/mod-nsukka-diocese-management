@@ -30,93 +30,146 @@
                 </div>
             {% endif %}
 
+            {% if form.errors %}
+                <div
+                    class="registration-error-summary"
+                    role="alert"
+                    aria-labelledby="registration-error-title"
+                    tabindex="-1"
+                >
+                    <h2 id="registration-error-title">
+                        Please correct the following errors
+                    </h2>
+                    <p>Choose an item below to jump to the relevant field.</p>
+                    <ul>
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>
+                                    <a href="#{{ field.id_for_label }}">
+                                        {{ field.label }}: {{ error }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
             <section class="registration-section" aria-labelledby="registration-section-a">
-                <h2 class="registration-section-title" id="registration-section-a">A — Personal Information</h2>
-                <p class="registration-section-description">Enter your personal and contact details.</p>
+                <h2 class="registration-section-title" id="registration-section-a">Section 1 — Personal Information</h2>
+                <p class="registration-section-description">Enter your personal and contact details. Wear your M.O.D. uniform for your photograph.</p>
                 <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.last_name %}
                     {% include "members/partials/registration_field.html" with field=form.first_name %}
                     {% include "members/partials/registration_field.html" with field=form.middle_name %}
-                    {% include "members/partials/registration_field.html" with field=form.last_name %}
-                    {% include "members/partials/registration_field.html" with field=form.email %}
-                    {% include "members/partials/registration_field.html" with field=form.phone_number %}
                     {% include "members/partials/registration_field.html" with field=form.sex %}
                     {% include "members/partials/registration_field.html" with field=form.date_of_birth %}
                     {% include "members/partials/registration_field.html" with field=form.passport_photo %}
+                    {% include "members/partials/registration_field.html" with field=form.phone_number %}
+                    {% include "members/partials/registration_field.html" with field=form.email %}
                 </div>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-b">
-                <h2 class="registration-section-title" id="registration-section-b">B — Church and Organizational Details</h2>
-                <p class="registration-section-description">Select the deanery and parish where you belong. Station is optional.</p>
-                <div class="registration-fixed-value">
-                    <span class="registration-fixed-label">Diocese</span>
-                    <strong>Nsukka Diocese</strong>
-                </div>
+                <h2 class="registration-section-title" id="registration-section-b">Section 2 — Membership &amp; Church Details</h2>
+                <p class="registration-section-description">Membership category, church affiliation, sacramental details and sponsor information.</p>
+                <div class="registration-fixed-value"><span class="registration-fixed-label">Diocese *</span><strong>Nsukka Diocese</strong></div>
                 <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.category %}
                     {% include "members/partials/registration_field.html" with field=form.deanery %}
                     {% include "members/partials/registration_field.html" with field=form.parish %}
                     {% include "members/partials/registration_field.html" with field=form.station %}
+                    {% include "members/partials/registration_field.html" with field=form.admission_date %}
+                    {% include "members/partials/registration_field.html" with field=form.first_rank %}
+                    {% include "members/partials/registration_field.html" with field=form.current_rank %}
+                    <div class="registration-field registration-radio-field">
+                        <span class="registration-field-label">Baptized Catholic? <span aria-hidden="true">*</span></span>
+                        <div class="registration-radio-options" role="group" aria-label="Baptized Catholic?">
+                            {{ form.baptized_catholic }}
+                        </div>
+                        {% for error in form.baptized_catholic.errors %}<p class="registration-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="registration-field registration-radio-field">
+                        <span class="registration-field-label">Confirmed? <span aria-hidden="true">*</span></span>
+                        <div class="registration-radio-options" role="group" aria-label="Confirmed?">
+                            {{ form.confirmed }}
+                        </div>
+                        {% for error in form.confirmed.errors %}<p class="registration-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    {% include "members/partials/registration_field.html" with field=form.previous_diocese %}
                 </div>
+                <h3 class="registration-section-title">Sponsor / Referee Verification</h3>
+                <p>The system will look up the sponsor's official name and registered phone number. Those details cannot be edited by the applicant.</p>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.sponsor_membership_id %}
+                    {% include "members/partials/registration_field.html" with field=form.sponsor_additional_phone %}
+                    {% include "members/partials/registration_field.html" with field=form.sponsor_rank %}
+                </div>
+                <p class="registration-notice">The ID match confirms identity only; it does not prove that the sponsor authorized the sponsorship. Sponsor lookup is not connected yet. Preview status after submission: pending the 24-hour sponsorship-dispute period.</p>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-c">
-                <h2 class="registration-section-title" id="registration-section-c">C — Membership Information</h2>
-                <p class="registration-section-description">Provide your membership category, rank history, and organizational roles where applicable.</p>
+                <h2 class="registration-section-title" id="registration-section-c">Section 3 — Background &amp; Marital Status</h2>
+                <p class="registration-section-description">Marital status is recorded for administrative consideration; it does not by itself determine eligibility for an office.</p>
                 <div class="registration-grid">
-                    {% include "members/partials/registration_field.html" with field=form.category %}
-                    {% include "members/partials/registration_field.html" with field=form.current_rank %}
-                    {% include "members/partials/registration_field.html" with field=form.current_rank_date %}
-                    {% include "members/partials/registration_field.html" with field=form.current_rank_place %}
-                    {% include "members/partials/registration_field.html" with field=form.first_rank %}
-                    {% include "members/partials/registration_field.html" with field=form.first_rank_date %}
-                    {% include "members/partials/registration_field.html" with field=form.first_rank_place %}
-                    {% include "members/partials/registration_field.html" with field=form.admission_date %}
-                    {% include "members/partials/registration_field.html" with field=form.admission_year %}
-                    {% include "members/partials/registration_field.html" with field=form.membership_status %}
-                    {% include "members/partials/registration_field.html" with field=form.department %}
-                    {% include "members/partials/registration_field.html" with field=form.administrative_level %}
-                    {% include "members/partials/registration_field.html" with field=form.current_office %}
-                    {% include "members/partials/registration_field.html" with field=form.other_office_held %}
+                    {% include "members/partials/registration_field.html" with field=form.marital_status %}
+                    {% include "members/partials/registration_field.html" with field=form.state_of_origin %}
+                    {% include "members/partials/registration_field.html" with field=form.local_government_area %}
+                    {% include "members/partials/registration_field.html" with field=form.village_town %}
+                    {% include "members/partials/registration_field.html" with field=form.residential_address %}
+                    {% include "members/partials/registration_field.html" with field=form.occupation %}
+                    {% include "members/partials/registration_field.html" with field=form.home_diocese %}
                 </div>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-d">
-                <h2 class="registration-section-title" id="registration-section-d">D — Background and Address</h2>
-                <p class="registration-section-description">Add your background, residence, and next-of-kin details where available.</p>
+                <h2 class="registration-section-title" id="registration-section-d">Section 4 — Next of Kin &amp; Emergency Contacts</h2>
+                <h3 class="registration-section-title">Next of Kin</h3>
                 <div class="registration-grid">
-                    {% include "members/partials/registration_field.html" with field=form.village_town %}
-                    {% include "members/partials/registration_field.html" with field=form.state_of_origin %}
-                    {% include "members/partials/registration_field.html" with field=form.local_government_area %}
-                    {% include "members/partials/registration_field.html" with field=form.occupation %}
-                    {% include "members/partials/registration_field.html" with field=form.residential_address %}
-                    {% include "members/partials/registration_field.html" with field=form.home_diocese %}
                     {% include "members/partials/registration_field.html" with field=form.next_of_kin_name %}
                     {% include "members/partials/registration_field.html" with field=form.next_of_kin_phone %}
+                    {% include "members/partials/registration_field.html" with field=form.next_of_kin_relationship %}
+                </div>
+                <h3 class="registration-section-title">Emergency Contact 1</h3>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_name %}
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_phone %}
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_relationship %}
+                </div>
+                <h3 class="registration-section-title">Emergency Contact 2</h3>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_2_name %}
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_2_phone %}
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_2_relationship %}
                 </div>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-e">
-                <h2 class="registration-section-title" id="registration-section-e">E — Emergency and Health Information</h2>
-                <p class="registration-section-description">Provide your health details accurately. Blood group, genotype, height, and weight are required. Medical conditions, allergies, and medications are optional. Health details are confidential and restricted to authorized personnel.</p>
+                <h2 class="registration-section-title" id="registration-section-e">Section 5 — Health &amp; Medical Information</h2>
+                <p class="registration-section-description">Medical information is confidential. Routine parish and deanery reviewers must not have access to confidential medical details or evidence.</p>
+                <h3 class="registration-section-title">Basic Health Information</h3>
                 <div class="registration-grid">
-                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_name %}
-                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_phone %}
                     {% include "members/partials/registration_field.html" with field=form.blood_group %}
                     {% include "members/partials/registration_field.html" with field=form.genotype %}
                     {% include "members/partials/registration_field.html" with field=form.height_cm %}
                     {% include "members/partials/registration_field.html" with field=form.weight_kg %}
+                </div>
+                <h3 class="registration-section-title">Confidential Medical Information</h3>
+                <div class="registration-grid">
                     {% include "members/partials/registration_field.html" with field=form.medical_conditions %}
                     {% include "members/partials/registration_field.html" with field=form.allergies_medications %}
+                    {% include "members/partials/registration_field.html" with field=form.medical_evidence %}
+                    {% include "members/partials/registration_field.html" with field=form.medical_confidentiality_acknowledged %}
                 </div>
+                <p class="registration-notice">Required backend access restriction: only the authorized Diocesan Chairman and Medical Director may access confidential medical details and medical evidence.</p>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-f">
-                <h2 class="registration-section-title" id="registration-section-f">F — Declaration and Submission</h2>
-                <p class="registration-section-description">Review the declarations before submitting. Your submission date and time are recorded automatically by the server.</p>
+                <h2 class="registration-section-title" id="registration-section-f">Section 6 — Declaration &amp; Submission</h2>
+                <p class="registration-section-description">Review each declaration before submitting.</p>
                 <div class="registration-grid">
                     {% include "members/partials/registration_field.html" with field=form.declaration_accepted %}
                     {% include "members/partials/registration_field.html" with field=form.verification_consent %}
-                    {% include "members/partials/registration_field.html" with field=form.signature_image %}
                 </div>
             </section>
 

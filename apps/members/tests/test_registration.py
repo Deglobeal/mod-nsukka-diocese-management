@@ -74,7 +74,7 @@ class MembershipRegistrationTests(TestCase):
     def valid_data(self, **overrides):
         data = {
             "first_name": "Ada",
-            "middle_name": "",
+            "middle_name": "Chinwe",
             "last_name": "Okafor",
             "email": "ada@example.com",
             "phone_number": "+2348012345678",
@@ -90,11 +90,18 @@ class MembershipRegistrationTests(TestCase):
             "height_cm": "170",
             "weight_kg": "65.0",
             "category": MembershipApplication.Category.REGULAR_MEMBER,
+            # Required fields recently added to the approved registration form.
+            "baptized_catholic": "yes",
+            "confirmed": "yes",
+            "parish_priest_name": "Rev. Example Priest",
+            "sponsor_membership_id": "MOD-TEST-0001",
             "deanery": str(self.deanery.pk),
             "parish": str(self.parish.pk),
             "station": "",
             "declaration_accepted": "on",
             "verification_consent": "on",
+            "marital_status": "Single",
+            "medical_confidentiality_acknowledged": "on",
         }
         data.update(overrides)
         return data
@@ -133,7 +140,7 @@ class MembershipRegistrationTests(TestCase):
         self.assertIsNone(application.member_id)
         self.assertEqual(application.parish, self.parish)
         self.assertEqual(application.station, self.station)
-        self.assertEqual(application.applicant_name, "Ada Okafor")
+        self.assertEqual(application.applicant_name, "Ada Chinwe Okafor")
 
     def test_station_is_optional(self):
         response = self.client.post(
