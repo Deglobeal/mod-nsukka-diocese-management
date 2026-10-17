@@ -30,6 +30,8 @@
 
     /* Text */
     --color-text: #202820;
+    --color-page-text: #202820;
+    --color-page-text-muted: #66736B;
     --color-text-muted: #66736B;
     --color-text-subtle: #7C877F;
     --color-text-inverse: #FFFFFF;
@@ -72,4 +74,188 @@
     --color-info-background: #EFF7FC;
     --color-info-border: #B8D9ED;
     --color-info-text: #204C69;
+
+    /* Shared hero and translucent-effect tokens */
+    --color-hero-text: #FFFFFF;
+    --color-hero-text-78: rgb(255 255 255 / 78%);
+    --color-hero-text-72: rgb(255 255 255 / 72%);
+    --color-hero-text-70: rgb(255 255 255 / 70%);
+    --color-hero-text-68: rgb(255 255 255 / 68%);
+    --color-hero-text-66: rgb(255 255 255 / 66%);
+    --color-hero-text-65: rgb(255 255 255 / 65%);
+    --color-hero-text-62: rgb(255 255 255 / 62%);
+    --color-hero-text-58: rgb(255 255 255 / 58%);
+    --color-hero-text-55: rgb(255 255 255 / 55%);
+    --color-hero-text-54: rgb(255 255 255 / 54%);
+    --color-hero-text-52: rgb(255 255 255 / 52%);
+
+    --color-hero-decoration-border: rgb(232 211 154 / 12%);
+    --color-hero-ring: rgb(232 211 154 / 30%);
+    --color-hero-ring-strong: rgb(232 211 154 / 35%);
+    --color-hero-button-border: rgb(255 255 255 / 35%);
+    --color-hero-button-border-subtle: rgb(255 255 255 / 30%);
+    --color-hero-card-border: rgb(255 255 255 / 17%);
+    --color-hero-card-background: rgb(255 255 255 / 4%);
+    --color-hero-card-background-hover: rgb(255 255 255 / 7%);
+    --color-hero-art-shadow: 0 20px 65px rgb(0 0 0 / 18%);
+
+    /* Rank chips */
+    --color-rank-chip-background: #FFFFFF;
+    --color-rank-chip-text: var(--color-brand-800);
+
+    /* Homepage component colors */
+    --color-home-body-on-light: var(--color-text-secondary);
+    --color-home-navigation-text: var(--color-brand-950);
+    --color-home-principle-background: var(--color-surface-subtle);
+    --color-home-principle-number: var(--color-gold-700);
+    --color-home-principle-heading: var(--color-brand-950);
+    --color-home-principle-body: var(--color-text-secondary);
+    --color-home-membership-background: var(--color-surface);
+    --color-home-membership-heading: var(--color-brand-950);
+    --color-home-membership-body: var(--color-text-secondary);
+    --color-home-membership-link: var(--color-brand-700);
+    --color-home-membership-featured-background: var(--color-gold-50);
+    --color-home-membership-featured-heading: var(--color-brand-950);
+    --color-home-membership-featured-body: var(--color-brand-800);
+    --color-home-membership-featured-link: var(--color-brand-700);
+    --color-home-membership-icon-background: var(--color-brand-100);
+    --color-home-membership-icon-text: var(--color-brand-800);
+    --color-home-ranks-background: var(--color-brand-50);
+    --color-home-ranks-heading: var(--color-brand-950);
+    --color-home-ranks-eyebrow: var(--color-gold-700);
+    --color-home-ranks-body: var(--color-text-muted);
+
+    /* Shared semantic and component color tokens */
+    --color-text-primary: var(--color-text);
+    --color-text-secondary: var(--color-text-muted);
+    --color-surface-subtle: var(--color-surface-muted);
+
+    --color-hero-glow: rgb(35 103 71 / 18%);
+    --color-hero-background:
+        radial-gradient(ellipse at 80% 42%, var(--color-hero-glow), transparent 39%),
+        linear-gradient(120deg, var(--color-brand-950), var(--color-brand-900) 65%, var(--color-brand-800));
+    --color-emblem-background:
+        linear-gradient(145deg, var(--color-brand-800), var(--color-brand-950));
+
+    --color-theme-toggle-background: var(--color-surface);
+    --color-theme-toggle-text: var(--color-text);
+    --color-theme-toggle-border: var(--color-border-strong);
+    --color-theme-toggle-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+/* Command & Discipline theme palette */
+body[data-mod-theme="command"] {
+    /* Keep light homepage panels readable in Command & Discipline */
+    --color-home-body-on-light: #D0D7E0;
+    --color-home-navigation-text: #F5F5F2;
+    --color-home-principle-background: #304966;
+    --color-home-principle-number: #E8D7A8;
+    --color-home-principle-heading: #F5F5F2;
+    --color-home-principle-body: #D0D7E0;
+    --color-home-membership-background: #243750;
+    --color-home-membership-heading: #F5F5F2;
+    --color-home-membership-body: #D0D7E0;
+    --color-home-membership-link: #E8D7A8;
+    --color-home-membership-featured-background: #304966;
+    --color-home-membership-featured-heading: #F5F5F2;
+    --color-home-membership-featured-body: #D0D7E0;
+    --color-home-membership-featured-link: #E8D7A8;
+    --color-home-membership-icon-background: #496A8D;
+    --color-home-membership-icon-text: #F5F5F2;
+    --color-home-ranks-background: #304966;
+    --color-home-ranks-heading: #F5F5F2;
+    --color-home-ranks-eyebrow: #E8D7A8;
+    --color-home-ranks-body: #D0D7E0;
+
+
+    --color-rank-chip-background: #304966;
+    --color-rank-chip-text: #F5F5F2;
+
+    --color-hero-text: #F5F5F2;
+    --color-hero-text-78: rgb(245 245 242 / 78%);
+    --color-hero-text-72: rgb(245 245 242 / 72%);
+    --color-hero-text-70: rgb(245 245 242 / 70%);
+    --color-hero-text-68: rgb(245 245 242 / 68%);
+    --color-hero-text-66: rgb(245 245 242 / 66%);
+    --color-hero-text-65: rgb(245 245 242 / 65%);
+    --color-hero-text-62: rgb(245 245 242 / 62%);
+    --color-hero-text-58: rgb(245 245 242 / 58%);
+    --color-hero-text-55: rgb(245 245 242 / 55%);
+    --color-hero-text-54: rgb(245 245 242 / 54%);
+    --color-hero-text-52: rgb(245 245 242 / 52%);
+
+    --color-hero-decoration-border: rgb(232 215 168 / 12%);
+    --color-hero-ring: rgb(232 215 168 / 30%);
+    --color-hero-ring-strong: rgb(232 215 168 / 35%);
+    --color-hero-button-border: rgb(245 245 242 / 35%);
+    --color-hero-button-border-subtle: rgb(245 245 242 / 30%);
+    --color-hero-card-border: rgb(245 245 242 / 17%);
+    --color-hero-card-background: rgb(245 245 242 / 4%);
+    --color-hero-card-background-hover: rgb(245 245 242 / 7%);
+
+
+    --color-brand-950: #1A2940;
+    --color-brand-900: #243750;
+    --color-brand-800: #304966;
+    --color-brand-700: #34516F;
+    --color-brand-600: #496A8D;
+    --color-brand-100: #34516F;
+    --color-brand-50: #233A56;
+
+    --color-gold-700: #85661F;
+    --color-gold-600: #A0843C;
+    --color-gold-500: #C5A45C;
+    --color-gold-300: #E8D7A8;
+    --color-gold-100: #F3EBD8;
+    --color-gold-50: #FBF8F0;
+
+    --color-primary: var(--color-brand-900);
+    --color-primary-hover: var(--color-brand-950);
+    --color-primary-active: var(--color-brand-800);
+    --color-primary-subtle: var(--color-brand-50);
+    --color-primary-border: #526174;
+    --color-on-primary: #F5F5F2;
+
+    --color-accent: var(--color-gold-500);
+    --color-accent-hover: var(--color-gold-600);
+    --color-accent-text: var(--color-gold-300);
+    --color-on-accent: var(--color-brand-950);
+
+    --color-text: #F5F5F2;
+    --color-page-text: #F5F5F2;
+    --color-page-text-muted: #D0D7E0;
+    --color-text-muted: #D0D7E0;
+    --color-text-subtle: #B6C0CC;
+    --color-text-primary: #F5F5F2;
+    --color-text-secondary: #D0D7E0;
+    --color-text-inverse: var(--color-brand-950);
+    --color-link: var(--color-gold-300);
+    --color-link-hover: var(--color-gold-100);
+
+    --color-page: #1A2940;
+    --color-surface: #243750;
+    --color-surface-raised: #304966;
+    --color-surface-muted: #304966;
+    --color-surface-brand: var(--color-brand-950);
+    --color-surface-accent: var(--color-brand-800);
+    --color-surface-subtle: #304966;
+
+    --color-border: #526174;
+    --color-border-strong: #718096;
+    --color-input-border: #718096;
+    --color-input-background: var(--color-brand-900);
+    --color-input-placeholder: #B6C0CC;
+    --color-focus-ring: rgb(52 81 111 / 40%);
+
+    --color-theme-toggle-background: var(--color-brand-900);
+    --color-theme-toggle-text: #F5F5F2;
+    --color-theme-toggle-border: #526174;
+    --color-theme-toggle-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+
+    --color-hero-glow: rgb(73 106 141 / 35%);
+    --color-hero-background:
+        radial-gradient(ellipse at 80% 42%, var(--color-hero-glow), transparent 39%),
+        linear-gradient(120deg, var(--color-brand-950), var(--color-brand-900) 65%, var(--color-brand-800));
+    --color-emblem-background:
+        linear-gradient(145deg, var(--color-brand-800), var(--color-brand-950));
 }

@@ -11,9 +11,7 @@
     padding: clamp(36px, 6vw, 76px);
     overflow: hidden;
     border-radius: var(--radius-xl);
-    background:
-        radial-gradient(ellipse at 80% 42%, rgb(46 128 88 / 30%), transparent 39%),
-        linear-gradient(120deg, var(--hero-background), var(--color-brand-900) 65%, #1B5139);
+    background: var(--color-hero-background);
     color: var(--color-text-inverse);
 }
 
@@ -21,7 +19,7 @@
 .mod-hero::after {
     position: absolute;
     z-index: 0;
-    border: 1px solid rgb(232 211 154 / 12%);
+    border: 1px solid var(--color-hero-decoration-border);
     border-radius: 50%;
     content: "";
     pointer-events: none;
@@ -83,7 +81,7 @@
 .mod-hero__description {
     max-width: 525px;
     margin: 0;
-    color: rgb(255 255 255 / 78%);
+    color: var(--color-hero-text-78);
     font-size: var(--font-size-sm);
     line-height: 1.9;
 }
@@ -124,7 +122,7 @@
 }
 
 .mod-hero__button--secondary {
-    border-color: rgb(255 255 255 / 35%);
+    border-color: var(--color-hero-button-border);
     color: var(--color-text-inverse);
 }
 
@@ -139,7 +137,7 @@
     gap: 10px;
     max-width: 440px;
     margin-top: var(--space-8);
-    color: rgb(255 255 255 / 68%);
+    color: var(--color-hero-text-68);
     font-size: var(--font-size-xs);
     line-height: var(--line-height-relaxed);
 }
@@ -157,7 +155,7 @@
 .mod-hero__ring {
     position: absolute;
     aspect-ratio: 1;
-    border: 1px solid rgb(232 211 154 / 30%);
+    border: 1px solid var(--color-hero-ring);
     border-radius: 50%;
 }
 
@@ -168,7 +166,7 @@
 .mod-hero__ring--inner {
     width: min(78%, 265px);
     border-style: dashed;
-    border-color: rgb(232 211 154 / 35%);
+    border-color: var(--color-hero-ring-strong);
 }
 
 .mod-hero__emblem {
@@ -180,7 +178,7 @@
     aspect-ratio: 1;
     border: 1px solid var(--color-gold-500);
     border-radius: 50%;
-    background: linear-gradient(145deg, #1B5139, var(--color-brand-950));
+    background: var(--color-emblem-background);
     box-shadow: var(--shadow-lg);
 }
 
@@ -228,7 +226,7 @@
     right: 0;
     bottom: 0;
     left: 0;
-    color: rgb(255 255 255 / 58%);
+    color: var(--color-hero-text-58);
     font-size: 9px;
     letter-spacing: 0.15em;
     text-align: center;
@@ -242,7 +240,7 @@
     display: flex;
     align-items: center;
     gap: 15px;
-    color: rgb(255 255 255 / 55%);
+    color: var(--color-hero-text-55);
     font-size: 9px;
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.13em;
@@ -384,4 +382,50 @@
     .mod-hero__button {
         transition: none;
     }
+}
+
+/* Command & Discipline: improve hero text contrast on navy backgrounds. */
+body[data-mod-theme="command"] .mod-hero {
+    color: var(--color-text);
+}
+
+body[data-mod-theme="command"] .mod-hero__title,
+body[data-mod-theme="command"] .mod-hero__emblem-letter {
+    color: var(--color-text);
+}
+
+body[data-mod-theme="command"] .mod-hero__title > span {
+    color: var(--color-gold-300);
+}
+
+body[data-mod-theme="command"] .mod-hero__eyebrow,
+body[data-mod-theme="command"] .mod-hero__note,
+body[data-mod-theme="command"] .mod-hero__bottom {
+    color: var(--color-text);
+}
+
+body[data-mod-theme="command"] .mod-hero__description {
+    color: var(--color-page-text-muted);
+}
+
+/* Command & Discipline: keep hero actions readable on navy. */
+body[data-mod-theme="command"] .mod-hero__button--primary {
+    background: var(--color-gold-300);
+    color: var(--color-brand-950);
+}
+
+body[data-mod-theme="command"] .mod-hero__button--primary:hover {
+    background: var(--color-gold-100);
+    color: var(--color-brand-950);
+}
+
+body[data-mod-theme="command"] .mod-hero__button--secondary {
+    border-color: var(--color-hero-button-border);
+    color: var(--color-text);
+}
+
+body[data-mod-theme="command"] .mod-hero__button--secondary:hover {
+    border-color: var(--color-gold-300);
+    background: var(--color-hero-card-background-hover);
+    color: var(--color-gold-300);
 }

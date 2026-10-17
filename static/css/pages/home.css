@@ -13,7 +13,7 @@
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
-    color: var(--color-brand-950, #0B2D20);
+    color: var(--color-brand-950);
     text-decoration: none;
 }
 
@@ -22,10 +22,10 @@
     place-items: center;
     width: 46px;
     aspect-ratio: 1;
-    border: 1px solid var(--color-gold-500, #D4AF5A);
+    border: 1px solid var(--color-gold-500);
     border-radius: var(--radius-md, 8px);
-    background: var(--color-brand-950, #0B2D20);
-    color: var(--color-gold-300, #E8D39A);
+    background: var(--color-brand-950);
+    color: var(--color-gold-300);
     font-family: var(--font-heading, Georgia, serif);
     font-size: 25px;
 }
@@ -43,7 +43,7 @@
 }
 
 .home-brand-copy > span {
-    color: var(--color-text-muted, #66736B);
+    color: var(--color-text-muted);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -57,7 +57,7 @@
 
 .home-nav a,
 .home-footer-links a {
-    color: var(--color-text-primary, #24342B);
+    color: var(--color-home-navigation-text);
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
@@ -66,12 +66,12 @@
 
 .home-nav a:hover,
 .home-footer-links a:hover {
-    color: var(--color-brand-600, #2E8058);
+    color: var(--color-brand-600);
 }
 
 .home-nav .home-nav-login {
     padding-left: 20px;
-    border-left: 1px solid var(--color-border, #DDE4DE);
+    border-left: 1px solid var(--color-border);
 }
 
 .home-nav .home-nav-register {
@@ -80,13 +80,13 @@
     gap: 10px;
     padding: 13px 17px;
     border-radius: var(--radius-sm, 6px);
-    background: var(--color-brand-900, #123B2A);
-    color: #FFFFFF;
+    background: var(--color-brand-900);
+    color: var(--color-hero-text);
 }
 
 .home-nav .home-nav-register:hover {
-    background: var(--color-brand-700, #236747);
-    color: #FFFFFF;
+    background: var(--color-brand-700);
+    color: var(--color-hero-text);
 }
 
 .home-hero {
@@ -101,10 +101,8 @@
     padding: clamp(44px, 7vw, 92px) clamp(24px, 5vw, 68px) 84px;
     overflow: hidden;
     border-radius: var(--radius-xl, 20px);
-    background:
-        radial-gradient(ellipse at 80% 42%, rgb(46 128 88 / 30%), transparent 39%),
-        linear-gradient(120deg, var(--color-brand-950, #0B2D20), var(--color-brand-900, #123B2A) 65%, #1B5139);
-    color: #FFFFFF;
+    background: var(--color-hero-background);
+    color: var(--color-hero-text);
 }
 
 .home-hero::before,
@@ -113,7 +111,7 @@
     z-index: 0;
     width: 400px;
     aspect-ratio: 1;
-    border: 1px solid rgb(232 211 154 / 12%);
+    border: 1px solid var(--color-hero-decoration-border);
     border-radius: 50%;
     content: "";
     pointer-events: none;
@@ -150,13 +148,13 @@
 }
 
 .home-eyebrow {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
 }
 
 .home-eyebrow > span {
     width: 24px;
     height: 1px;
-    background: var(--color-gold-500, #D4AF5A);
+    background: var(--color-gold-500);
 }
 
 .home-hero h1 {
@@ -170,13 +168,13 @@
 }
 
 .home-hero h1 span {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
 }
 
 .home-hero-description {
     max-width: 525px;
     margin: 0;
-    color: rgb(255 255 255 / 78%);
+    color: var(--color-hero-text-78);
     font-size: 15px;
     line-height: 1.9;
 }
@@ -204,23 +202,23 @@
 }
 
 .home-button-primary {
-    background: var(--color-gold-500, #D4AF5A);
-    color: var(--color-brand-950, #0B2D20);
+    background: var(--color-gold-500);
+    color: var(--color-brand-950);
 }
 
 .home-button-primary:hover,
 .home-button-gold:hover {
-    background: var(--color-gold-300, #E8D39A);
+    background: var(--color-gold-300);
 }
 
 .home-button-secondary {
-    border-color: rgb(255 255 255 / 30%);
-    color: #FFFFFF;
+    border-color: var(--color-hero-button-border-subtle);
+    color: var(--color-hero-text);
 }
 
 .home-button-secondary:hover {
-    border-color: var(--color-gold-300, #E8D39A);
-    color: var(--color-gold-300, #E8D39A);
+    border-color: var(--color-gold-300);
+    color: var(--color-gold-300);
 }
 
 .home-hero-note {
@@ -229,13 +227,13 @@
     gap: 10px;
     max-width: 440px;
     margin-top: 36px;
-    color: rgb(255 255 255 / 65%);
+    color: var(--color-hero-text-65);
     font-size: 11px;
     line-height: 1.7;
 }
 
 .home-note-icon {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
 }
 
 .home-hero-art {
@@ -247,7 +245,7 @@
 .home-art-ring {
     position: absolute;
     aspect-ratio: 1;
-    border: 1px solid rgb(232 211 154 / 30%);
+    border: 1px solid var(--color-hero-ring);
     border-radius: 50%;
 }
 
@@ -258,7 +256,7 @@
 .home-art-ring-inner {
     width: min(78%, 272px);
     border-style: dashed;
-    border-color: rgb(232 211 154 / 35%);
+    border-color: var(--color-hero-ring-strong);
 }
 
 .home-art-center {
@@ -268,15 +266,15 @@
     justify-content: center;
     width: 190px;
     aspect-ratio: 1;
-    border: 1px solid var(--color-gold-500, #D4AF5A);
+    border: 1px solid var(--color-gold-500);
     border-radius: 50%;
-    background: linear-gradient(145deg, #1B5139, var(--color-brand-950, #0B2D20));
-    box-shadow: 0 20px 65px rgb(0 0 0 / 18%);
+    background: var(--color-emblem-background);
+    box-shadow: 0 20px 65px var(--color-hero-art-shadow);
 }
 
 .home-art-small,
 .home-art-diocese {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.22em;
@@ -284,7 +282,7 @@
 
 .home-art-letter {
     margin-top: 5px;
-    color: #FFFFFF;
+    color: var(--color-hero-text);
     font-family: var(--font-heading, Georgia, serif);
     font-size: 78px;
     line-height: 1;
@@ -294,12 +292,12 @@
     width: 50px;
     height: 1px;
     margin: 10px 0;
-    background: var(--color-gold-500, #D4AF5A);
+    background: var(--color-gold-500);
 }
 
 .home-art-star {
     position: absolute;
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
     font-size: 25px;
 }
 
@@ -318,7 +316,7 @@
     right: 0;
     bottom: 0;
     left: 0;
-    color: rgb(255 255 255 / 58%);
+    color: var(--color-hero-text-58);
     font-size: 9px;
     letter-spacing: 0.19em;
     text-align: center;
@@ -332,7 +330,7 @@
     display: flex;
     align-items: center;
     gap: 15px;
-    color: rgb(255 255 255 / 52%);
+    color: var(--color-hero-text-52);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -341,7 +339,7 @@
 .home-bottom-line {
     width: 36px;
     height: 1px;
-    background: var(--color-gold-500, #D4AF5A);
+    background: var(--color-gold-500);
 }
 
 .home-section {
@@ -351,11 +349,11 @@
 }
 
 .home-section-label {
-    color: var(--color-text-muted, #66736B);
+    color: var(--color-text-muted);
 }
 
 .home-section-label > span {
-    color: var(--color-gold-700, #8A641A);
+    color: var(--color-gold-700);
 }
 
 .home-about-grid {
@@ -369,7 +367,7 @@
 .home-structure-heading h2,
 .home-membership-heading h2 {
     margin: 0;
-    color: var(--color-brand-950, #0B2D20);
+    color: var(--color-brand-950);
     font-family: var(--font-heading, Georgia, serif);
     font-size: clamp(34px, 4vw, 48px);
     font-weight: 500;
@@ -380,14 +378,14 @@
 .home-about h2 span,
 .home-structure-heading h2 span,
 .home-membership-heading h2 span {
-    color: var(--color-brand-600, #2E8058);
+    color: var(--color-brand-600);
 }
 
 .home-about-copy p,
 .home-structure-heading > p,
 .home-membership-heading > p {
     margin: 0 0 16px;
-    color: var(--color-text-secondary, #58665D);
+    color: var(--color-home-body-on-light);
     font-size: 14px;
     line-height: 1.9;
 }
@@ -397,14 +395,14 @@
     align-items: center;
     gap: 12px;
     margin-top: 8px;
-    color: var(--color-brand-700, #236747);
+    color: var(--color-brand-700);
     font-size: 13px;
     font-weight: 700;
     text-decoration: none;
 }
 
 .home-text-link:hover {
-    color: var(--color-gold-700, #8A641A);
+    color: var(--color-gold-700);
 }
 
 .home-principles {
@@ -416,12 +414,12 @@
 
 .home-principle {
     padding: 26px 25px;
-    border-top: 2px solid var(--color-gold-500, #D4AF5A);
-    background: var(--color-surface-subtle, #F5F7F4);
+    border-top: 2px solid var(--color-gold-500);
+    background: var(--color-home-principle-background);
 }
 
 .home-principle-number {
-    color: var(--color-gold-700, #8A641A);
+    color: var(--color-home-principle-number);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -429,7 +427,7 @@
 
 .home-principle h3 {
     margin: 20px 0 8px;
-    color: var(--color-brand-950, #0B2D20);
+    color: var(--color-home-principle-heading);
     font-family: var(--font-heading, Georgia, serif);
     font-size: 24px;
     font-weight: 500;
@@ -437,7 +435,7 @@
 
 .home-principle p {
     margin: 0;
-    color: var(--color-text-secondary, #58665D);
+    color: var(--color-home-principle-body);
     font-size: 13px;
     line-height: 1.8;
 }
@@ -445,15 +443,15 @@
 .home-structure {
     width: 100%;
     padding-inline: max(32px, calc((100% - var(--layout-width-xl, 1240px)) / 2));
-    background: var(--color-brand-950, #0B2D20);
+    background: var(--color-brand-950);
 }
 
 .home-section-label-light {
-    color: rgb(255 255 255 / 62%);
+    color: var(--color-hero-text-62);
 }
 
 .home-section-label-light > span {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
 }
 
 .home-structure-heading {
@@ -465,17 +463,17 @@
 }
 
 .home-structure-heading h2 {
-    color: #FFFFFF;
+    color: var(--color-hero-text);
 }
 
 .home-structure-heading h2 span {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
 }
 
 .home-structure-heading > p {
     max-width: 420px;
     margin-bottom: 5px;
-    color: rgb(255 255 255 / 70%);
+    color: var(--color-hero-text-70);
 }
 
 .home-hierarchy {
@@ -492,30 +490,30 @@
     justify-content: space-between;
     min-height: 218px;
     padding: 23px 20px;
-    border: 1px solid rgb(255 255 255 / 17%);
+    border: 1px solid var(--color-hero-card-border);
     border-radius: var(--radius-md, 8px);
-    background: rgb(255 255 255 / 4%);
+    background: var(--color-hero-card-background);
 }
 
 .home-hierarchy-diocese {
-    border-color: var(--color-gold-500, #D4AF5A);
-    background: rgb(255 255 255 / 7%);
+    border-color: var(--color-gold-500);
+    background: var(--color-hero-card-background-hover);
 }
 
 .home-hierarchy-index {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
 
 .home-hierarchy-symbol {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
     font-size: 25px;
 }
 
 .home-hierarchy-level {
-    color: rgb(255 255 255 / 54%);
+    color: var(--color-hero-text-54);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -523,7 +521,7 @@
 
 .home-hierarchy-card h3 {
     margin: 7px 0;
-    color: #FFFFFF;
+    color: var(--color-hero-text);
     font-family: var(--font-heading, Georgia, serif);
     font-size: 23px;
     font-weight: 500;
@@ -531,7 +529,7 @@
 
 .home-hierarchy-card p {
     margin: 0;
-    color: rgb(255 255 255 / 66%);
+    color: var(--color-hero-text-66);
     font-size: 11px;
     line-height: 1.7;
 }
@@ -566,18 +564,34 @@
     align-items: flex-start;
     min-height: 280px;
     padding: 27px;
-    border: 1px solid var(--color-border, #DDE4DE);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md, 8px);
-    background: var(--color-surface, #FFFFFF);
+    background: var(--color-home-membership-background);
 }
 
 .home-membership-card-featured {
-    border-color: var(--color-gold-500, #D4AF5A);
-    background: var(--color-gold-50, #FCF8ED);
+    border-color: var(--color-gold-500);
+    background: var(--color-home-membership-featured-background);
 }
 
+
+.home-membership-card-featured h3 {
+    color: var(--color-home-membership-featured-heading);
+}
+
+.home-membership-card-featured p,
+.home-membership-card-featured .home-membership-index {
+    color: var(--color-home-membership-featured-body);
+}
+
+.home-membership-card-featured > a {
+    color: var(--color-home-membership-featured-link);
+}
+
+
+
 .home-membership-index {
-    color: var(--color-text-muted, #66736B);
+    color: var(--color-home-membership-body);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -590,14 +604,14 @@
     aspect-ratio: 1;
     margin-top: 24px;
     border-radius: 50%;
-    background: var(--color-brand-100, #E4EFE8);
-    color: var(--color-brand-800, #194D37);
+    background: var(--color-home-membership-icon-background);
+    color: var(--color-home-membership-icon-text);
     font-size: 24px;
 }
 
 .home-membership-card h3 {
     margin: 18px 0 8px;
-    color: var(--color-brand-950, #0B2D20);
+    color: var(--color-home-membership-heading);
     font-family: var(--font-heading, Georgia, serif);
     font-size: 23px;
     font-weight: 500;
@@ -605,7 +619,7 @@
 
 .home-membership-card p {
     margin: 0 0 22px;
-    color: var(--color-text-secondary, #58665D);
+    color: var(--color-home-membership-body);
     font-size: 12px;
     line-height: 1.8;
 }
@@ -615,14 +629,14 @@
     align-items: center;
     gap: 12px;
     margin-top: auto;
-    color: var(--color-brand-700, #236747);
+    color: var(--color-home-membership-link);
     font-size: 12px;
     font-weight: 700;
     text-decoration: none;
 }
 
 .home-membership-card > a:hover {
-    color: var(--color-gold-700, #8A641A);
+    color: var(--color-gold-700);
 }
 
 .home-ranks {
@@ -633,11 +647,11 @@
     margin-top: 30px;
     padding: 28px;
     border-radius: var(--radius-md, 8px);
-    background: var(--color-brand-50, #F0F6F1);
+    background: var(--color-home-ranks-background);
 }
 
 .home-ranks-eyebrow {
-    color: var(--color-gold-700, #8A641A);
+    color: var(--color-home-ranks-eyebrow);
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.13em;
@@ -645,7 +659,7 @@
 
 .home-ranks h3 {
     margin: 9px 0 0;
-    color: var(--color-brand-950, #0B2D20);
+    color: var(--color-home-ranks-heading);
     font-family: var(--font-heading, Georgia, serif);
     font-size: 22px;
     font-weight: 500;
@@ -659,10 +673,10 @@
 
 .home-rank-list span {
     padding: 10px 12px;
-    border: 1px solid var(--color-border, #DDE4DE);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm, 6px);
-    background: #FFFFFF;
-    color: var(--color-brand-800, #194D37);
+    background: var(--color-rank-chip-background);
+    color: var(--color-rank-chip-text);
     font-size: 11px;
     font-weight: 700;
 }
@@ -670,7 +684,7 @@
 .home-ranks > p {
     grid-column: 1 / -1;
     margin: 0;
-    color: var(--color-text-muted, #66736B);
+    color: var(--color-home-ranks-body);
     font-size: 11px;
     line-height: 1.7;
 }
@@ -684,12 +698,12 @@
     margin: 0 auto 70px;
     padding: clamp(30px, 5vw, 58px);
     border-radius: var(--radius-lg, 14px);
-    background: var(--color-brand-900, #123B2A);
-    color: #FFFFFF;
+    background: var(--color-brand-900);
+    color: var(--color-hero-text);
 }
 
 .home-cta-eyebrow {
-    color: var(--color-gold-300, #E8D39A);
+    color: var(--color-gold-300);
 }
 
 .home-cta h2 {
@@ -704,15 +718,15 @@
 .home-cta p {
     max-width: 520px;
     margin: 0;
-    color: rgb(255 255 255 / 72%);
+    color: var(--color-hero-text-72);
     font-size: 13px;
     line-height: 1.8;
 }
 
 .home-button-gold {
     flex-shrink: 0;
-    background: var(--color-gold-500, #D4AF5A);
-    color: var(--color-brand-950, #0B2D20);
+    background: var(--color-gold-500);
+    color: var(--color-brand-950);
 }
 
 .home-footer {
@@ -723,7 +737,7 @@
     width: min(100% - 64px, var(--layout-width-xl, 1240px));
     margin-inline: auto;
     padding: 30px 0;
-    border-top: 1px solid var(--color-border, #DDE4DE);
+    border-top: 1px solid var(--color-border);
 }
 
 .home-brand-footer .home-brand-mark {
@@ -738,7 +752,7 @@
 .home-footer > p {
     justify-self: end;
     margin: 0;
-    color: var(--color-text-muted, #66736B);
+    color: var(--color-text-muted);
     font-size: 11px;
     text-align: right;
 }
@@ -755,7 +769,7 @@
 
 .home-footer-copy {
     justify-self: end;
-    color: var(--color-text-muted, #66736B);
+    color: var(--color-text-muted);
     font-size: 10px;
 }
 
@@ -959,4 +973,41 @@
     .home-button {
         transition: none;
     }
+}
+
+/* Command & Discipline: accessible homepage hero buttons. */
+body[data-mod-theme="command"] .home-hero-actions .home-button-primary,
+body[data-mod-theme="command"] .mod-hero__actions .mod-hero__button--primary {
+    background: #E8D7A8;
+    color: #1A2940;
+}
+
+body[data-mod-theme="command"] .home-hero-actions .home-button-primary:hover,
+body[data-mod-theme="command"] .mod-hero__actions .mod-hero__button--primary:hover {
+    background: #F3EBD8;
+    color: #1A2940;
+}
+
+body[data-mod-theme="command"] .home-hero-actions .home-button-primary:focus-visible,
+body[data-mod-theme="command"] .mod-hero__actions .mod-hero__button--primary:focus-visible {
+    outline: 3px solid #F5F5F2;
+    outline-offset: 3px;
+}
+
+/* Command & Discipline: gold primary CTA with off-white text. */
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary,
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:link,
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:visited,
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:hover,
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:focus,
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:active {
+    background: var(--color-gold-500);
+    border-color: var(--color-gold-500);
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary span {
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
 }

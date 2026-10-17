@@ -8,7 +8,7 @@ from apps.verification.models import MembershipApplication
 @require_http_methods(["GET", "POST"])
 def membership_registration(request):
     if request.method == "POST":
-        form = MembershipRegistrationForm(request.POST)
+        form = MembershipRegistrationForm(request.POST, request.FILES)
 
         if form.is_valid():
             application = form.save(commit=False)

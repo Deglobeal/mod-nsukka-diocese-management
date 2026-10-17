@@ -1,0 +1,222 @@
+/* Homepage-only theme switcher and Command & Discipline palette. */
+
+.home-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background var(--transition-fast, 160ms ease),
+        color var(--transition-fast, 160ms ease),
+        border-color var(--transition-fast, 160ms ease);
+}
+
+.home-theme-toggle:hover {
+    border-color: var(--color-accent);
+}
+
+.home-theme-toggle:focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 3px;
+}
+
+.home-theme-toggle-indicator {
+    color: var(--color-accent-text);
+    font-size: 17px;
+    line-height: 1;
+}
+
+body[data-mod-theme="command"] .mod-hero {
+    background: var(--color-hero-background);
+}
+
+body[data-mod-theme="command"] .mod-hero__emblem {
+    background: var(--color-emblem-background);
+}
+
+body[data-mod-theme="command"] .home-theme-toggle {
+    border-color: var(--color-theme-toggle-border);
+    background: var(--color-theme-toggle-background);
+    color: var(--color-theme-toggle-text);
+}
+
+body[data-mod-theme="command"] .home-theme-toggle-indicator {
+    color: var(--color-accent-text);
+}
+
+/* Keep navigation usable on narrower screens. */
+@media (max-width: 900px) {
+    .home-header {
+        flex-wrap: wrap;
+        padding-block: 16px;
+    }
+
+    .home-nav {
+        flex-wrap: wrap;
+        gap: 12px 18px;
+        padding-bottom: 14px;
+    }
+}
+
+@media (max-width: 560px) {
+    .home-header {
+        width: calc(100% - 32px);
+    }
+
+    .home-nav {
+        width: 100%;
+        align-items: center;
+        gap: 10px 14px;
+    }
+
+    .home-nav .home-nav-login {
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .home-theme-toggle {
+        min-height: 40px;
+        max-width: 100%;
+    }
+
+    .home-theme-toggle-label {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-theme-toggle {
+        transition: none;
+    }
+}
+
+
+/* Compact footer theme switch */
+.home-footer-theme {
+    display: flex;
+    justify-content: center;
+    margin: 0.35rem 0 0.2rem;
+}
+
+.home-theme-toggle-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+    font: inherit;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    opacity: 0.7;
+    cursor: pointer;
+}
+
+.home-theme-toggle-compact:hover,
+.home-theme-toggle-compact:focus-visible {
+    opacity: 1;
+}
+
+.home-theme-toggle-compact .home-theme-toggle-indicator {
+    font-size: 0.7rem;
+}
+
+.home-theme-toggle-compact .home-theme-toggle-label {
+    font-size: inherit;
+}
+
+
+/* Site-wide icon-only theme switcher */
+.home-theme-toggle-compact {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    font-size: 0;
+    line-height: 1;
+    opacity: 0.78;
+    box-shadow: var(--color-theme-toggle-shadow);
+}
+
+.home-theme-toggle-compact:hover,
+.home-theme-toggle-compact:focus-visible {
+    opacity: 1;
+}
+
+.home-theme-toggle-compact .home-theme-toggle-indicator {
+    font-size: 10px;
+}
+
+.home-theme-toggle-compact:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 3px;
+}
+
+/* Command & Discipline: keep homepage branding and headings readable on navy. */
+body[data-mod-theme="command"] .home-brand {
+    color: var(--color-text);
+}
+
+body[data-mod-theme="command"] .home-about h2,
+body[data-mod-theme="command"] .home-structure-heading h2,
+body[data-mod-theme="command"] .home-membership-heading h2 {
+    color: var(--color-text);
+}
+
+body[data-mod-theme="command"] .home-about h2 span,
+body[data-mod-theme="command"] .home-structure-heading h2 span,
+body[data-mod-theme="command"] .home-membership-heading h2 span {
+    color: var(--color-gold-300);
+}
+
+/* Command & Discipline: readable membership application link. */
+body[data-mod-theme="command"] .home-text-link {
+    color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .home-text-link:hover,
+body[data-mod-theme="command"] .home-text-link:focus-visible {
+    color: #E8D7A8;
+}
+
+/* Command & Discipline: gold membership CTA on the homepage hero. */
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary {
+    background: var(--color-gold-500);
+    border-color: var(--color-gold-500);
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary span {
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:hover,
+body[data-mod-theme="command"] .mod-hero a.mod-hero__button--primary:focus-visible {
+    background: var(--color-gold-600);
+    border-color: var(--color-gold-600);
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
+}

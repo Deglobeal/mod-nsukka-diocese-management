@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}M.O.D. Nsukka Diocese{% endblock %}</title>
     {% load static %}
+    <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
     <link rel="stylesheet" href="{% static 'css/tokens/colors.css' %}">
     <link rel="stylesheet" href="{% static 'css/tokens/typography.css' %}">
     <link rel="stylesheet" href="{% static 'css/tokens/spacing.css' %}">
@@ -24,11 +25,22 @@
     <link rel="stylesheet" href="{% static 'css/base/media.css' %}">
     <link rel="stylesheet" href="{% static 'css/base/layout.css' %}">
     <link rel="stylesheet" href="{% static "css/components/hero.css" %}">
+    <link rel="stylesheet" href="{% static 'css/pages/home-themes.css' %}">
     {% block page_css %}{% endblock %}
 </head>
 <body>
     <main class="site-main">
         {% block content %}{% endblock %}
     </main>
+    <button class="home-theme-toggle home-theme-toggle-compact"
+            id="home-theme-switch"
+            type="button"
+            aria-label="Switch to Command &amp; Discipline theme"
+            aria-pressed="false"
+            title="Switch theme">
+        <span class="home-theme-toggle-indicator" aria-hidden="true">◐</span>
+    </button>
+    {% block page_js %}{% endblock %}
+    <script src="{% static 'js/pages/home-theme.js' %}" defer></script>
 </body>
 </html>

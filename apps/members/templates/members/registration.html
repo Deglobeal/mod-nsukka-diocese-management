@@ -11,10 +11,10 @@
 <section class="registration-page">
     <div class="registration-card">
         <p class="registration-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
-        <h1 class="registration-title">Membership registration</h1>
+        <h1 class="registration-title">Membership registration application</h1>
         <p class="registration-description">
-            Complete the basic form to submit your membership application
-            to M.O.D. Nsukka Diocese.
+            Complete all applicable sections to submit your membership
+            application to M.O.D. Nsukka Diocese.
         </p>
         <p class="registration-notice">
             Your application will be reviewed by the appropriate church
@@ -22,7 +22,7 @@
             login account or mean your membership has been approved.
         </p>
 
-        <form method="post" novalidate>
+        <form method="post" enctype="multipart/form-data" novalidate>
             {% csrf_token %}
             {% if form.non_field_errors %}
                 <div class="registration-error" role="alert">
@@ -30,29 +30,95 @@
                 </div>
             {% endif %}
 
-            <div class="registration-grid">
-                {% for field in form %}
-                    <div class="registration-field{% if field.name == 'middle_name' or field.name == 'station' %} registration-field-optional{% endif %}">
-                        <label for="{{ field.id_for_label }}">
-                            {{ field.label }}
-                            {% if field.field.required %}
-                                <span aria-hidden="true">*</span>
-                            {% else %}
-                                <span class="registration-optional">(optional)</span>
-                            {% endif %}
-                        </label>
-                        {{ field }}
-                        {% if field.help_text %}
-                            <p class="registration-help">{{ field.help_text }}</p>
-                        {% endif %}
-                        {% for error in field.errors %}
-                            <p class="registration-field-error" role="alert">
-                                {{ error }}
-                            </p>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-            </div>
+            <section class="registration-section" aria-labelledby="registration-section-a">
+                <h2 class="registration-section-title" id="registration-section-a">A — Personal Information</h2>
+                <p class="registration-section-description">Enter your personal and contact details.</p>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.first_name %}
+                    {% include "members/partials/registration_field.html" with field=form.middle_name %}
+                    {% include "members/partials/registration_field.html" with field=form.last_name %}
+                    {% include "members/partials/registration_field.html" with field=form.email %}
+                    {% include "members/partials/registration_field.html" with field=form.phone_number %}
+                    {% include "members/partials/registration_field.html" with field=form.sex %}
+                    {% include "members/partials/registration_field.html" with field=form.date_of_birth %}
+                    {% include "members/partials/registration_field.html" with field=form.passport_photo %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-b">
+                <h2 class="registration-section-title" id="registration-section-b">B — Church and Organizational Details</h2>
+                <p class="registration-section-description">Select the deanery and parish where you belong. Station is optional.</p>
+                <div class="registration-fixed-value">
+                    <span class="registration-fixed-label">Diocese</span>
+                    <strong>Nsukka Diocese</strong>
+                </div>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.deanery %}
+                    {% include "members/partials/registration_field.html" with field=form.parish %}
+                    {% include "members/partials/registration_field.html" with field=form.station %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-c">
+                <h2 class="registration-section-title" id="registration-section-c">C — Membership Information</h2>
+                <p class="registration-section-description">Provide your membership category, rank history, and organizational roles where applicable.</p>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.category %}
+                    {% include "members/partials/registration_field.html" with field=form.current_rank %}
+                    {% include "members/partials/registration_field.html" with field=form.current_rank_date %}
+                    {% include "members/partials/registration_field.html" with field=form.current_rank_place %}
+                    {% include "members/partials/registration_field.html" with field=form.first_rank %}
+                    {% include "members/partials/registration_field.html" with field=form.first_rank_date %}
+                    {% include "members/partials/registration_field.html" with field=form.first_rank_place %}
+                    {% include "members/partials/registration_field.html" with field=form.admission_date %}
+                    {% include "members/partials/registration_field.html" with field=form.admission_year %}
+                    {% include "members/partials/registration_field.html" with field=form.membership_status %}
+                    {% include "members/partials/registration_field.html" with field=form.department %}
+                    {% include "members/partials/registration_field.html" with field=form.administrative_level %}
+                    {% include "members/partials/registration_field.html" with field=form.current_office %}
+                    {% include "members/partials/registration_field.html" with field=form.other_office_held %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-d">
+                <h2 class="registration-section-title" id="registration-section-d">D — Background and Address</h2>
+                <p class="registration-section-description">Add your background, residence, and next-of-kin details where available.</p>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.village_town %}
+                    {% include "members/partials/registration_field.html" with field=form.state_of_origin %}
+                    {% include "members/partials/registration_field.html" with field=form.local_government_area %}
+                    {% include "members/partials/registration_field.html" with field=form.occupation %}
+                    {% include "members/partials/registration_field.html" with field=form.residential_address %}
+                    {% include "members/partials/registration_field.html" with field=form.home_diocese %}
+                    {% include "members/partials/registration_field.html" with field=form.next_of_kin_name %}
+                    {% include "members/partials/registration_field.html" with field=form.next_of_kin_phone %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-e">
+                <h2 class="registration-section-title" id="registration-section-e">E — Emergency and Health Information</h2>
+                <p class="registration-section-description">Provide your health details accurately. Blood group, genotype, height, and weight are required. Medical conditions, allergies, and medications are optional. Health details are confidential and restricted to authorized personnel.</p>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_name %}
+                    {% include "members/partials/registration_field.html" with field=form.emergency_contact_phone %}
+                    {% include "members/partials/registration_field.html" with field=form.blood_group %}
+                    {% include "members/partials/registration_field.html" with field=form.genotype %}
+                    {% include "members/partials/registration_field.html" with field=form.height_cm %}
+                    {% include "members/partials/registration_field.html" with field=form.weight_kg %}
+                    {% include "members/partials/registration_field.html" with field=form.medical_conditions %}
+                    {% include "members/partials/registration_field.html" with field=form.allergies_medications %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-f">
+                <h2 class="registration-section-title" id="registration-section-f">F — Declaration and Submission</h2>
+                <p class="registration-section-description">Review the declarations before submitting. Your submission date and time are recorded automatically by the server.</p>
+                <div class="registration-grid">
+                    {% include "members/partials/registration_field.html" with field=form.declaration_accepted %}
+                    {% include "members/partials/registration_field.html" with field=form.verification_consent %}
+                    {% include "members/partials/registration_field.html" with field=form.signature_image %}
+                </div>
+            </section>
 
             <button class="registration-button" type="submit">
                 Submit application

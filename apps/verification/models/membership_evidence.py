@@ -18,6 +18,9 @@ class MembershipEvidence(models.Model):
             "Signed membership application",
         )
         SUPPORTING_LETTER = "supporting_letter", "Supporting letter"
+        HEALTH_VERIFICATION = (
+            "health_verification", "Health verification document"
+        )
         OTHER = "other", "Other supporting evidence"
 
     application = models.ForeignKey(

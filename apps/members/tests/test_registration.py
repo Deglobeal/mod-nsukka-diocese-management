@@ -42,10 +42,16 @@ class MembershipRegistrationTests(TestCase):
             "last_name": "Okafor",
             "email": "ada@example.com",
             "phone_number": "+2348012345678",
+            "blood_group": "O+",
+            "genotype": "AA",
+            "height_cm": "170",
+            "weight_kg": "65.0",
             "category": MembershipApplication.Category.REGULAR_MEMBER,
             "deanery": str(self.deanery.pk),
             "parish": str(self.parish.pk),
             "station": "",
+            "declaration_accepted": "on",
+            "verification_consent": "on",
         }
         data.update(overrides)
         return data
@@ -209,3 +215,140 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, str(application.pk))
         self.assertContains(response, "not an approval")
+
+
+    def test_accuracy_declaration_is_required(self):
+        data = self.valid_data()
+        data.pop("declaration_accepted")
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(MembershipApplication.objects.exists())
+        self.assertContains(response, "This field is required.")
+
+    def test_verification_consent_is_required(self):
+        data = self.valid_data()
+        data.pop("verification_consent")
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(MembershipApplication.objects.exists())
+        self.assertContains(response, "This field is required.")
+
+    def test_expanded_application_details_are_saved(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                sex="Female",
+                date_of_birth="1995-04-12",
+                current_rank="Major",
+                current_rank_date="2020-01-15",
+                current_rank_place="Nsukka",
+                first_rank="Major",
+                first_rank_date="2018-05-20",
+                first_rank_place="Nsukka",
+                admission_date="2018-05-20",
+                membership_status="Active",
+                department="Example Department",
+                administrative_level="Parish",
+                current_office="Secretary",
+                other_office_held="Former coordinator",
+                village_town="Example Town",
+                state_of_origin="Enugu",
+                local_government_area="Nsukka",
+                occupation="Teacher",
+                residential_address="Example residential address",
+                home_diocese="Nsukka Diocese",
+                next_of_kin_name="Example Next of Kin",
+                next_of_kin_phone="08012345678",
+                emergency_contact_name="Example Emergency Contact",
+                emergency_contact_phone="08087654321",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(
+            email="ada@example.com"
+        )
+        self.assertEqual(application.sex, "Female")
+        self.assertEqual(
+            application.date_of_birth.isoformat(), "1995-04-12"
+        )
+        self.assertEqual(application.current_rank, "Major")
+        self.assertEqual(application.first_rank, "Major")
+        self.assertEqual(application.admission_date.isoformat(), "2018-05-20")
+        self.assertEqual(application.current_office, "Secretary")
+        self.assertEqual(application.residential_address, "Example residential address")
+        self.assertTrue(application.declaration_accepted)
+        self.assertTrue(application.verification_consent)
+        self.assertIsNone(application.member_id)
+
+    def test_passport_photo_rejects_invalid_image_contents(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        invalid_photo = SimpleUploadedFile(
+            "portrait.jpg",
+            b"this is not a real JPEG image",
+            content_type="image/jpeg",
+        )
+
+        data = self.valid_data()
+        data["passport_photo"] = invalid_photo
+
+        response = self.client.post(
+            reverse("members:register"),
+            data,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(MembershipApplication.objects.exists())
+        self.assertTrue(
+            response.context["form"].errors.get("passport_photo")
+        )
+
+    def test_passport_photo_accepts_a_valid_jpeg(self):
+        from io import BytesIO
+
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from apps.verification.validators import validate_passport_photo
+
+        image_buffer = BytesIO()
+        Image.new("RGB", (20, 20), color="white").save(
+            image_buffer,
+            format="JPEG",
+        )
+
+        photo = SimpleUploadedFile(
+            "portrait.jpg",
+            image_buffer.getvalue(),
+            content_type="image/jpeg",
+        )
+
+        # Validate in memory; do not save the file to private media.
+        self.assertIsNone(validate_passport_photo(photo))
+
+    def test_private_passport_storage_has_no_public_url(self):
+        from apps.verification.storage import private_evidence_storage
+
+        with self.assertRaisesMessage(
+            ValueError,
+            "Membership evidence has no public URL.",
+        ):
+            private_evidence_storage.url(
+                "membership-passports/example.jpg"
+            )
+
+    def test_passport_photo_is_optional(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(
+            email="ada@example.com"
+        )
+        self.assertFalse(application.passport_photo)

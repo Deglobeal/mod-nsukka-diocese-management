@@ -9,6 +9,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-card);
     background: var(--color-surface);
+    color: var(--color-text);
     box-shadow: var(--shadow-card);
 }
 
@@ -37,6 +38,7 @@
     padding: var(--space-4);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-control);
+    background: var(--color-surface-muted);
     color: var(--color-text-muted);
     font-size: 14px;
     line-height: 1.6;
@@ -150,4 +152,161 @@
     .registration-grid {
         grid-template-columns: minmax(0, 1fr);
     }
+}
+
+
+/* Registration form additions */
+.registration-field-wide {
+    grid-column: 1 / -1;
+}
+
+.registration-input[type="file"] {
+    height: auto;
+    max-width: 100%;
+}
+
+.registration-checkbox {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin: 2px 0 0;
+    flex: 0 0 auto;
+    accent-color: var(--color-primary);
+}
+
+.registration-consent {
+    grid-column: 1 / -1;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+}
+
+.registration-checkbox-label {
+    display: flex !important;
+    align-items: flex-start;
+    gap: var(--space-3);
+    margin: 0 !important;
+    font-weight: 400 !important;
+    line-height: 1.6;
+}
+
+.registration-checkbox-label span {
+    min-width: 0;
+}
+
+.registration-checkbox-label span span {
+    color: var(--color-danger-text);
+}
+
+@media (max-width: 560px) {
+    .registration-field-wide,
+    .registration-consent {
+        grid-column: auto;
+    }
+}
+
+/* Membership registration sections */
+.registration-section {
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+}
+
+.registration-section-title {
+    margin: 0 0 var(--space-2);
+    font-size: 20px;
+    line-height: 1.35;
+}
+
+.registration-section-description {
+    margin: 0 0 var(--space-4);
+    color: var(--color-text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.registration-fixed-value {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+}
+
+.registration-fixed-label {
+    color: var(--color-text-muted);
+    font-size: 12px;
+}
+
+.registration-fixed-value strong {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.registration-section .registration-grid {
+    align-items: start;
+}
+
+.registration-field input[type="checkbox"] {
+    accent-color: var(--color-primary);
+}
+
+@media (max-width: 560px) {
+    .registration-section {
+        margin-top: var(--space-5);
+        padding-top: var(--space-4);
+    }
+
+    .registration-section-title {
+        font-size: 18px;
+    }
+}
+
+/* Command & Discipline: readable membership registration form. */
+body[data-mod-theme="command"] .registration-card {
+    color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .registration-title,
+body[data-mod-theme="command"] .registration-section-title,
+body[data-mod-theme="command"] .registration-field label,
+body[data-mod-theme="command"] .registration-fixed-value strong,
+body[data-mod-theme="command"] .registration-consent,
+body[data-mod-theme="command"] .registration-footer {
+    color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .registration-description,
+body[data-mod-theme="command"] .registration-notice,
+body[data-mod-theme="command"] .registration-section-description,
+body[data-mod-theme="command"] .registration-optional,
+body[data-mod-theme="command"] .registration-help,
+body[data-mod-theme="command"] .registration-fixed-label {
+    color: #D0D7E0;
+}
+
+body[data-mod-theme="command"] .registration-input {
+    background-color: #243750;
+    color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .registration-input::placeholder {
+    color: #B6C0CC;
+    opacity: 1;
+}
+
+body[data-mod-theme="command"] .registration-button {
+    background-color: #243750;
+    border: 1px solid #E8D7A8;
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
+}
+
+body[data-mod-theme="command"] .registration-button:hover {
+    background-color: #304966;
+    color: #F5F5F2;
+    -webkit-text-fill-color: #F5F5F2;
 }

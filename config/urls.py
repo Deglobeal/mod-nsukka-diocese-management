@@ -1,8 +1,10 @@
+from apps.core.views.favicon_view import favicon_view
 from django.contrib import admin
 from django.urls import include, path
 from apps.core.views.home_view import HomeView
 
 urlpatterns = [
+    path("favicon.ico", favicon_view, name="favicon"),
     path("admin/", admin.site.urls),
     path("", HomeView.as_view(), name="public_home"),
     path("members/", include("apps.members.urls")),
