@@ -1,6 +1,13 @@
+from datetime import timedelta
+from io import BytesIO
+from tempfile import TemporaryDirectory
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
+from django.utils import timezone
 
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish, Station
@@ -8,6 +15,35 @@ from apps.verification.models import MembershipApplication
 
 
 class MembershipRegistrationTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        from apps.verification.storage import private_evidence_storage
+
+        cls._storage = private_evidence_storage
+        cls._original_location = private_evidence_storage._location
+        cls._temporary_media = TemporaryDirectory(prefix="mod-registration-tests-")
+        private_evidence_storage._location = cls._temporary_media.name
+        private_evidence_storage.__dict__.pop("location", None)
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            cls._storage._location = cls._original_location
+            cls._storage.__dict__.pop("location", None)
+            cls._temporary_media.cleanup()
+        finally:
+            super().tearDownClass()
+
+    def valid_photo(self):
+        buffer = BytesIO()
+        Image.new("RGB", (20, 20), color="white").save(buffer, format="JPEG")
+        return SimpleUploadedFile(
+            "registration-test.jpg",
+            buffer.getvalue(),
+            content_type="image/jpeg",
+        )
+
     @classmethod
     def setUpTestData(cls):
         cls.diocese = Diocese.objects.create(
@@ -42,6 +78,13 @@ class MembershipRegistrationTests(TestCase):
             "last_name": "Okafor",
             "email": "ada@example.com",
             "phone_number": "+2348012345678",
+            "date_of_birth": "1995-04-12",
+            "passport_photo": self.valid_photo(),
+            "admission_date": "2020-01-15",
+            "next_of_kin_name": "Example Next of Kin",
+            "next_of_kin_phone": "08012345678",
+            "emergency_contact_name": "Example Emergency Contact",
+            "emergency_contact_phone": "08087654321",
             "blood_group": "O+",
             "genotype": "AA",
             "height_cm": "170",
@@ -279,6 +322,7 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(application.current_rank, "Major")
         self.assertEqual(application.first_rank, "Major")
         self.assertEqual(application.admission_date.isoformat(), "2018-05-20")
+        self.assertEqual(application.admission_year, 2018)
         self.assertEqual(application.current_office, "Secretary")
         self.assertEqual(application.residential_address, "Example residential address")
         self.assertTrue(application.declaration_accepted)
@@ -309,10 +353,6 @@ class MembershipRegistrationTests(TestCase):
         )
 
     def test_passport_photo_accepts_a_valid_jpeg(self):
-        from io import BytesIO
-
-        from PIL import Image
-        from django.core.files.uploadedfile import SimpleUploadedFile
         from apps.verification.validators import validate_passport_photo
 
         image_buffer = BytesIO()
@@ -341,14 +381,71 @@ class MembershipRegistrationTests(TestCase):
                 "membership-passports/example.jpg"
             )
 
-    def test_passport_photo_is_optional(self):
+    def test_passport_photo_is_required(self):
+        data = self.valid_data()
+        data.pop("passport_photo")
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(MembershipApplication.objects.exists())
+        self.assertTrue(
+            response.context["form"].errors.get("passport_photo")
+        )
+
+    def test_future_date_of_birth_is_rejected(self):
+        future_date = (timezone.localdate() + timedelta(days=1)).isoformat()
         response = self.client.post(
             reverse("members:register"),
-            self.valid_data(),
+            self.valid_data(date_of_birth=future_date),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(MembershipApplication.objects.exists())
+        self.assertTrue(
+            response.context["form"].errors.get("date_of_birth")
+        )
+
+    def test_admission_year_is_derived_from_admission_date(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(admission_date="2019-06-15"),
         )
 
         self.assertEqual(response.status_code, 302)
         application = MembershipApplication.objects.get(
             email="ada@example.com"
         )
-        self.assertFalse(application.passport_photo)
+        self.assertEqual(application.admission_year, 2019)
+
+    def test_health_measurements_are_optional(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                blood_group="",
+                genotype="",
+                height_cm="",
+                weight_kg="",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(
+            email="ada@example.com"
+        )
+        self.assertEqual(application.blood_group, "")
+        self.assertEqual(application.genotype, "")
+        self.assertIsNone(application.height_cm)
+        self.assertIsNone(application.weight_kg)
+
+    def test_email_is_optional(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(email=""),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(
+            phone_number="+2348012345678"
+        )
+        self.assertEqual(application.email, "")

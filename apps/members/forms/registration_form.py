@@ -208,11 +208,11 @@ class MembershipRegistrationForm(forms.ModelForm):
         )
 
         for name in ("blood_group", "genotype", "height_cm", "weight_kg"):
-            self.fields[name].required = True
+            self.fields[name].required = False
 
-        self.fields["passport_photo"].required = False
+        self.fields["passport_photo"].required = True
         self.fields["passport_photo"].help_text = (
-            "Optional for now. JPEG or PNG only; maximum size 5 MB. "
+            "Required. JPEG or PNG only; maximum size 5 MB. "
             "The photograph is stored privately."
         )
         self.fields["signature_image"].required = False
@@ -224,8 +224,6 @@ class MembershipRegistrationForm(forms.ModelForm):
         optional_fields = {
             "middle_name",
             "sex",
-            "date_of_birth",
-            "passport_photo",
             "station",
             "current_rank",
             "current_rank_date",
@@ -233,7 +231,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             "first_rank",
             "first_rank_date",
             "first_rank_place",
-            "admission_date",
             "membership_status",
             "department",
             "administrative_level",
@@ -245,10 +242,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             "occupation",
             "residential_address",
             "home_diocese",
-            "next_of_kin_name",
-            "next_of_kin_phone",
-            "emergency_contact_name",
-            "emergency_contact_phone",
             "admission_year",
             "medical_conditions",
             "allergies_medications",
@@ -264,13 +257,21 @@ class MembershipRegistrationForm(forms.ModelForm):
         for name in (
             "first_name",
             "last_name",
-            "email",
             "phone_number",
+            "date_of_birth",
+            "passport_photo",
             "category",
             "deanery",
             "parish",
+            "admission_date",
+            "next_of_kin_name",
+            "next_of_kin_phone",
+            "emergency_contact_name",
+            "emergency_contact_phone",
         ):
             self.fields[name].required = True
+
+        self.fields["email"].required = False
 
         for name in ("declaration_accepted", "verification_consent"):
             self.fields[name].widget.attrs["class"] = (
@@ -284,8 +285,22 @@ class MembershipRegistrationForm(forms.ModelForm):
         station = cleaned_data.get("station")
         admission_date = cleaned_data.get("admission_date")
         admission_year = cleaned_data.get("admission_year")
+        date_of_birth = cleaned_data.get("date_of_birth")
         height_cm = cleaned_data.get("height_cm")
         weight_kg = cleaned_data.get("weight_kg")
+
+        if date_of_birth:
+            from django.utils import timezone
+
+            if date_of_birth > timezone.localdate():
+                self.add_error(
+                    "date_of_birth",
+                    "Date of birth cannot be in the future.",
+                )
+
+        if admission_date and not admission_year:
+            admission_year = admission_date.year
+            cleaned_data["admission_year"] = admission_year
 
         if height_cm is not None and not 50 <= height_cm <= 250:
             self.add_error("height_cm", "Enter a height between 50 and 250 cm.")
