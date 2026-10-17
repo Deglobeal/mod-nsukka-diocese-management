@@ -177,6 +177,73 @@ class MembershipRegistrationTests(TestCase):
             ).exists()
         )
 
+    def test_registration_pdf_downloads_as_a_private_pdf(self):
+        self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                baptized_catholic="yes",
+                confirmed="yes",
+                previous_diocese="Awgu Diocese",
+                sponsor_membership_id="MOD-TEST-123",
+                sponsor_additional_phone="08011112222",
+                sponsor_rank="Major",
+                marital_status="Single",
+                next_of_kin_relationship="Sibling",
+                emergency_contact_relationship="Parent",
+                emergency_contact_2_name="Second Contact",
+                emergency_contact_2_phone="08033334444",
+                emergency_contact_2_relationship="Sibling",
+            ),
+        )
+        application = MembershipApplication.objects.get(
+            email="ada@example.com"
+        )
+
+        application.refresh_from_db()
+        self.assertEqual(application.baptized_catholic, "yes")
+        self.assertEqual(application.confirmed, "yes")
+        self.assertEqual(application.previous_diocese, "Awgu Diocese")
+        self.assertEqual(application.sponsor_membership_id, "MOD-TEST-123")
+        self.assertEqual(application.marital_status, "Single")
+        self.assertEqual(
+            application.next_of_kin_relationship, "Sibling"
+        )
+        self.assertEqual(
+            application.emergency_contact_2_name, "Second Contact"
+        )
+
+        response = self.client.get(
+            reverse(
+                "members:registration_pdf",
+                kwargs={"application_id": application.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF-"))
+        self.assertIn("private, no-store", response["Cache-Control"])
+        self.assertIn(
+            f"MOD-Membership-Application-{application.pk}.pdf",
+            response["Content-Disposition"],
+        )
+
+    def test_registration_pdf_is_not_accessible_without_submitting_session(self):
+        application = MembershipApplication.objects.create(
+            first_name="Private",
+            last_name="Applicant",
+            parish=self.parish,
+        )
+
+        response = self.client.get(
+            reverse(
+                "members:registration_pdf",
+                kwargs={"application_id": application.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
+
     def test_station_from_another_parish_is_rejected(self):
         response = self.client.post(
             reverse("members:register"),

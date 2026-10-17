@@ -23,6 +23,12 @@
             this is not an approval or a portal login account.
         </p>
 
+
+        <a class="registration-button registration-link"
+           href="{% url 'members:registration_pdf' application_id=application.pk %}">
+            Download application PDF (A4)
+        </a>
+
         <a class="registration-button registration-link"
            href="{% url 'public_home' %}">
             Return to homepage

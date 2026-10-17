@@ -16,6 +16,15 @@ def membership_registration(request):
             application.member = None
             application.save()
 
+            # Permit PDF downloads only from the submitting browser session.
+            allowed_ids = request.session.get(
+                "registration_application_ids", []
+            )
+            if application.pk not in allowed_ids:
+                allowed_ids.append(application.pk)
+            request.session["registration_application_ids"] = allowed_ids
+            request.session.modified = True
+
             return redirect(
                 "members:registration_received",
                 application_id=application.pk,

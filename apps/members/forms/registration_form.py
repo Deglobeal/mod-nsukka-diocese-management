@@ -69,6 +69,20 @@ class MembershipRegistrationForm(forms.ModelForm):
             "last_name",
             "email",
             "phone_number",
+            "baptized_catholic",
+            "confirmed",
+            "previous_diocese",
+            "sponsor_membership_id",
+            "sponsor_additional_phone",
+            "sponsor_rank",
+            "marital_status",
+            "next_of_kin_relationship",
+            "emergency_contact_relationship",
+            "emergency_contact_2_name",
+            "emergency_contact_2_phone",
+            "emergency_contact_2_relationship",
+            "medical_evidence",
+            "medical_confidentiality_acknowledged",
             "sex",
             "date_of_birth",
             "passport_photo",
@@ -268,8 +282,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             (value, category_labels.get(str(value).strip().lower(), label))
             for value, label in self.fields["category"].choices
         ]
-        self.fields["baptized_catholic"].widget = forms.RadioSelect()
-        self.fields["confirmed"].widget = forms.RadioSelect()
         rank_choices = [("", "Select rank"), ("Major", "Major"), ("Major General", "Major General"), ("Supreme General", "Supreme General")]
         for rank_field in ("first_rank", "current_rank"):
             self.fields[rank_field] = forms.ChoiceField(

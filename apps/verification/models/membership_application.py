@@ -6,6 +6,7 @@ from apps.verification.validators import (
     signature_image_upload_path,
     validate_passport_photo,
     validate_signature_image,
+    validate_membership_evidence,
 )
 
 
@@ -132,6 +133,48 @@ class MembershipApplication(models.Model):
 
     medical_conditions = models.TextField(blank=True, default="")
     allergies_medications = models.TextField(blank=True, default="")
+
+    # Additional approved registration details.
+    baptized_catholic = models.CharField(
+        max_length=3,
+        choices=[("yes", "Yes"), ("no", "No")],
+        blank=True,
+        default="",
+    )
+    confirmed = models.CharField(
+        max_length=3,
+        choices=[("yes", "Yes"), ("no", "No")],
+        blank=True,
+        default="",
+    )
+    previous_diocese = models.CharField(max_length=150, blank=True, default="")
+    sponsor_membership_id = models.CharField(max_length=100, blank=True, default="")
+    sponsor_additional_phone = models.CharField(max_length=30, blank=True, default="")
+    sponsor_rank = models.CharField(max_length=30, blank=True, default="")
+    marital_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("Single", "Single"),
+            ("Married", "Married"),
+            ("Widowed", "Widowed"),
+        ],
+        blank=True,
+        default="",
+    )
+    next_of_kin_relationship = models.CharField(max_length=100, blank=True, default="")
+    emergency_contact_relationship = models.CharField(max_length=100, blank=True, default="")
+    emergency_contact_2_name = models.CharField(max_length=200, blank=True, default="")
+    emergency_contact_2_phone = models.CharField(max_length=30, blank=True, default="")
+    emergency_contact_2_relationship = models.CharField(max_length=100, blank=True, default="")
+    medical_confidentiality_acknowledged = models.BooleanField(default=False)
+    medical_evidence = models.FileField(
+        storage=private_evidence_storage,
+        upload_to="membership-medical-evidence/",
+        validators=[validate_membership_evidence],
+        max_length=255,
+        null=True,
+        blank=True,
+    )
 
     declaration_accepted = models.BooleanField(default=False)
     verification_consent = models.BooleanField(default=False)

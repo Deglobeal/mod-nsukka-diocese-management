@@ -187,6 +187,19 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector(".registration-card form");
+    if (!form) return;
+
+    const sections = Array.from(
+        form.querySelectorAll(".registration-section")
+    );
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    if (!sections.length || !submitButton) return;
+
+    /*
+     * Preserve the existing Deanery -> Parish -> Station filtering.
+     */
     const deanery = document.getElementById("id_deanery");
     const parish = document.getElementById("id_parish");
     const station = document.getElementById("id_station");
@@ -198,6 +211,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const parentValue = option.dataset[attribute];
             const allowed = !option.value || !selectedValue ||
                 parentValue === selectedValue;
+
             option.hidden = !allowed;
             option.disabled = !allowed;
         });
@@ -207,21 +221,181 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function updateStations() {
-        filterOptions(
-            station, "parishId", parish ? parish.value : ""
-        );
+        filterOptions(station, "parishId", parish ? parish.value : "");
     }
 
     function updateParishes() {
-        filterOptions(
-            parish, "deaneryId", deanery ? deanery.value : ""
-        );
+        filterOptions(parish, "deaneryId", deanery ? deanery.value : "");
         updateStations();
     }
 
     if (deanery) deanery.addEventListener("change", updateParishes);
     if (parish) parish.addEventListener("change", updateStations);
     updateParishes();
+
+    /*
+     * Build the step controls dynamically so the approved field markup
+     * and form content remain unchanged.
+     */
+    const progress = document.createElement("div");
+    progress.className = "registration-progress";
+    progress.setAttribute("aria-label", "Registration progress");
+
+    const progressText = document.createElement("p");
+    progressText.className = "registration-progress-text";
+    progressText.setAttribute("aria-live", "polite");
+    progressText.setAttribute("aria-atomic", "true");
+
+    const progressTrack = document.createElement("div");
+    progressTrack.className = "registration-progress-track";
+    progressTrack.setAttribute("role", "progressbar");
+    progressTrack.setAttribute("aria-valuemin", "1");
+    progressTrack.setAttribute("aria-valuemax", String(sections.length));
+    progressTrack.setAttribute("aria-valuenow", "1");
+    progressTrack.setAttribute("aria-label", "Current registration section");
+
+    const progressFill = document.createElement("div");
+    progressFill.className = "registration-progress-fill";
+    progressTrack.appendChild(progressFill);
+    progress.append(progressText, progressTrack);
+
+    sections[0].before(progress);
+
+    const navigations = sections.map(function (section, index) {
+        const navigation = document.createElement("nav");
+        navigation.className = "registration-step-navigation";
+        navigation.setAttribute(
+            "aria-label",
+            "Navigation for section " + (index + 1)
+        );
+
+        const previous = document.createElement("button");
+        previous.type = "button";
+        previous.className =
+            "registration-step-button registration-step-button-secondary";
+        previous.textContent = "Previous";
+        previous.hidden = index === 0;
+        previous.addEventListener("click", function () {
+            showSection(index - 1, true);
+        });
+
+        const next = document.createElement("button");
+        next.type = "button";
+        next.className =
+            "registration-step-button registration-step-button-primary";
+        next.textContent = "Next";
+        next.hidden = index === sections.length - 1;
+        next.addEventListener("click", function () {
+            const invalidField = sections[index].querySelector(
+                "input:invalid, select:invalid, textarea:invalid"
+            );
+
+            if (invalidField) {
+                invalidField.reportValidity();
+                invalidField.focus();
+                return;
+            }
+
+            showSection(index + 1, true);
+        });
+
+        if (index === sections.length - 1) {
+            navigation.append(previous, submitButton);
+        } else {
+            navigation.append(previous, next);
+        }
+        section.after(navigation);
+
+        return navigation;
+    });
+
+    let currentIndex = 0;
+
+    function showSection(index, moveFocus) {
+        if (index < 0 || index >= sections.length) return;
+
+        currentIndex = index;
+
+        sections.forEach(function (section, sectionIndex) {
+            const active = sectionIndex === currentIndex;
+            section.hidden = !active;
+            section.setAttribute("aria-hidden", String(!active));
+
+            const navigation = navigations[sectionIndex];
+            navigation.hidden = !active;
+            navigation.setAttribute("aria-hidden", String(!active));
+        });
+
+        const currentNumber = currentIndex + 1;
+        progressText.textContent =
+            "Section " + currentNumber + " of " + sections.length;
+        progressTrack.setAttribute("aria-valuenow", String(currentNumber));
+        progressFill.style.width =
+            (currentNumber / sections.length * 100) + "%";
+
+        submitButton.hidden = currentIndex !== sections.length - 1;
+
+        if (moveFocus) {
+            const heading = sections[currentIndex].querySelector(
+                ".registration-section-title"
+            );
+
+            if (heading) {
+                if (!heading.hasAttribute("tabindex")) {
+                    heading.setAttribute("tabindex", "-1");
+                }
+                heading.focus();
+            }
+
+            sections[currentIndex].scrollIntoView({
+                behavior: "auto",
+                block: "start"
+            });
+        }
+    }
+
+    /*
+     * If the server returned form errors, open the section containing
+     * the first field error instead of leaving that field hidden.
+     */
+    let initialIndex = 0;
+    const firstErrorLink = form.querySelector(
+        ".registration-error-summary a[href^='#']"
+    );
+
+    if (firstErrorLink) {
+        const targetId = firstErrorLink.getAttribute("href").slice(1);
+        let targetField = null;
+
+        try {
+            targetField = document.getElementById(
+                decodeURIComponent(targetId)
+            );
+        } catch (error) {
+            targetField = document.getElementById(targetId);
+        }
+
+        const errorSection = targetField
+            ? targetField.closest(".registration-section")
+            : null;
+
+        if (errorSection) {
+            const errorIndex = sections.indexOf(errorSection);
+            if (errorIndex >= 0) initialIndex = errorIndex;
+        }
+    }
+
+    showSection(initialIndex, false);
+
+    if (firstErrorLink && initialIndex > 0) {
+        const errorSection = sections[initialIndex];
+        const targetId = firstErrorLink.getAttribute("href").slice(1);
+        const targetField = document.getElementById(targetId);
+
+        if (targetField && errorSection.contains(targetField)) {
+            targetField.focus();
+        }
+    }
 });
 </script>
 {% endblock %}
