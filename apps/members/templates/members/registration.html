@@ -64,7 +64,37 @@
                     {% include "members/partials/registration_field.html" with field=form.middle_name %}
                     {% include "members/partials/registration_field.html" with field=form.sex %}
                     {% include "members/partials/registration_field.html" with field=form.date_of_birth %}
-                    {% include "members/partials/registration_field.html" with field=form.passport_photo %}
+                    <div class="registration-field registration-camera-field">
+                        <span class="registration-field-label">Passport photograph <span aria-hidden="true">*</span></span>
+                        <p class="registration-camera-help">
+                            Wear your M.O.D. uniform. Use the camera to capture a current photograph.
+                            Gallery uploads cannot replace camera capture.
+                        </p>
+                        <div class="registration-camera-preview">
+                            <video id="passport-camera-video" playsinline autoplay muted hidden></video>
+                            <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
+                            <p id="passport-camera-placeholder">Camera preview will appear here.</p>
+                        </div>
+                        <canvas id="passport-camera-canvas" hidden></canvas>
+                        <input type="hidden" name="passport_photo_data" id="passport-photo-data"
+                               value="{{ passport_photo_data|default:'' }}">
+                        <div class="registration-camera-actions">
+                            <button type="button" id="passport-camera-start">Start camera</button>
+                            <button type="button" id="passport-camera-capture" disabled>Capture photo</button>
+                            <button type="button" id="passport-camera-retake" hidden>Retake photo</button>
+                        </div>
+                        <p id="passport-camera-status" class="registration-camera-status" aria-live="polite">
+                            Photograph required.
+                        </p>
+                        <p id="passport-camera-error" class="registration-camera-error" role="alert" hidden></p>
+                        {% if form.passport_photo.errors %}
+                            <ul class="registration-field-errors">
+                                {% for error in form.passport_photo.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
                     {% include "members/partials/registration_field.html" with field=form.phone_number %}
                     {% include "members/partials/registration_field.html" with field=form.email %}
                 </div>
@@ -164,6 +194,40 @@
                 <p class="registration-notice">Required backend access restriction: only the authorized Diocesan Chairman and Medical Director may access confidential medical details and medical evidence.</p>
             </section>
 
+            <section class="registration-section registration-signature-section"
+                     aria-labelledby="registration-signature-heading">
+                <h2 class="registration-section-title" id="registration-signature-heading">
+                    Applicant's Handwritten Signature
+                </h2>
+                <p class="registration-section-description">
+                    Sign your name on clean white or light-brown paper using
+                    blue or black ink. Take a clear photo in good lighting,
+                    keeping the entire signature in the frame. Avoid shadows,
+                    blur, filters, and glare. Upload the photo below.
+                    JPEG or PNG only; maximum 2 MB. Your image is stored
+                    privately and included in your registration PDF.
+                </p>
+
+                {% include "members/partials/registration_field.html" with field=form.signature_image %}
+
+                <div class="registration-signature-preview-wrap" id="registration-signature-preview-wrap" hidden>
+                    <p class="registration-help">Signature photo preview</p>
+                    <img id="registration-signature-preview"
+                         class="registration-signature-preview"
+                         alt="Preview of the uploaded handwritten signature">
+                    <button type="button"
+                            class="registration-signature-clear"
+                            id="registration-signature-retake">
+                        Choose another photo
+                    </button>
+                </div>
+                <p class="registration-signature-upload-status"
+                   id="registration-signature-upload-status"
+                   aria-live="polite">
+                    Signature photo required.
+                </p>
+            </section>
+
             <section class="registration-section" aria-labelledby="registration-section-f">
                 <h2 class="registration-section-title" id="registration-section-f">Section 6 — Declaration &amp; Submission</h2>
                 <p class="registration-section-description">Review each declaration before submitting.</p>
@@ -186,6 +250,223 @@
 </section>
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const video = document.getElementById("passport-camera-video");
+    const photoCanvas = document.getElementById("passport-camera-canvas");
+    const photoInput = document.getElementById("passport-photo-data");
+    const photoPreview = document.getElementById("passport-camera-image");
+    const photoPlaceholder = document.getElementById("passport-camera-placeholder");
+    const startCameraButton = document.getElementById("passport-camera-start");
+    const capturePhotoButton = document.getElementById("passport-camera-capture");
+    const retakePhotoButton = document.getElementById("passport-camera-retake");
+    const cameraStatus = document.getElementById("passport-camera-status");
+    const cameraError = document.getElementById("passport-camera-error");
+    const registrationForm = document.querySelector(".registration-card form");
+    let cameraStream = null;
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+            cameraStream = null;
+        }
+        if (video) video.srcObject = null;
+        if (capturePhotoButton) capturePhotoButton.disabled = true;
+    }
+
+    function clearCapturedPhoto() {
+        if (photoInput) photoInput.value = "";
+        if (photoPreview) {
+            photoPreview.removeAttribute("src");
+            photoPreview.hidden = true;
+        }
+        if (photoPlaceholder) photoPlaceholder.hidden = false;
+        if (retakePhotoButton) retakePhotoButton.hidden = true;
+        if (cameraStatus) cameraStatus.textContent = "Photograph required.";
+    }
+
+    async function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            cameraError.textContent =
+                "Camera access is unavailable. Open this form using HTTPS or localhost in a supported browser.";
+            cameraError.hidden = false;
+            return;
+        }
+
+        stopCamera();
+        clearCapturedPhoto();
+        cameraError.hidden = true;
+        cameraStatus.textContent = "Waiting for camera permission…";
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    facingMode: "user",
+                    width: { ideal: 1280 },
+                    height: { ideal: 1280 }
+                }
+            });
+            video.srcObject = cameraStream;
+            video.hidden = false;
+            photoPreview.hidden = true;
+            photoPlaceholder.hidden = true;
+            await video.play();
+            capturePhotoButton.disabled = false;
+            cameraStatus.textContent =
+                "Position yourself in the preview, then capture your photograph.";
+        } catch (error) {
+            stopCamera();
+            cameraError.textContent =
+                "The camera could not be started. Allow camera permission in your browser and try again.";
+            cameraError.hidden = false;
+            cameraStatus.textContent = "Camera capture is required.";
+        }
+    }
+
+    if (video && photoCanvas && photoInput && startCameraButton) {
+        startCameraButton.addEventListener("click", startCamera);
+
+        capturePhotoButton.addEventListener("click", function () {
+            if (!cameraStream || !video.videoWidth || !video.videoHeight) {
+                cameraError.textContent = "Wait for the camera preview before capturing.";
+                cameraError.hidden = false;
+                return;
+            }
+
+            const maxDimension = 1600;
+            const scale = Math.min(
+                1,
+                maxDimension / Math.max(video.videoWidth, video.videoHeight)
+            );
+            photoCanvas.width = Math.round(video.videoWidth * scale);
+            photoCanvas.height = Math.round(video.videoHeight * scale);
+            photoCanvas.getContext("2d").drawImage(
+                video, 0, 0, photoCanvas.width, photoCanvas.height
+            );
+
+            photoCanvas.toBlob(function (blob) {
+                if (!blob) {
+                    cameraError.textContent =
+                        "The photograph could not be captured. Please try again.";
+                    cameraError.hidden = false;
+                    return;
+                }
+                if (blob.size > 5 * 1024 * 1024) {
+                    cameraError.textContent =
+                        "The photograph exceeds 5 MB. Please retake it.";
+                    cameraError.hidden = false;
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function () {
+                    photoInput.value = reader.result;
+                    photoPreview.src = reader.result;
+                    photoPreview.hidden = false;
+                    video.hidden = true;
+                    photoPlaceholder.hidden = true;
+                    retakePhotoButton.hidden = false;
+                    cameraError.hidden = true;
+                    cameraStatus.textContent = "Photograph captured and ready.";
+                    stopCamera();
+                };
+                reader.readAsDataURL(blob);
+            }, "image/jpeg", 0.88);
+        });
+
+        retakePhotoButton.addEventListener("click", startCamera);
+
+        if (photoInput.value) {
+            photoPreview.src = photoInput.value;
+            photoPreview.hidden = false;
+            photoPlaceholder.hidden = true;
+            retakePhotoButton.hidden = false;
+            cameraStatus.textContent = "Previously captured photograph restored.";
+        }
+
+        window.addEventListener("pagehide", stopCamera);
+    }
+
+    if (registrationForm) {
+        registrationForm.addEventListener("submit", function (event) {
+            if (!photoInput || !photoInput.value) {
+                event.preventDefault();
+                cameraError.textContent =
+                    "Capture and accept your passport photograph before submitting.";
+                cameraError.hidden = false;
+                if (startCameraButton) {
+                    startCameraButton.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+                    startCameraButton.focus();
+                }
+            }
+        });
+    }
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("id_signature_image");
+    const previewWrap = document.getElementById("registration-signature-preview-wrap");
+    const preview = document.getElementById("registration-signature-preview");
+    const retake = document.getElementById("registration-signature-retake");
+    const status = document.getElementById("registration-signature-upload-status");
+    const maxBytes = 2 * 1024 * 1024;
+
+    if (!input || !previewWrap || !preview || !retake || !status) return;
+
+    function clearPreview() {
+        preview.removeAttribute("src");
+        previewWrap.hidden = true;
+    }
+
+    input.addEventListener("change", function () {
+        const file = input.files && input.files[0];
+        clearPreview();
+
+        if (!file) {
+            status.textContent = "Signature photo required.";
+            return;
+        }
+
+        if (!["image/jpeg", "image/png"].includes(file.type)) {
+            input.value = "";
+            status.textContent = "Choose a JPEG or PNG image.";
+            return;
+        }
+
+        if (file.size > maxBytes) {
+            input.value = "";
+            status.textContent = "The signature photo must not exceed 2 MB.";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function () {
+            preview.src = reader.result;
+            previewWrap.hidden = false;
+            status.textContent = "Photo selected. Check the preview before continuing.";
+        };
+        reader.onerror = function () {
+            input.value = "";
+            status.textContent = "The image could not be previewed. Please choose it again.";
+        };
+        reader.readAsDataURL(file);
+    });
+
+    retake.addEventListener("click", function () {
+        input.value = "";
+        clearPreview();
+        status.textContent = "Choose a new signature photo.";
+        input.click();
+    });
+});
+
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector(".registration-card form");
     if (!form) return;
@@ -261,6 +542,121 @@ document.addEventListener("DOMContentLoaded", function () {
 
     sections[0].before(progress);
 
+    // Validate custom rules before allowing an applicant to advance.
+    const phoneFieldIds = [
+        "id_phone_number",
+        "id_next_of_kin_phone",
+        "id_emergency_contact_phone",
+        "id_emergency_contact_2_phone",
+        "id_sponsor_additional_phone"
+    ];
+
+    const nameFieldIds = [
+        "id_first_name",
+        "id_middle_name",
+        "id_last_name",
+        "id_next_of_kin_name",
+        "id_emergency_contact_name",
+        "id_emergency_contact_2_name"
+    ];
+
+    function validateCustomField(field) {
+        if (!field) return true;
+
+        const value = field.value.trim();
+        let message = "";
+
+        if (phoneFieldIds.includes(field.id) && value) {
+            const normalized = value.replace(/[\s()-]/g, "");
+            const localValid = /^0[0-9]{10}$/.test(normalized);
+            const internationalValid = /^\+234[0-9]{10}$/.test(normalized);
+
+            if (!localValid && !internationalValid) {
+                message =
+                    "Use a Nigerian number such as 08012345678 or +2348012345678.";
+            }
+        }
+
+        if (nameFieldIds.includes(field.id) && value) {
+            const allowed = /^[\p{L}\p{M} '\u2019-]+$/u.test(value);
+            const letterCount = (value.match(/\p{L}/gu) || []).length;
+
+            if (!allowed || letterCount < 2) {
+                message =
+                    "Enter a valid name using at least two letters. Numbers and symbols are not allowed.";
+            }
+        }
+
+        field.setCustomValidity(message);
+        return !message;
+    }
+
+    function validateSection(section) {
+        const fields = Array.from(
+            section.querySelectorAll("input, select, textarea")
+        ).filter(function (field) {
+            return !field.disabled &&
+                field.type !== "button" &&
+                field.type !== "submit" &&
+                field.type !== "hidden";
+        });
+
+        fields.forEach(validateCustomField);
+
+        const invalidField = fields.find(function (field) {
+            return !field.checkValidity();
+        });
+
+        if (invalidField) {
+            invalidField.reportValidity();
+            invalidField.focus();
+            invalidField.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+            return false;
+        }
+
+        // Camera photo is a required step-one item.
+        const photoInput = document.getElementById("passport-photo-data");
+        if (photoInput && section.contains(photoInput) && !photoInput.value) {
+            const cameraError = document.getElementById("passport-camera-error");
+            const startButton = document.getElementById("passport-camera-start");
+
+            if (cameraError) {
+                cameraError.textContent =
+                    "Capture and accept your passport photograph before continuing.";
+                cameraError.hidden = false;
+            }
+
+            if (startButton) {
+                startButton.focus();
+                startButton.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    phoneFieldIds.concat(nameFieldIds).forEach(function (id) {
+        const field = document.getElementById(id);
+        if (!field) return;
+
+        field.addEventListener("input", function () {
+            validateCustomField(field);
+        });
+        field.addEventListener("blur", function () {
+            validateCustomField(field);
+        });
+        field.addEventListener("change", function () {
+            validateCustomField(field);
+        });
+    });
+
     const navigations = sections.map(function (section, index) {
         const navigation = document.createElement("nav");
         navigation.className = "registration-step-navigation";
@@ -286,16 +682,7 @@ document.addEventListener("DOMContentLoaded", function () {
         next.textContent = "Next";
         next.hidden = index === sections.length - 1;
         next.addEventListener("click", function () {
-            const invalidField = sections[index].querySelector(
-                "input:invalid, select:invalid, textarea:invalid"
-            );
-
-            if (invalidField) {
-                invalidField.reportValidity();
-                invalidField.focus();
-                return;
-            }
-
+            if (!validateSection(sections[index])) return;
             showSection(index + 1, true);
         });
 
@@ -307,6 +694,17 @@ document.addEventListener("DOMContentLoaded", function () {
         section.after(navigation);
 
         return navigation;
+    });
+
+    // Final safety check: no invalid section may be submitted.
+    form.addEventListener("submit", function (event) {
+        for (let index = 0; index < sections.length; index += 1) {
+            if (!validateSection(sections[index])) {
+                event.preventDefault();
+                showSection(index, true);
+                return;
+            }
+        }
     });
 
     let currentIndex = 0;

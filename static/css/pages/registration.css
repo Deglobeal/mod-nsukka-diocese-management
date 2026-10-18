@@ -788,3 +788,162 @@ body[data-mod-theme="command"] .registration-button:hover {
         line-height: var(--line-height-tight);
     }
 }
+
+
+/* Private handwritten signature pad */
+.registration-signature-pad {
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: var(--radius-md, 8px);
+    background: #fff;
+}
+
+#registration-signature-canvas {
+    display: block;
+    width: 100%;
+    height: 180px;
+    background: #fff;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.registration-signature-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+}
+
+.registration-signature-clear {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: var(--radius-md, 8px);
+    background: #fff;
+    color: inherit;
+    cursor: pointer;
+}
+
+.registration-signature-status {
+    font-size: var(--font-size-sm, 0.875rem);
+}
+
+.registration-signature-error {
+    margin-top: var(--space-2);
+    color: #b42318;
+    font-weight: 600;
+}
+
+
+/* Passport camera capture */
+.registration-camera-field {
+    min-width: 0;
+}
+
+.registration-camera-help {
+    margin-block: var(--space-2);
+    color: var(--color-text-muted, #5f596b);
+    font-size: var(--font-size-sm, 0.875rem);
+}
+
+.registration-camera-preview {
+    position: relative;
+    display: flex;
+    min-height: 220px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: var(--radius-md, 8px);
+    background: #f5f3f8;
+}
+
+.registration-camera-preview video,
+.registration-camera-preview img {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+}
+
+.registration-camera-preview video[hidden],
+.registration-camera-preview img[hidden],
+.registration-camera-actions [hidden],
+.registration-camera-error[hidden] {
+    display: none;
+}
+
+.registration-camera-preview p {
+    padding: var(--space-3);
+    text-align: center;
+}
+
+.registration-camera-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.registration-camera-actions button {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: var(--radius-md, 8px);
+    background: var(--color-surface, #fff);
+    color: inherit;
+    cursor: pointer;
+}
+
+.registration-camera-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.registration-camera-status {
+    margin-top: var(--space-2);
+    font-size: var(--font-size-sm, 0.875rem);
+}
+
+.registration-camera-error {
+    margin-top: var(--space-2);
+    color: #b42318;
+    font-weight: 600;
+}
+
+@media (max-width: 560px) {
+    .registration-camera-preview {
+        min-height: 180px;
+    }
+
+    .registration-camera-actions button {
+        flex: 1 1 auto;
+    }
+}
+
+
+/* Paper signature upload and preview */
+.registration-signature-preview-wrap {
+    margin-top: var(--space-3);
+}
+
+.registration-signature-preview-wrap[hidden] {
+    display: none;
+}
+
+.registration-signature-preview {
+    display: block;
+    width: 100%;
+    max-width: 520px;
+    max-height: 260px;
+    object-fit: contain;
+    object-position: left center;
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: var(--radius-md, 8px);
+    background: #fff;
+}
+
+.registration-signature-upload-status {
+    margin-top: var(--space-2);
+    font-size: var(--font-size-sm, 0.875rem);
+}

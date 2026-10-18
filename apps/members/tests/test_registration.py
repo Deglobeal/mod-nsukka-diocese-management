@@ -1,3 +1,4 @@
+import base64
 from datetime import timedelta
 from io import BytesIO
 from tempfile import TemporaryDirectory
@@ -35,9 +36,20 @@ class MembershipRegistrationTests(TestCase):
         finally:
             super().tearDownClass()
 
+    def valid_photo_data(self):
+        buffer = BytesIO()
+        Image.new("RGB", (120, 120), color="white").save(
+            buffer, format="JPEG"
+        )
+        return "data:image/jpeg;base64," + base64.b64encode(
+            buffer.getvalue()
+        ).decode("ascii")
+
     def valid_photo(self):
         buffer = BytesIO()
-        Image.new("RGB", (20, 20), color="white").save(buffer, format="JPEG")
+        Image.new("RGB", (120, 120), color="white").save(
+            buffer, format="JPEG"
+        )
         return SimpleUploadedFile(
             "registration-test.jpg",
             buffer.getvalue(),
@@ -71,6 +83,25 @@ class MembershipRegistrationTests(TestCase):
             name="Other Registration Station",
         )
 
+    def valid_signature_upload(self):
+        buffer = BytesIO()
+        image = Image.new("RGB", (240, 80), color=(250, 248, 240))
+        from PIL import ImageDraw
+
+        draw = ImageDraw.Draw(image)
+        draw.line(
+            [(12, 48), (42, 22), (68, 58), (102, 26),
+             (134, 49), (169, 18), (211, 46)],
+            fill=(20, 45, 120),
+            width=4,
+        )
+        image.save(buffer, format="PNG")
+        return SimpleUploadedFile(
+            "registration-signature.png",
+            buffer.getvalue(),
+            content_type="image/png",
+        )
+
     def valid_data(self, **overrides):
         data = {
             "first_name": "Ada",
@@ -79,7 +110,8 @@ class MembershipRegistrationTests(TestCase):
             "email": "ada@example.com",
             "phone_number": "+2348012345678",
             "date_of_birth": "1995-04-12",
-            "passport_photo": self.valid_photo(),
+            "passport_photo_data": self.valid_photo_data(),
+            "signature_image": self.valid_signature_upload(),
             "admission_date": "2020-01-15",
             "next_of_kin_name": "Example Next of Kin",
             "next_of_kin_phone": "08012345678",
@@ -141,6 +173,29 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(application.parish, self.parish)
         self.assertEqual(application.station, self.station)
         self.assertEqual(application.applicant_name, "Ada Chinwe Okafor")
+        self.assertTrue(application.signature_image)
+        self.assertTrue(
+            application.signature_image.storage.exists(
+                application.signature_image.name
+            )
+        )
+        self.assertIn(
+            "membership-signatures/",
+            application.signature_image.name,
+        )
+
+    def test_registration_rejects_missing_signature(self):
+        data = self.valid_data()
+        data.pop("signature_image")
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applicant's Handwritten Signature")
+        self.assertContains(response, "This field is required.")
+        self.assertFalse(
+            MembershipApplication.objects.filter(email="ada@example.com").exists()
+        )
 
     def test_station_is_optional(self):
         response = self.client.post(
@@ -222,6 +277,11 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF-"))
+        self.assertGreaterEqual(
+            response.content.count(b"/Subtype /Image"),
+            3,
+            "The PDF should embed both letterhead logos and the applicant signature.",
+        )
         self.assertIn("private, no-store", response["Cache-Control"])
         self.assertIn(
             f"MOD-Membership-Application-{application.pk}.pdf",
@@ -413,7 +473,10 @@ class MembershipRegistrationTests(TestCase):
         )
 
         data = self.valid_data()
-        data["passport_photo"] = invalid_photo
+        data["passport_photo_data"] = (
+            "data:image/jpeg;base64,"
+            + base64.b64encode(invalid_photo.read()).decode("ascii")
+        )
 
         response = self.client.post(
             reverse("members:register"),
@@ -457,7 +520,7 @@ class MembershipRegistrationTests(TestCase):
 
     def test_passport_photo_is_required(self):
         data = self.valid_data()
-        data.pop("passport_photo")
+        data.pop("passport_photo_data")
 
         response = self.client.post(reverse("members:register"), data)
 

@@ -1,3 +1,4 @@
+import unicodedata
 from django import forms
 
 from apps.organizations.models import Deanery, Parish, Station
@@ -149,8 +150,11 @@ class MembershipRegistrationForm(forms.ModelForm):
                 "autocomplete": "bday",
             }),
             "passport_photo": forms.ClearableFileInput(attrs={
-                "accept": "image/*",
+                "accept": "image/jpeg,image/png",
                 "capture": "user",
+            }),
+            "signature_image": forms.ClearableFileInput(attrs={
+                "accept": "image/jpeg,image/png",
             }),
             "current_rank_date": forms.DateInput(attrs={
                 "type": "date",
@@ -341,10 +345,11 @@ class MembershipRegistrationForm(forms.ModelForm):
             "Required. JPEG or PNG only; maximum size 5 MB. "
             "The photograph is stored privately."
         )
-        self.fields["signature_image"].required = False
+        self.fields["signature_image"].required = True
         self.fields["signature_image"].help_text = (
-            "Optional for now. JPEG or PNG only; maximum size 2 MB. "
-            "The signature image is stored privately."
+            "Required. Upload a clear JPEG or PNG photo of your handwritten "
+            "signature on white or light-brown paper, using blue or black ink. "
+            "Maximum size 2 MB. Stored privately."
         )
 
         optional_fields = {
@@ -371,7 +376,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             "admission_year",
             "medical_conditions",
             "allergies_medications",
-            "signature_image",
         }
 
         for name, field in self.fields.items():
@@ -386,6 +390,7 @@ class MembershipRegistrationForm(forms.ModelForm):
             "phone_number",
             "date_of_birth",
             "passport_photo",
+            "signature_image",
             "category",
             "deanery",
             "parish",
@@ -406,6 +411,87 @@ class MembershipRegistrationForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+
+        # Validate human names while allowing spaces, apostrophes,
+        # hyphens, accented letters, and non-English alphabets.
+        name_fields = (
+            "first_name",
+            "middle_name",
+            "last_name",
+            "next_of_kin_name",
+            "emergency_contact_name",
+            "emergency_contact_2_name",
+        )
+
+        for field_name in name_fields:
+            value = cleaned_data.get(field_name)
+            if not isinstance(value, str) or not value.strip():
+                continue
+
+            value = " ".join(value.split())
+            letters = [
+                char for char in value
+                if unicodedata.category(char).startswith("L")
+            ]
+            allowed = all(
+                unicodedata.category(char)[0] in ("L", "M")
+                or char in " '-’"
+                for char in value
+            )
+
+            if not allowed or len(letters) < 2:
+                self.add_error(
+                    field_name,
+                    "Enter a valid name using at least two letters. "
+                    "Numbers and symbols are not allowed.",
+                )
+            else:
+                cleaned_data[field_name] = value
+
+        # Nigerian phone numbers:
+        # Local: 08012345678 (11 digits)
+        # International: +2348012345678 (+234 and 10 digits)
+        # Spaces, parentheses, and hyphens are accepted as separators.
+        phone_fields = (
+            "phone_number",
+            "next_of_kin_phone",
+            "emergency_contact_phone",
+            "emergency_contact_2_phone",
+            "sponsor_additional_phone",
+        )
+
+        for field_name in phone_fields:
+            value = cleaned_data.get(field_name)
+            if not isinstance(value, str) or not value.strip():
+                continue
+
+            value = value.strip()
+            normalized = "".join(
+                char for char in value if char not in " \\t\\r\\n()-"
+            )
+
+            local_valid = (
+                len(normalized) == 11
+                and normalized.startswith("0")
+                and normalized[1:].isascii()
+                and normalized[1:].isdigit()
+            )
+            international_valid = (
+                len(normalized) == 14
+                and normalized.startswith("+234")
+                and normalized[4:].isascii()
+                and normalized[4:].isdigit()
+            )
+
+            if not (local_valid or international_valid):
+                self.add_error(
+                    field_name,
+                    "Enter a valid Nigerian phone number: 08012345678 "
+                    "or +2348012345678. Spaces, parentheses, and hyphens "
+                    "may be used as separators.",
+                )
+
+        # Existing validation continues below.
         deanery = cleaned_data.get("deanery")
         parish = cleaned_data.get("parish")
         station = cleaned_data.get("station")

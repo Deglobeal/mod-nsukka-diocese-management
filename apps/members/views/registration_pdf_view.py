@@ -107,8 +107,8 @@ def membership_registration_pdf(request, application_id):
         fontSize=9,
         leading=12,
         textColor=colors.HexColor("#2E1065"),
-        spaceBefore=8,
-        spaceAfter=4,
+        spaceBefore=5,
+        spaceAfter=2,
     ))
     styles.add(ParagraphStyle(
         name="CellLabel",
@@ -122,7 +122,7 @@ def membership_registration_pdf(request, application_id):
         parent=styles["Normal"],
         fontName="Helvetica",
         fontSize=8,
-        leading=10,
+        leading=9,
         wordWrap="CJK",
     ))
     styles.add(ParagraphStyle(
@@ -136,59 +136,86 @@ def membership_registration_pdf(request, application_id):
     ))
 
     story = []
-    logo_path = (
+
+    branding_dir = (
         Path(settings.BASE_DIR)
         / "static"
         / "images"
         / "branding"
-        / "mainmodlogo.jpg"
+    )
+    mod_logo_path = branding_dir / "mainmodlogo.jpg"
+    nigeria_coat_path = branding_dir / "nigeria-coat-of-arms.png"
+
+    # Keep both emblems at the same visual height.
+    logo_size = 21 * mm
+    mod_logo = (
+        Image(str(mod_logo_path), width=logo_size, height=logo_size)
+        if mod_logo_path.is_file()
+        else Paragraph("M.O.D.", styles["Letterhead"])
+    )
+    nigeria_coat = (
+        Image(str(nigeria_coat_path), width=logo_size, height=logo_size)
+        if nigeria_coat_path.is_file()
+        else Paragraph("NIGERIA", styles["LetterheadSub"])
     )
 
-    if logo_path.is_file():
-        logo = Image(str(logo_path), width=23 * mm, height=23 * mm)
-        logo.hAlign = "CENTER"
-        letterhead = [
-            logo,
-            [
-                Paragraph(
-                    "M.O.D. NSUKKA DIOCESE",
-                    styles["Letterhead"],
-                ),
-                Paragraph(
-                    "MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA",
-                    styles["LetterheadSub"],
-                ),
-                Paragraph(
-                    "MEMBERSHIP REGISTRATION RECORD",
-                    styles["LetterheadSub"],
-                ),
-            ],
-        ]
-        header = Table(
-            [[letterhead[0], letterhead[1]]],
-            colWidths=[29 * mm, 145 * mm],
-        )
-        header.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("ALIGN", (0, 0), (0, 0), "CENTER"),
-            ("LINEBELOW", (0, 0), (-1, -1), 1, colors.HexColor("#2E1065")),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ]))
-        story.append(header)
-    else:
-        story.extend([
-            Paragraph("M.O.D. NSUKKA DIOCESE", styles["Letterhead"]),
-            Paragraph(
-                "MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA",
-                styles["LetterheadSub"],
-            ),
-            Spacer(1, 5),
-        ])
+    header_text = [
+        Paragraph("M.O.D. NSUKKA DIOCESE", styles["Letterhead"]),
+        Paragraph(
+            "MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA",
+            styles["LetterheadSub"],
+        ),
+        Spacer(1, 2),
+        Paragraph(
+            "MEMBERSHIP REGISTRATION FORM",
+            styles["DocumentTitle"],
+        ),
+    ]
 
-    story.append(Paragraph(
-        "MEMBERSHIP REGISTRATION FORM",
-        styles["DocumentTitle"],
-    ))
+    header = Table(
+        [[mod_logo, header_text, nigeria_coat]],
+        colWidths=[25 * mm, 128 * mm, 25 * mm],
+    )
+    header.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+        ("ALIGN", (1, 0), (1, 0), "CENTER"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LINEBELOW", (0, 0), (-1, -1), 1.5,
+         colors.HexColor("#008751")),
+    ]))
+    story.append(header)
+
+    # A narrow gold rule beneath the green header rule.
+    accent_rule = Table([[""]], colWidths=[178 * mm], rowHeights=[1.2 * mm])
+    accent_rule.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E6B800")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.extend([accent_rule, Spacer(1, 5)])
+
+    # The passport photo sits to the left of the application metadata,
+    # keeping the reference and submission details on the same header row.
+    passport_photo_flowable = "Photo unavailable"
+    if application.passport_photo:
+        try:
+            with application.passport_photo.open("rb") as photo_file:
+                passport_photo_bytes = photo_file.read()
+            passport_photo_flowable = Image(
+                BytesIO(passport_photo_bytes),
+                width=28 * mm,
+                height=34 * mm,
+                kind="proportional",
+            )
+        except (OSError, ValueError):
+            passport_photo_flowable = "Photo unavailable"
 
     metadata = [
         [
@@ -207,24 +234,38 @@ def membership_registration_pdf(request, application_id):
             _paragraph(_display(application, "category"), styles["CellValue"]),
         ],
     ]
+
     meta_table = Table(
         metadata,
-        colWidths=[32 * mm, 53 * mm, 28 * mm, 61 * mm],
+        colWidths=[25 * mm, 36 * mm, 23 * mm, 55 * mm],
     )
     meta_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1ECFA")),
         ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#F1ECFA")),
         ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#CFC6DF")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    story.extend([meta_table, Spacer(1, 5)])
+
+    header_table = Table(
+        [[passport_photo_flowable, meta_table]],
+        colWidths=[35 * mm, 139 * mm],
+    )
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("BOX", (0, 0), (0, 0), 0.5, colors.HexColor("#CFC6DF")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    story.extend([header_table, Spacer(1, 5)])
 
     sections = [
-        ("1. APPLICANT DETAILS", [
+        ("APPLICANT DETAILS", [
             ("Surname", "last_name"),
             ("First name", "first_name"),
             ("Middle name", "middle_name"),
@@ -236,7 +277,7 @@ def membership_registration_pdf(request, application_id):
             ("Email address", "email"),
             ("Phone number", "phone_number"),
         ]),
-        ("2. CHURCH AND MEMBERSHIP DETAILS", [
+        ("CHURCH AND MEMBERSHIP DETAILS", [
             ("Home diocese", "home_diocese"),
             ("Previous / transfer diocese", "previous_diocese"),
             ("Deanery", None),
@@ -256,19 +297,19 @@ def membership_registration_pdf(request, application_id):
             ("Current office", "current_office"),
             ("Other office held", "other_office_held"),
         ]),
-        ("3. PERSONAL AND RESIDENTIAL DETAILS", [
+        ("PERSONAL AND RESIDENTIAL DETAILS", [
             ("Village / town", "village_town"),
             ("State of origin", "state_of_origin"),
             ("Local government area", "local_government_area"),
             ("Occupation", "occupation"),
             ("Residential address", "residential_address"),
         ]),
-        ("4. SPONSOR DETAILS", [
+        ("SPONSOR DETAILS", [
             ("Sponsor's official M.O.D. ID", "sponsor_membership_id"),
             ("Sponsor's rank", "sponsor_rank"),
             ("Additional sponsor phone", "sponsor_additional_phone"),
         ]),
-        ("5. NEXT OF KIN AND EMERGENCY CONTACTS", [
+        ("NEXT OF KIN AND EMERGENCY CONTACTS", [
             ("Next of kin", "next_of_kin_name"),
             ("Next of kin phone", "next_of_kin_phone"),
             ("Next of kin relationship", "next_of_kin_relationship"),
@@ -279,7 +320,7 @@ def membership_registration_pdf(request, application_id):
             ("Emergency contact 2 phone", "emergency_contact_2_phone"),
             ("Emergency contact 2 relationship", "emergency_contact_2_relationship"),
         ]),
-        ("6. CONFIDENTIAL MEDICAL DETAILS", [
+        ("CONFIDENTIAL MEDICAL DETAILS", [
             ("Blood group", "blood_group"),
             ("Genotype", "genotype"),
             ("Height (cm)", "height_cm"),
@@ -287,11 +328,10 @@ def membership_registration_pdf(request, application_id):
             ("Medical conditions", "medical_conditions"),
             ("Allergies / medications", "allergies_medications"),
         ]),
-        ("7. DECLARATIONS", [
+        ("DECLARATIONS", [
             ("Accuracy declaration accepted", "declaration_accepted"),
             ("Verification consent accepted", "verification_consent"),
             ("Medical confidentiality acknowledged", "medical_confidentiality_acknowledged"),
-            ("Applicant signature image supplied", "signature_image"),
             ("Private medical evidence supplied", "medical_evidence"),
         ]),
     ]
@@ -331,10 +371,10 @@ def membership_registration_pdf(request, application_id):
             ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#D8D3E1")),
             ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F8F6FB")),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 5),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ]))
         story.append(table)
 
@@ -346,19 +386,37 @@ def membership_registration_pdf(request, application_id):
             "The application remains subject to the Diocese's review process.",
             styles["Notice"],
         ),
-        Spacer(1, 15),
+        Spacer(1, 8),
     ])
 
+    signature_flowable = "Signature not available"
+    if application.signature_image:
+        try:
+            with application.signature_image.open("rb") as signature_file:
+                signature_bytes = signature_file.read()
+            signature_flowable = Image(
+                BytesIO(signature_bytes),
+                width=48 * mm,
+                height=14 * mm,
+                kind="proportional",
+            )
+        except (OSError, ValueError):
+            signature_flowable = "Signature image unavailable"
+
     signatures = Table(
-        [[
-            "Applicant's signature: __________________________",
-            "Date: __________________",
-        ], [
-            "Reviewing officer: ______________________________",
-            "Date: __________________",
-        ]],
+        [
+            [
+                signature_flowable,
+                "Date: " + (
+                    application.submitted_at.strftime("%d %b %Y")
+                    if application.submitted_at
+                    else "__________________"
+                ),
+            ],
+            ["Applicant's handwritten signature", ""],
+            ["Reviewing officer: ______________________________", "Date: __________________"],
+        ],
         colWidths=[120 * mm, 54 * mm],
-        rowHeights=[12 * mm, 12 * mm],
     )
     signatures.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
@@ -369,6 +427,13 @@ def membership_registration_pdf(request, application_id):
 
     def footer(canvas, doc):
         canvas.saveState()
+
+        # Military-inspired Nigerian green and gold page-edge accents.
+        canvas.setFillColor(colors.HexColor("#008751"))
+        canvas.rect(3 * mm, 0, 1.5 * mm, A4[1], stroke=0, fill=1)
+        canvas.setFillColor(colors.HexColor("#E6B800"))
+        canvas.rect(5.2 * mm, 0, 1.2 * mm, A4[1], stroke=0, fill=1)
+
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.HexColor("#666666"))
         canvas.drawString(
