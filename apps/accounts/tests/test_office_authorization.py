@@ -26,14 +26,17 @@ class OfficeAuthorizationTests(TestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Test Deanery",
+            code="TD2663FC6",
         )
         cls.other_deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Other Deanery",
+            code="T2D1B022D",
         )
         cls.other_diocese_deanery = Deanery.objects.create(
             diocese=cls.other_diocese,
             name="Other Diocese Deanery",
+            code="T249FA1C6",
         )
 
         cls.parish = Parish.objects.create(

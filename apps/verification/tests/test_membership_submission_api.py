@@ -17,6 +17,7 @@ class MembershipSubmissionAPITests(APITestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Submission Test Deanery",
+            code="T4AD1C91B",
         )
         cls.parish = Parish.objects.create(
             deanery=cls.deanery,
@@ -26,6 +27,7 @@ class MembershipSubmissionAPITests(APITestCase):
         cls.other_deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Other Test Deanery",
+            code="T4DF6ED24",
         )
         cls.other_parish = Parish.objects.create(
             deanery=cls.other_deanery,

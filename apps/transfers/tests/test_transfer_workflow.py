@@ -27,14 +27,17 @@ class TransferWorkflowTests(TestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="First Deanery",
+            code="TFD0877BD",
         )
         cls.other_deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Second Deanery",
+            code="TB7C588E9",
         )
         cls.other_diocese_deanery = Deanery.objects.create(
             diocese=cls.other_diocese,
             name="Other Diocese Deanery",
+            code="T249FA1C6",
         )
 
         cls.source_parish = Parish.objects.create(

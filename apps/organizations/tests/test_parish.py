@@ -13,6 +13,7 @@ class ParishModelTests(TestCase):
         self.deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,
+            code="T69B5F6E4",
         )
 
     def test_parish_belongs_to_a_deanery(self):
@@ -90,6 +91,7 @@ class ParishModelTests(TestCase):
         another_deanery = Deanery.objects.create(
             name="Nsukka North",
             diocese=self.diocese,
+            code="TF52EA497",
         )
 
         first = Parish.objects.create(
@@ -123,6 +125,7 @@ class ParishModelTests(TestCase):
         another_deanery = Deanery.objects.create(
             name="Nsukka North",
             diocese=self.diocese,
+            code="TF52EA497",
         )
 
         first = Parish.objects.create(

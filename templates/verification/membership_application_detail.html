@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Member Profile — M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/membership-review-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="review-dashboard mod-member-profile">
+
+    <nav class="mod-profile-toolbar no-print" aria-label="Profile actions">
+        <a href="{% url dashboard_url_name %}" class="mod-profile-back">
+            <span aria-hidden="true">←</span> {{ dashboard_label }} Dashboard
+        </a>
+        <div class="mod-profile-toolbar__actions">
+            <a class="mod-profile-button mod-profile-button--primary"
+               href="{% url 'membership_review_dashboard:member_profile_form' application.pk %}">
+                Member Profile Form
+            </a>
+        </div>
+    </nav>
+
+    <header class="mod-profile-hero">
+        <div class="mod-profile-hero__identity">
+            <div class="mod-profile-avatar">
+                {% for item in media %}
+                    {% if item.label == "Passport photograph" %}
+                        {% if item.available %}
+                            <img src="{{ item.url }}" alt="Passport photograph of {{ application.applicant_name|default:'member' }}">
+                        {% else %}
+                            <span class="mod-profile-avatar__fallback">Photo unavailable</span>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="mod-profile-hero__details">
+                <p class="mod-profile-kicker">M.O.D. NSUKKA DIOCESE</p>
+                <h1>{{ application.applicant_name|default:"Member name unavailable" }}</h1>
+                <p class="mod-profile-hero__subtitle">
+                    {{ application.get_category_display|default:"Membership applicant" }}
+                    <span aria-hidden="true">·</span>
+                    Application #{{ application.pk|stringformat:"06d" }}
+                </p>
+                <div class="mod-profile-identifiers" aria-label="Membership identifiers">
+                    <span>
+                        <strong>Uniform Tag No.</strong>
+                        {% if membership_identity %}{{ membership_identity.uniform_id }}{% elif membership_card %}{{ membership_card.uniform_id|default:"Not issued" }}{% else %}Not issued{% endif %}
+                    </span>
+                    <span>
+                        <strong>M.O.D. ID No.</strong>
+                        {% if membership_identity %}{{ membership_identity.official_membership_id }}{% elif membership_card %}{{ membership_card.official_membership_id|default:"Not issued" }}{% else %}Not issued{% endif %}
+                    </span>
+                </div>
+                <div class="mod-profile-badges">
+                    <span class="mod-profile-badge">{{ application.get_stage_display }}</span>
+                    <span class="mod-profile-badge mod-profile-badge--gold">
+                        {{ application.get_category_display|default:"Category not specified" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mod-profile-hero__meta">
+            <div>
+                <span>Application reference</span>
+                <strong>MOD-APP-{{ application.pk|stringformat:"06d" }}</strong>
+            </div>
+            <div>
+                <span>Date submitted</span>
+                <strong>{{ application.submitted_at|date:"d M Y"|default:"Not recorded" }}</strong>
+            </div>
+            <div>
+                <span>Current review stage</span>
+                <strong>{{ application.get_stage_display }}</strong>
+            </div>
+        </div>
+    </header>
+
+    <section class="mod-profile-approval-overview" aria-labelledby="approval-overview-title">
+        <div class="mod-profile-section-heading">
+            <div>
+                <p class="mod-profile-kicker">REVIEW WORKFLOW</p>
+                <h2 id="approval-overview-title">Approval progress</h2>
+            </div>
+            <span class="mod-profile-section-note">Parish → Deanery → Diocese</span>
+        </div>
+
+        <div class="mod-profile-approval-track">
+            {% for approval in approvals %}
+                <article class="mod-profile-approval-step">
+                    <div class="mod-profile-approval-step__top">
+                        <span class="mod-profile-step-number">{{ forloop.counter }}</span>
+                        <span class="mod-profile-status">{{ approval.status }}</span>
+                    </div>
+                    <h3>{{ approval.label }}</h3>
+                    <p class="mod-profile-approval-step__person">
+                        {% if approval.review %}
+                            {{ approval.reviewer_name|default:"Reviewer account unavailable" }}
+                        {% else %}
+                            Awaiting review record
+                        {% endif %}
+                    </p>
+                    <p class="mod-profile-approval-step__date">
+                        {% if approval.reviewed_at %}
+                            {{ approval.reviewed_at|date:"d M Y, H:i" }}
+                        {% else %}
+                            No decision date recorded
+                        {% endif %}
+                    </p>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="mod-profile-content">
+        <div class="mod-profile-main-column">
+            {% for section in sections %}
+                <section class="mod-profile-card" aria-labelledby="profile-section-{{ forloop.counter }}">
+                    <header class="mod-profile-card__heading">
+                        <span class="mod-profile-card__index">{{ forloop.counter|stringformat:"02d" }}</span>
+                        <div>
+                            <h2 id="profile-section-{{ forloop.counter }}">{{ section.title }}</h2>
+                            <p>Member record information</p>
+                        </div>
+                    </header>
+                    <dl class="mod-profile-fields">
+                        {% for row in section.rows %}
+                            <div class="mod-profile-field">
+                                <dt>{{ row.label }}</dt>
+                                <dd>
+                                    {% if row.value %}
+                                        {{ row.value|linebreaksbr }}
+                                    {% else %}
+                                        <span class="mod-profile-empty">Not provided</span>
+                                    {% endif %}
+                                </dd>
+                            </div>
+                        {% endfor %}
+                    </dl>
+                </section>
+            {% endfor %}
+
+        </div>
+
+        <aside class="mod-profile-side-column">
+            <section class="mod-profile-privacy-note">
+                <span aria-hidden="true">🔒</span>
+                <div>
+                    <h2>Confidentiality</h2>
+                    <p>
+                        Medical details and restricted medical evidence are not displayed
+                        in this general membership profile.
+                    </p>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <section class="mod-profile-card mod-profile-review-action no-print">
+        <header class="mod-profile-card__heading">
+            <span class="mod-profile-card__index">✎</span>
+            <div>
+                <h2>Chairman review action</h2>
+                <p>Submit your decision through the existing authorized workflow.</p>
+            </div>
+        </header>
+
+        <form method="post" action="{% url dashboard_url_name %}" class="review-form">
+            {% csrf_token %}
+            <input type="hidden" name="application_id" value="{{ application.pk }}">
+
+            <div class="review-form__field">
+                <label for="detail-decision">Decision</label>
+                <select id="detail-decision" name="decision" required>
+                    <option value="">Choose a decision</option>
+                    {% for value, label in decision_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="review-form__field">
+                <label for="detail-comments">Comments or information required</label>
+                <textarea id="detail-comments" name="comments" rows="4" maxlength="5000"
+                    placeholder="Explain your decision or specify corrections needed."></textarea>
+            </div>
+
+            <button type="submit">Submit review decision</button>
+        </form>
+    </section>
+
+</main>
+{% endblock %}

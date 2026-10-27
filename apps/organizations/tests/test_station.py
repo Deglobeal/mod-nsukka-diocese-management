@@ -18,6 +18,7 @@ class StationModelTests(TestCase):
         self.deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,
+            code="T69B5F6E4",
         )
         self.parish = Parish.objects.create(
             name="St. Mary's Parish",

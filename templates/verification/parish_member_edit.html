@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Parish Member{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/membership-review-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="review-dashboard">
+    <header class="review-dashboard__header">
+        <p class="review-dashboard__eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1>Edit Member Details</h1>
+        <p class="review-dashboard__description">
+            Update the basic details for {{ member.full_name }}.
+            Membership approval, rank, office and medical records are not edited here.
+        </p>
+        <p>
+            <a href="{% url 'membership_review_dashboard:parish_members' %}">
+                Back to Parish Member Directory
+            </a>
+        </p>
+    </header>
+
+    {% if messages %}
+        <section class="review-dashboard__messages" aria-label="Notifications">
+            {% for message in messages %}
+                <p class="review-message {{ message.tags }}">{{ message }}</p>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    <section class="review-panel">
+        <header class="review-panel__heading">
+            <h2>{{ member.full_name }}</h2>
+            <p>Member record #{{ member.pk }} · {{ member.parish.name }}</p>
+        </header>
+
+        {% if form.non_field_errors %}
+            <div role="alert" aria-live="polite">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <form method="post" class="review-form">
+            {% csrf_token %}
+
+            <div class="review-form__field">
+                {{ form.first_name.label_tag }}
+                {{ form.first_name }}
+                {{ form.first_name.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.middle_name.label_tag }}
+                {{ form.middle_name }}
+                {{ form.middle_name.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.last_name.label_tag }}
+                {{ form.last_name }}
+                {{ form.last_name.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.station.label_tag }}
+                {{ form.station }}
+                {{ form.station.errors }}
+            </div>
+
+            <hr>
+
+            <h3>Contact and personal details</h3>
+
+            <div class="review-form__field">
+                {{ form.email.label_tag }}
+                {{ form.email }}
+                {{ form.email.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.phone_number.label_tag }}
+                {{ form.phone_number }}
+                {{ form.phone_number.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.date_of_birth.label_tag }}
+                {{ form.date_of_birth }}
+                {{ form.date_of_birth.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.occupation.label_tag }}
+                {{ form.occupation }}
+                {{ form.occupation.errors }}
+            </div>
+
+            <div class="review-form__field">
+                {{ form.residential_address.label_tag }}
+                {{ form.residential_address }}
+                {{ form.residential_address.errors }}
+            </div>
+
+            <p>
+                The member's parish, membership status, rank, office assignments,
+                approval history and medical records cannot be changed on this page.
+            </p>
+
+            <button type="submit">Save Member Details</button>
+            <a href="{% url 'membership_review_dashboard:parish_members' %}">
+                Cancel
+            </a>
+        </form>
+    </section>
+</main>
+{% endblock %}

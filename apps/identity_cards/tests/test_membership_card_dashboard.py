@@ -30,6 +30,7 @@ class MembershipCardDashboardTests(TestCase):
         cls.deanery = Deanery.objects.create(
             name="Nsukka Test Deanery",
             diocese=cls.diocese,
+            code="TF16F1E44",
         )
         cls.parish = Parish.objects.create(
             name="Nsukka Test Parish",
@@ -39,6 +40,7 @@ class MembershipCardDashboardTests(TestCase):
         cls.other_deanery = Deanery.objects.create(
             name="Other Test Deanery",
             diocese=cls.other_diocese,
+            code="T4DF6ED24",
         )
         cls.other_parish = Parish.objects.create(
             name="Other Test Parish",

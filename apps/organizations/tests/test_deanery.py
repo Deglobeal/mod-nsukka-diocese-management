@@ -15,6 +15,7 @@ class DeaneryModelTests(TestCase):
         deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,
+            code="D01",
         )
 
         self.assertEqual(deanery.diocese, self.diocese)
@@ -27,6 +28,7 @@ class DeaneryModelTests(TestCase):
         deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,
+            code="D01",
         )
 
         self.assertTrue(deanery.is_active)
@@ -35,17 +37,16 @@ class DeaneryModelTests(TestCase):
         deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,
+            code="D01",
         )
 
-        self.assertEqual(
-            str(deanery),
-            "Nsukka Central — Nsukka Diocese",
-        )
+        self.assertEqual(str(deanery), "Nsukka Central (D01)")
 
     def test_duplicate_name_in_same_diocese_is_rejected(self):
         Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,
+            code="D01",
         )
 
         with self.assertRaises(IntegrityError):
@@ -53,6 +54,7 @@ class DeaneryModelTests(TestCase):
                 Deanery.objects.create(
                     name="Nsukka Central",
                     diocese=self.diocese,
+                    code="D02",
                 )
 
     def test_same_name_is_allowed_in_different_dioceses(self):
@@ -64,22 +66,29 @@ class DeaneryModelTests(TestCase):
         first = Deanery.objects.create(
             name="Central",
             diocese=self.diocese,
+            code="D01",
         )
         second = Deanery.objects.create(
             name="Central",
             diocese=another_diocese,
+            code="D02",
         )
 
         self.assertNotEqual(first.diocese, second.diocese)
         self.assertEqual(first.name, second.name)
+        self.assertNotEqual(first.code, second.code)
 
-    def test_deanery_code_is_optional(self):
-        deanery = Deanery.objects.create(
+    def test_deanery_code_is_required_by_model_validation(self):
+        deanery = Deanery(
             name="Nsukka North",
             diocese=self.diocese,
         )
 
-        self.assertEqual(deanery.code, "")
+        with self.assertRaisesMessage(
+            Exception,
+            "This field cannot be blank.",
+        ):
+            deanery.full_clean()
 
     def test_deanery_code_preserves_leading_zeros(self):
         deanery = Deanery.objects.create(
@@ -105,22 +114,22 @@ class DeaneryModelTests(TestCase):
                     code="D01",
                 )
 
-    def test_same_code_is_allowed_in_different_dioceses(self):
+    def test_duplicate_code_is_rejected_across_different_dioceses(self):
         another_diocese = Diocese.objects.create(
             name="Another Diocese",
             code="037",
         )
 
-        first = Deanery.objects.create(
+        Deanery.objects.create(
             name="Central",
             diocese=self.diocese,
             code="D01",
         )
-        second = Deanery.objects.create(
-            name="Central",
-            diocese=another_diocese,
-            code="D01",
-        )
 
-        self.assertEqual(first.code, second.code)
-        self.assertNotEqual(first.diocese, second.diocese)
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Deanery.objects.create(
+                    name="Central",
+                    diocese=another_diocese,
+                    code="D01",
+                )

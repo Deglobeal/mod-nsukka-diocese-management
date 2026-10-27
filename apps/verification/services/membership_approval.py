@@ -18,6 +18,74 @@ NEXT_STAGE = {
         MembershipApplication.Stage.APPROVED,
 }
 
+
+def _normalized_name_part(value):
+    return " ".join((value or "").casefold().split())
+
+
+def _normalized_phone(value):
+    digits = "".join(
+        character for character in (value or "") if character.isdigit()
+    )
+    if digits.startswith("234") and len(digits) == 13:
+        digits = "0" + digits[3:]
+    return digits if len(digits) >= 7 else ""
+
+
+def _find_possible_duplicate_member(application):
+    """Find a same-parish member with the same name and phone or birth date."""
+    applicant_name = tuple(
+        _normalized_name_part(value)
+        for value in (
+            application.first_name,
+            application.middle_name,
+            application.last_name,
+        )
+    )
+    if not applicant_name[0] or not applicant_name[2]:
+        return None
+
+    applicant_phone = _normalized_phone(application.phone_number)
+
+    candidates = (
+        Member.objects.filter(parish_id=application.parish_id)
+        .prefetch_related("membership_applications")
+        .order_by("pk")
+    )
+
+    for candidate in candidates:
+        candidate_name = tuple(
+            _normalized_name_part(value)
+            for value in (
+                candidate.first_name,
+                candidate.middle_name,
+                candidate.last_name,
+            )
+        )
+        if candidate_name != applicant_name:
+            continue
+
+        known_birth_dates = set()
+        known_phones = set()
+
+        for previous_application in candidate.membership_applications.all():
+            if previous_application.date_of_birth:
+                known_birth_dates.add(previous_application.date_of_birth)
+            phone = _normalized_phone(previous_application.phone_number)
+            if phone:
+                known_phones.add(phone)
+
+        same_birth_date = (
+            application.date_of_birth is not None
+            and application.date_of_birth in known_birth_dates
+        )
+        same_phone = bool(applicant_phone and applicant_phone in known_phones)
+
+        if same_birth_date or same_phone:
+            return candidate
+
+    return None
+
 REQUIRED_REVIEW_LEVEL = {
     MembershipApplication.Stage.PARISH_REVIEW:
         MembershipReview.ReviewLevel.PARISH,
@@ -133,6 +201,12 @@ def record_membership_review(
             member.status = Member.Status.ACTIVE
             member.save(update_fields=["status", "updated_at"])
         else:
+            if _find_possible_duplicate_member(application) is not None:
+                raise ValidationError(
+                    "A possible duplicate member record was found in this parish. "
+                    "Review the existing member before approving this application."
+                )
+
             member = Member.objects.create(
                 first_name=application.first_name,
                 middle_name=application.middle_name,

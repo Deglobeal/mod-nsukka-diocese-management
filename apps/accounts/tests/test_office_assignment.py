@@ -20,10 +20,12 @@ class OfficeAssignmentTests(TestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Test Deanery",
+            code="TD2663FC6",
         )
         cls.other_deanery = Deanery.objects.create(
             diocese=cls.other_diocese,
             name="Other Deanery",
+            code="T2D1B022D",
         )
         cls.parish = Parish.objects.create(
             deanery=cls.deanery,

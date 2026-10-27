@@ -15,6 +15,7 @@ class MembershipApplicationTests(TestCase):
         deanery = Deanery.objects.create(
             diocese=diocese,
             name="Test Deanery",
+            code="TD2663FC6",
         )
         cls.parish = Parish.objects.create(
             deanery=deanery,

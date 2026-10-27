@@ -24,14 +24,17 @@ class OrganizationManagementTests(TestCase):
         cls.deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=cls.diocese,
+            code="T69B5F6E4",
         )
         cls.other_deanery = Deanery.objects.create(
             name="Other Deanery",
             diocese=cls.diocese,
+            code="T2D1B022D",
         )
         cls.foreign_deanery = Deanery.objects.create(
             name="Foreign Deanery",
             diocese=cls.other_diocese,
+            code="TFDA82CAF",
         )
         cls.parish = Parish.objects.create(
             name="St. Mary's Parish",

@@ -43,20 +43,14 @@ def _paragraph(value, style):
     return Paragraph(escape(str(value)).replace("\n", "<br/>"), style)
 
 
-def membership_registration_pdf(request, application_id):
-    allowed_ids = request.session.get("registration_application_ids", [])
-    if application_id not in allowed_ids:
-        raise Http404("Registration document not found.")
-
-    application = get_object_or_404(
-        MembershipApplication.objects.select_related(
-            "parish",
-            "station",
-            "parish__deanery",
-        ),
-        pk=application_id,
-    )
-
+def _build_membership_registration_pdf(
+    application,
+    *,
+    include_medical=True,
+    include_approvals=False,
+    include_member_identifiers=False,
+    attachment=True,
+):
     buffer = BytesIO()
     document = SimpleDocTemplate(
         buffer,
@@ -264,6 +258,44 @@ def membership_registration_pdf(request, application_id):
     ]))
     story.extend([header_table, Spacer(1, 5)])
 
+    if include_member_identifiers and application.member_id:
+        from apps.identity_cards.models import MembershipCard
+        from apps.identity_cards.models.membership_identity import MembershipIdentity
+
+        identity = MembershipIdentity.objects.filter(
+            member_id=application.member_id
+        ).first()
+        card = MembershipCard.objects.filter(
+            member_id=application.member_id
+        ).first()
+
+        identifier_rows = [
+            [
+                _paragraph("Official M.O.D. membership ID", styles["CellLabel"]),
+                _paragraph(
+                    (
+                        identity.official_membership_id if identity
+                        else card.official_membership_id if card
+                        else "Not issued"
+                    ),
+                    styles["CellValue"],
+                ),
+            ],
+            [
+                _paragraph("Uniform tag ID", styles["CellLabel"]),
+                _paragraph(
+                    (
+                        identity.uniform_id if identity
+                        else card.uniform_id if card
+                        else "Not issued"
+                    ),
+                    styles["CellValue"],
+                ),
+            ],
+        ]
+        story.append(Paragraph("ISSUED MEMBERSHIP IDENTIFIERS", styles["SectionHeading"]))
+        story.append(Table(identifier_rows, colWidths=[59 * mm, 115 * mm]))
+
     sections = [
         ("APPLICANT DETAILS", [
             ("Surname", "last_name"),
@@ -337,6 +369,19 @@ def membership_registration_pdf(request, application_id):
     ]
 
     for heading, fields in sections:
+        if not include_medical:
+            if heading == "CONFIDENTIAL MEDICAL DETAILS":
+                continue
+            if heading == "DECLARATIONS":
+                fields = [
+                    (label, field_name)
+                    for label, field_name in fields
+                    if field_name not in {
+                        "medical_confidentiality_acknowledged",
+                        "medical_evidence",
+                    }
+                ]
+
         story.append(Paragraph(escape(heading), styles["SectionHeading"]))
         rows = []
         for label, field_name in fields:
@@ -448,15 +493,74 @@ def membership_registration_pdf(request, application_id):
         )
         canvas.restoreState()
 
+    if include_approvals:
+        from apps.verification.models import MembershipReview
+
+        story.append(Paragraph("APPROVAL HISTORY", styles["SectionHeading"]))
+        approval_rows = [[
+            _paragraph("Review level", styles["CellLabel"]),
+            _paragraph("Decision", styles["CellLabel"]),
+            _paragraph("Reviewer", styles["CellLabel"]),
+            _paragraph("Date", styles["CellLabel"]),
+            _paragraph("Comments", styles["CellLabel"]),
+        ]]
+        for review in application.reviews.select_related("reviewer").order_by(
+            "reviewed_at", "pk"
+        ):
+            approval_rows.append([
+                _paragraph(review.get_review_level_display(), styles["CellValue"]),
+                _paragraph(review.get_decision_display(), styles["CellValue"]),
+                _paragraph(
+                    review.reviewer.get_full_name() or review.reviewer.get_username()
+                    if review.reviewer else "Unavailable",
+                    styles["CellValue"],
+                ),
+                _paragraph(
+                    review.reviewed_at.strftime("%d %b %Y")
+                    if review.reviewed_at else "Not recorded",
+                    styles["CellValue"],
+                ),
+                _paragraph(review.comments or "—", styles["CellValue"]),
+            ])
+        approvals_table = Table(
+            approval_rows,
+            colWidths=[25 * mm, 27 * mm, 35 * mm, 24 * mm, 63 * mm],
+            repeatRows=1,
+        )
+        approvals_table.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#D8D3E1")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1ECFA")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+        ]))
+        story.append(approvals_table)
+
     document.build(story, onFirstPage=footer, onLaterPages=footer)
 
     response = HttpResponse(
         buffer.getvalue(),
         content_type="application/pdf",
     )
+    disposition = "attachment" if attachment else "inline"
     response["Content-Disposition"] = (
-        f'attachment; filename="MOD-Membership-Application-{application.pk}.pdf"'
+        f'{disposition}; filename="MOD-Membership-Application-{application.pk}.pdf"'
     )
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+def membership_registration_pdf(request, application_id):
+    allowed_ids = request.session.get("registration_application_ids", [])
+    if application_id not in allowed_ids:
+        raise Http404("Registration document not found.")
+
+    application = get_object_or_404(
+        MembershipApplication.objects.select_related(
+            "parish",
+            "station",
+            "parish__deanery",
+        ),
+        pk=application_id,
+    )
+    return _build_membership_registration_pdf(application)

@@ -1,5 +1,7 @@
 from django.urls import path
 
+from apps.members.views.member_dashboard_view import member_dashboard
+
 from apps.members.views.registration_pdf_view import membership_registration_pdf
 from apps.members.views.registration_view import (
     membership_registration,
@@ -9,6 +11,7 @@ from apps.members.views.registration_view import (
 app_name = "members"
 
 urlpatterns = [
+    path("portal/", member_dashboard, name="portal"),
     path("register/", membership_registration, name="register"),
     path(
         "register/received/<int:application_id>/pdf/",
