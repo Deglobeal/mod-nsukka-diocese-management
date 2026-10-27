@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Membership Identity Records | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+    <link rel="stylesheet" href="{% static 'css/pages/diocese-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="review-dashboard">
+    <header class="review-dashboard__header">
+        <p class="review-dashboard__eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1>Membership Identity Records</h1>
+        <p class="review-dashboard__description">
+            Official membership identifiers allocated after final Diocese approval.
+        </p>
+        <div class="review-dashboard__scope">
+            <span>Authorized Diocese</span>
+            <strong>{{ diocese.name }}</strong>
+            <span>{{ identity_count }} record{{ identity_count|pluralize }}</span>
+        </div>
+    </header>
+
+    <p>
+        <a href="{% url 'membership_review_dashboard:diocese' %}">
+            Return to Diocese Chairman Dashboard
+        </a>
+    </p>
+
+    <section class="review-panel" aria-labelledby="identity-records-heading">
+        <div class="review-panel__heading">
+            <h2 id="identity-records-heading">Allocated identities</h2>
+            <p>This page is read-only. Physical card issuance remains separate.</p>
+        </div>
+
+        {% for identity in identities %}
+            <article class="review-application">
+                <header class="review-application__header">
+                    <div>
+                        <h3>{{ identity.member.full_name }}</h3>
+                        <p>Official ID: <strong>{{ identity.official_membership_id }}</strong></p>
+                    </div>
+                    <span class="review-stage">Allocated</span>
+                </header>
+
+                <dl class="review-application__details">
+                    <div>
+                        <dt>Uniform lookup ID</dt>
+                        <dd>{{ identity.uniform_id }}</dd>
+                    </div>
+                    <div>
+                        <dt>Deanery</dt>
+                        <dd>{{ identity.member.parish.deanery.name }}</dd>
+                    </div>
+                    <div>
+                        <dt>Parish</dt>
+                        <dd>{{ identity.member.parish.name }}</dd>
+                    </div>
+                    <div>
+                        <dt>Allocated on</dt>
+                        <dd>{{ identity.allocated_at|date:"j M Y, H:i" }}</dd>
+                    </div>
+                </dl>
+            </article>
+        {% empty %}
+            <div class="review-empty">
+                <h3>No membership identities allocated yet</h3>
+                <p>Records will appear here after final Diocese approval.</p>
+            </div>
+        {% endfor %}
+    </section>
+</main>
+{% endblock %}

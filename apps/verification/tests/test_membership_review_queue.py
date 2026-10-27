@@ -27,14 +27,17 @@ class MembershipReviewQueueSelectorTests(TestCase):
         cls.deanery_a = Deanery.objects.create(
             diocese=cls.diocese,
             name="Deanery A",
+            code="T84B13961",
         )
         cls.deanery_b = Deanery.objects.create(
             diocese=cls.diocese,
             name="Deanery B",
+            code="T15D390BC",
         )
         cls.other_deanery = Deanery.objects.create(
             diocese=cls.other_diocese,
             name="Other Deanery",
+            code="T2D1B022D",
         )
 
         cls.parish_a1 = Parish.objects.create(

@@ -10,9 +10,7 @@ class Deanery(models.Model):
     name = models.CharField(max_length=150)
     code = models.CharField(
         max_length=20,
-        blank=True,
-        default="",
-        help_text="Official Deanery code. Can be added or updated when confirmed.",
+        help_text="Official Deanery code. Required for every Deanery.",
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -28,9 +26,8 @@ class Deanery(models.Model):
                 name="uniq_deanery_name_per_diocese",
             ),
             models.UniqueConstraint(
-                fields=["diocese", "code"],
-                condition=~models.Q(code=""),
-                name="uniq_deanery_code_per_diocese",
+                fields=["code"],
+                name="uniq_deanery_code_globally",
             ),
         ]
 

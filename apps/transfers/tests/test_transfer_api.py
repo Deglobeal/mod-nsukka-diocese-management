@@ -26,14 +26,17 @@ class TransferAPITests(APITestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="First Deanery",
+            code="TFD0877BD",
         )
         cls.other_deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Second Deanery",
+            code="TB7C588E9",
         )
         cls.outside_deanery = Deanery.objects.create(
             diocese=cls.other_diocese,
             name="Outside Deanery",
+            code="T709FDB61",
         )
 
         cls.source_parish = Parish.objects.create(

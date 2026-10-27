@@ -23,6 +23,7 @@ class MembershipVerificationAPITests(TestCase):
         cls.deanery = Deanery.objects.create(
             name="Verification Deanery",
             diocese=cls.diocese,
+            code="T5C25EDFF",
         )
         cls.parish = Parish.objects.create(
             name="Verification Parish",

@@ -30,6 +30,7 @@ class MembershipCardIssuanceTests(TestCase):
         cls.deanery = Deanery.objects.create(
             name="Test Deanery",
             diocese=cls.diocese,
+            code="TD2663FC6",
         )
         cls.parish = Parish.objects.create(
             name="Test Parish",
@@ -38,6 +39,7 @@ class MembershipCardIssuanceTests(TestCase):
         cls.other_deanery = Deanery.objects.create(
             name="Other Deanery",
             diocese=cls.other_diocese,
+            code="T2D1B022D",
         )
         cls.other_parish = Parish.objects.create(
             name="Other Parish",

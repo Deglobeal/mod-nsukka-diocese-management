@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Parish Member Directory{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/membership-review-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="review-dashboard">
+    <header class="review-dashboard__header">
+        <p class="review-dashboard__eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1>Parish Member Directory</h1>
+        <p class="review-dashboard__description">
+            Search active members within your authorized parish assignment.
+        </p>
+        <p>
+            <a href="{% url 'membership_review_dashboard:parish' %}">
+                Back to Parish Chairman Dashboard
+            </a>
+        </p>
+    </header>
+
+    <section class="review-dashboard__stats" aria-label="Directory summary">
+        <article class="review-stat">
+            <span>Members matching your filters</span>
+            <strong>{{ member_count }}</strong>
+        </article>
+    </section>
+
+    <section class="review-panel">
+        <form method="get" class="review-form" role="search">
+            <div class="review-form__field">
+                <label for="member-search">Search members</label>
+                <input
+                    id="member-search"
+                    type="search"
+                    name="q"
+                    value="{{ search_query }}"
+                    maxlength="100"
+                    placeholder="Name, station, phone, email, rank or office"
+                >
+            </div>
+
+            <div class="review-form__field">
+                <label for="member-category">Membership category</label>
+                <select id="member-category" name="category">
+                    <option value="">All categories</option>
+                    {% for value, label in category_choices %}
+                        <option value="{{ value }}"
+                            {% if selected_category == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit">Apply filters</button>
+            <a href="{% url 'membership_review_dashboard:parish_members' %}">
+                Clear filters
+            </a>
+        </form>
+
+        <p class="review-directory__export">
+            <a href="{% url 'membership_review_dashboard:parish_members_csv' %}?q={{ search_query|urlencode }}&amp;category={{ selected_category|urlencode }}">
+                Download filtered CSV
+            </a>
+        </p>
+
+        <div class="review-directory__table-wrap">
+            <table class="review-directory__table">
+                <thead>
+                    <tr>
+                        <th scope="col">Member</th>
+                        <th scope="col">Station</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Rank recorded</th>
+                        <th scope="col">Office recorded</th>
+                        <th scope="col">Contact</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td>
+                                <strong>{{ row.member.full_name }}</strong>
+                                <span class="review-directory__subtext">
+                                    Record #{{ row.member.pk }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if row.member.station %}
+                                    {{ row.member.station.name }}
+                                {% else %}
+                                    Not assigned
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row.application and row.application.category %}
+                                    {{ row.application.get_category_display }}
+                                {% else %}
+                                    Not recorded
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row.application.current_rank %}
+                                    {{ row.application.current_rank }}
+                                {% else %}
+                                    Not recorded
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row.application.current_office %}
+                                    {{ row.application.current_office }}
+                                {% else %}
+                                    Not recorded
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if row.application.phone_number %}
+                                    <a href="tel:{{ row.application.phone_number }}">
+                                        {{ row.application.phone_number }}
+                                    </a>
+                                {% endif %}
+                                {% if row.application.email %}
+                                    <span class="review-directory__subtext">
+                                        {{ row.application.email }}
+                                    </span>
+                                {% endif %}
+                                {% if not row.application.phone_number and not row.application.email %}
+                                    Not recorded
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'membership_review_dashboard:parish_member_edit' row.member.pk %}">
+                                    Edit
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="review-directory__empty">
+                                No active members match these filters.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p class="review-directory__note">
+            Rank and office are taken from the latest approved registration
+            application. They are not proof of a current appointment.
+        </p>
+    </section>
+</main>
+{% endblock %}

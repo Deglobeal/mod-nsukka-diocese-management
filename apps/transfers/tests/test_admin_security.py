@@ -26,6 +26,7 @@ class TransferAdminSecurityTests(TestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Transfer Test Deanery",
+            code="TA1CCE416",
         )
         cls.source_parish = Parish.objects.create(
             deanery=cls.deanery,

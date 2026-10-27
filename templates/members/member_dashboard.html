@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Member Portal | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/member-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="member-portal">
+    <header class="member-portal-header">
+        <div>
+            <p class="member-portal-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
+            <h1>Member portal</h1>
+            <p class="member-portal-intro">
+                Verify your official membership identity to continue.
+            </p>
+        </div>
+    </header>
+
+    <section class="member-profile-section" aria-labelledby="lookup-heading">
+        <div class="member-section-heading">
+            <div>
+                <h2 id="lookup-heading">Find your membership record</h2>
+                <p>Enter both identifiers printed on your issued membership card.</p>
+            </div>
+        </div>
+
+        {% if error_message %}
+            <div class="member-portal-error" role="alert">
+                {{ error_message }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'members:portal' %}"
+              class="member-lookup-form">
+            {% csrf_token %}
+
+            <div class="member-lookup-field">
+                <label for="official_membership_id">
+                    Official membership ID
+                </label>
+                <input
+                    id="official_membership_id"
+                    name="official_membership_id"
+                    type="text"
+                    maxlength="80"
+                    autocomplete="off"
+                    value="{{ request.POST.official_membership_id|default:'' }}"
+                    required
+                >
+            </div>
+
+            <div class="member-lookup-field">
+                <label for="uniform_id">Uniform tag ID</label>
+                <input
+                    id="uniform_id"
+                    name="uniform_id"
+                    type="text"
+                    maxlength="8"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    value="{{ request.POST.uniform_id|default:'' }}"
+                    required
+                >
+            </div>
+
+            <button class="member-portal-primary-button" type="submit">
+                Verify membership
+            </button>
+        </form>
+    </section>
+
+    {% if card and member %}
+        <section class="member-identity-card"
+                 aria-labelledby="member-name">
+            <div class="member-identity-mark" aria-hidden="true">
+                {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+            </div>
+
+            <div class="member-identity-copy">
+                <p class="member-card-label">IDENTITY MATCH CONFIRMED</p>
+                <h2 id="member-name">{{ member.full_name }}</h2>
+                <p>{{ parish_name }} · {{ station_name }}</p>
+                <p>{{ deanery_name }} · {{ diocese_name }}</p>
+                <p>Official ID: {{ card.official_membership_id }}</p>
+                <p>Uniform ID: {{ card.uniform_id }}</p>
+            </div>
+
+            <span class="member-status member-status-{{ member.status|slugify }}">
+                {{ member.get_status_display }}
+            </span>
+        </section>
+
+        <section class="member-correction-notice">
+            <div>
+                <h2>Need to correct your information?</h2>
+                <p>
+                    Official profile corrections require identity verification
+                    and approval. The correction request service is not yet
+                    available through this portal.
+                </p>
+            </div>
+        </section>
+
+        <p class="member-portal-footer">
+            This lookup confirms basic membership identity only. Private
+            contact information, emergency details, medical information,
+            and other restricted records are not displayed here.
+        </p>
+    {% endif %}
+</div>
+{% endblock %}

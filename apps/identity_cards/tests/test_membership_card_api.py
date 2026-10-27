@@ -22,6 +22,7 @@ class MembershipCardIssueAPITests(TestCase):
         cls.deanery = Deanery.objects.create(
             name="Test Deanery",
             diocese=cls.diocese,
+            code="TD2663FC6",
         )
         cls.parish = Parish.objects.create(
             name="Test Parish",

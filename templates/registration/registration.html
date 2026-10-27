@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Membership Registration | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="registration-page">
+    <div class="registration-card">
+    <div class="registration-branding"
+         aria-label="M.O.D. Nsukka Diocese and Saint Theresa">
+        <img
+            class="registration-branding__logo"
+            src="{% static 'images/branding/mainmodlogo.jpg' %}"
+            alt="M.O.D. Nsukka Diocese logo"
+            width="80"
+            height="80"
+        >
+        <img
+            class="registration-branding__logo registration-branding__logo--saint"
+            src="{% static 'images/branding/st_theresa.jpeg' %}"
+            alt="Saint Theresa"
+            width="80"
+            height="80"
+        >
+    </div>
+
+        <p class="registration-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
+        <h1 class="registration-title">Membership registration application</h1>
+        <p class="registration-description">
+            Complete all applicable sections to submit your membership
+            application to M.O.D. Nsukka Diocese.
+        </p>
+        <p class="registration-notice">
+            Your application will be reviewed by the appropriate church
+            authorities. Submitting this form does not create a portal
+            login account or mean your membership has been approved.
+        </p>
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="registration-error" role="alert">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% if form.errors %}
+                <div
+                    class="registration-error-summary"
+                    role="alert"
+                    aria-labelledby="registration-error-title"
+                    tabindex="-1"
+                >
+                    <h2 id="registration-error-title">
+                        Please correct the following errors
+                    </h2>
+                    <p>Choose an item below to jump to the relevant field.</p>
+                    <ul>
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>
+                                    <a href="#{{ field.id_for_label }}">
+                                        {{ field.label }}: {{ error }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <section class="registration-section" aria-labelledby="registration-section-a">
+                <h2 class="registration-section-title" id="registration-section-a">Section 1 — Personal Information</h2>
+                <p class="registration-section-description">Enter your personal and contact details. Wear your M.O.D. uniform for your photograph.</p>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.last_name %}
+                    {% include "registration/partials/registration_field.html" with field=form.first_name %}
+                    {% include "registration/partials/registration_field.html" with field=form.middle_name %}
+                    {% include "registration/partials/registration_field.html" with field=form.sex %}
+                    {% include "registration/partials/registration_field.html" with field=form.date_of_birth %}
+                    <div class="registration-field registration-camera-field">
+                        <span class="registration-field-label">Passport photograph <span aria-hidden="true">*</span></span>
+                        <p class="registration-camera-help registration-background-warning">
+                            Wear your M.O.D. uniform and capture your current photograph with a white background, your whole head inside the circle, and no caps, hats, or eyeglasses.
+                        </p>
+                        <div class="registration-camera-preview registration-passport-square">
+                            <video id="passport-camera-video" playsinline autoplay muted hidden></video>
+                            <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
+                            <p id="passport-camera-placeholder">Camera preview will appear here.</p>
+                            <div class="registration-camera-guide" aria-hidden="true"></div>
+                        </div>
+                        <p id="passport-white-scan-status"
+                           class="passport-white-scan-status" aria-live="polite"
+                           data-ai-check-url="{% url 'members:passport_photo_ai_check' %}">
+                            AI checks for a person and a white background before accepting the photo.
+                        </p>
+                        <canvas id="passport-camera-canvas" hidden></canvas>
+                        <input type="hidden" name="passport_photo_data" id="passport-photo-data"
+                               value="{{ passport_photo_data|default:'' }}">
+                        <div class="registration-camera-actions">
+                            <button type="button" id="passport-camera-start">Start camera</button>
+                            <button type="button" id="passport-camera-capture" disabled>Capture photo</button>
+                            <button type="button" id="passport-camera-retake" hidden>Retake photo</button>
+                        </div>
+                        <p id="passport-camera-status" class="registration-camera-status" aria-live="polite">
+                            Photograph required.
+                        </p>
+                        <p id="passport-camera-error" class="registration-camera-error" role="alert" hidden></p>
+                        {% if form.passport_photo.errors %}
+                            <ul class="registration-field-errors">
+                                {% for error in form.passport_photo.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                    {% include "registration/partials/registration_field.html" with field=form.phone_number %}
+                    {% include "registration/partials/registration_field.html" with field=form.email %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-b">
+                <h2 class="registration-section-title" id="registration-section-b">Section 2 — Membership &amp; Church Details</h2>
+                <p class="registration-section-description">Membership category, church affiliation, sacramental details and sponsor information.</p>
+                <div class="registration-fixed-value"><span class="registration-fixed-label">Diocese *</span><strong>Nsukka Diocese</strong></div>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.category %}
+                    {% include "registration/partials/registration_field.html" with field=form.deanery %}
+                    {% include "registration/partials/registration_field.html" with field=form.parish %}
+                    {% include "registration/partials/registration_field.html" with field=form.station %}
+                    {% include "registration/partials/registration_field.html" with field=form.admission_date %}
+                    {% include "registration/partials/registration_field.html" with field=form.first_rank %}
+                    {% include "registration/partials/registration_field.html" with field=form.current_rank %}
+                    <div class="registration-field registration-radio-field">
+                        <span class="registration-field-label">Baptized Catholic? <span aria-hidden="true">*</span></span>
+                        <div class="registration-radio-options" role="group" aria-label="Baptized Catholic?">
+                            {{ form.baptized_catholic }}
+                        </div>
+                        {% for error in form.baptized_catholic.errors %}<p class="registration-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    <div class="registration-field registration-radio-field">
+                        <span class="registration-field-label">Confirmed? <span aria-hidden="true">*</span></span>
+                        <div class="registration-radio-options" role="group" aria-label="Confirmed?">
+                            {{ form.confirmed }}
+                        </div>
+                        {% for error in form.confirmed.errors %}<p class="registration-error">{{ error }}</p>{% endfor %}
+                    </div>
+                    {% include "registration/partials/registration_field.html" with field=form.previous_diocese %}
+                </div>
+                <h3 class="registration-section-title">Sponsor / Referee Verification</h3>
+                <p>The system will look up the sponsor's official name and registered phone number. Those details cannot be edited by the applicant.</p>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.sponsor_membership_id %}
+                    {% include "registration/partials/registration_field.html" with field=form.sponsor_additional_phone %}
+                    {% include "registration/partials/registration_field.html" with field=form.sponsor_rank %}
+                </div>
+                <p class="registration-notice">The ID match confirms identity only; it does not prove that the sponsor authorized the sponsorship. Sponsor lookup is not connected yet. Preview status after submission: pending the 24-hour sponsorship-dispute period.</p>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-c">
+                <h2 class="registration-section-title" id="registration-section-c">Section 3 — Background &amp; Marital Status</h2>
+                <p class="registration-section-description">Marital status is recorded for administrative consideration; it does not by itself determine eligibility for an office.</p>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.marital_status %}
+                    {% include "registration/partials/registration_field.html" with field=form.state_of_origin %}
+                    {% include "registration/partials/registration_field.html" with field=form.local_government_area %}
+                    {% include "registration/partials/registration_field.html" with field=form.village_town %}
+                    {% include "registration/partials/registration_field.html" with field=form.residential_address %}
+                    {% include "registration/partials/registration_field.html" with field=form.occupation %}
+                    {% include "registration/partials/registration_field.html" with field=form.home_diocese %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-d">
+                <h2 class="registration-section-title" id="registration-section-d">Section 4 — Next of Kin &amp; Emergency Contacts</h2>
+                <h3 class="registration-section-title">Next of Kin</h3>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.next_of_kin_name %}
+                    {% include "registration/partials/registration_field.html" with field=form.next_of_kin_phone %}
+                    {% include "registration/partials/registration_field.html" with field=form.next_of_kin_relationship %}
+                </div>
+                <h3 class="registration-section-title">Emergency Contact 1</h3>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.emergency_contact_name %}
+                    {% include "registration/partials/registration_field.html" with field=form.emergency_contact_phone %}
+                    {% include "registration/partials/registration_field.html" with field=form.emergency_contact_relationship %}
+                </div>
+                <h3 class="registration-section-title">Emergency Contact 2</h3>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.emergency_contact_2_name %}
+                    {% include "registration/partials/registration_field.html" with field=form.emergency_contact_2_phone %}
+                    {% include "registration/partials/registration_field.html" with field=form.emergency_contact_2_relationship %}
+                </div>
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-e">
+                <h2 class="registration-section-title" id="registration-section-e">Section 5 — Health &amp; Medical Information</h2>
+                <p class="registration-section-description">Medical information is confidential. Routine parish and deanery reviewers must not have access to confidential medical details or evidence.</p>
+                <h3 class="registration-section-title">Basic Health Information</h3>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.blood_group %}
+                    {% include "registration/partials/registration_field.html" with field=form.genotype %}
+                    {% include "registration/partials/registration_field.html" with field=form.height_cm %}
+                    {% include "registration/partials/registration_field.html" with field=form.weight_kg %}
+                </div>
+                <h3 class="registration-section-title">Confidential Medical Information</h3>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.medical_conditions %}
+                    {% include "registration/partials/registration_field.html" with field=form.allergies_medications %}
+                    {% include "registration/partials/registration_field.html" with field=form.medical_evidence %}
+                    {% include "registration/partials/registration_field.html" with field=form.medical_confidentiality_acknowledged %}
+                </div>
+                <p class="registration-notice">Required backend access restriction: only the authorized Diocesan Chairman and Medical Director may access confidential medical details and medical evidence.</p>
+            </section>
+
+            <section class="registration-section registration-signature-section"
+                     aria-labelledby="registration-signature-heading">
+                <h2 class="registration-section-title" id="registration-signature-heading">
+                    Applicant's Handwritten Signature
+                </h2>
+                <p class="registration-section-description">
+                    Sign your name on clean white or light-brown paper using
+                    blue or black ink. Take a clear photo in good lighting,
+                    keeping the entire signature in the frame. Avoid shadows,
+                    blur, filters, and glare. Upload the photo below.
+                    JPEG or PNG only; maximum 2 MB. Your image is stored
+                    privately and included in your registration PDF.
+                </p>
+
+                <div class="registration-signature-camera">
+                    <p class="registration-help">
+                        Write your signature on clean white or light-brown paper
+                        using blue or black ink. Photograph the paper in good
+                        lighting with the entire signature visible. This form
+                        uses your camera instead of a gallery file picker.
+                        JPEG capture; maximum 2 MB.
+                    </p>
+                    <div class="registration-signature-camera-frame">
+                        <video id="signature-camera-video"
+                               playsinline autoplay muted hidden></video>
+                        <img id="registration-signature-preview"
+                             class="registration-signature-preview"
+                             alt="Captured signature preview" hidden>
+                        <p id="signature-camera-placeholder">
+                            Start the camera, then frame your handwritten signature.
+                        </p>
+                    </div>
+                    <canvas id="signature-camera-canvas" hidden></canvas>
+                    <input type="file" name="signature_image"
+                           id="id_signature_image"
+                           accept="image/jpeg" hidden>
+                    <div class="registration-camera-actions">
+                        <button type="button" id="signature-camera-start">
+                            Start camera
+                        </button>
+                        <button type="button" id="signature-camera-capture" disabled>
+                            Capture signature
+                        </button>
+                        <button type="button" id="signature-camera-retake" hidden>
+                            Retake signature
+                        </button>
+                    </div>
+                    <p id="registration-signature-upload-status"
+                       class="registration-signature-upload-status"
+                       aria-live="polite">Signature capture required.</p>
+                    <p id="signature-camera-error"
+                       class="registration-camera-error" role="alert" hidden></p>
+                    {% if form.signature_image.errors %}
+                        <ul class="registration-field-errors">
+                            {% for error in form.signature_image.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+
+            </section>
+
+            <section class="registration-section" aria-labelledby="registration-section-f">
+                <h2 class="registration-section-title" id="registration-section-f">Section 6 — Declaration &amp; Submission</h2>
+                <p class="registration-section-description">Review each declaration before submitting.</p>
+                <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.declaration_accepted %}
+                    {% include "registration/partials/registration_field.html" with field=form.verification_consent %}
+                </div>
+            </section>
+
+            <button class="registration-button" type="submit">
+                Submit application
+            </button>
+        </form>
+
+        <p class="registration-footer">
+            Fields marked with * are required. Please ensure your contact
+            details are correct.
+        </p>
+    </div>
+</section>
+
+
+<style>
+/* Square passport preview and face-positioning guide only. */
+.registration-passport-square {
+    position: relative;
+    width: min(100%, 380px);
+    aspect-ratio: 1 / 1;
+    height: auto;
+    margin-inline: auto;
+    overflow: hidden;
+    background: #f4f1ec;
+    box-sizing: border-box;
+}
+.registration-passport-square video,
+.registration-passport-square img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.registration-passport-square video[hidden],
+.registration-passport-square img[hidden] {
+    display: none;
+}
+.registration-passport-square .registration-camera-guide {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: 44%;
+    width: 58%;
+    height: 68%;
+    transform: translate(-50%, -50%);
+    border: 3px solid #fff;
+    border-radius: 50% 50% 45% 45% / 38% 38% 55% 55%;
+    box-shadow: 0 0 0 999px rgb(0 0 0 / 12%);
+    pointer-events: none;
+    box-sizing: border-box;
+}
+.registration-passport-square .registration-background-warning {
+    margin-top: 4px;
+}
+.passport-white-scan-status {
+    position: absolute;
+    z-index: 4;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    margin: 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 92%);
+    color: #333;
+    font-size: 12px;
+    text-align: center;
+}
+.registration-passport-square #passport-camera-placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    text-align: center;
+}
+.registration-passport-square #passport-camera-placeholder[hidden] {
+    display: none;
+}
+</style>
+
+<script src="{% static 'js/registration/passport-camera.js' %}"></script>
+
+<script src="{% static 'js/registration/signature-camera.js' %}"></script>
+<script src="{% static 'js/registration/registration-form.js' %}"></script>
+{% endblock %}

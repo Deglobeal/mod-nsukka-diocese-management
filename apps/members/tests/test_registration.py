@@ -65,6 +65,7 @@ class MembershipRegistrationTests(TestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Registration Test Deanery",
+            code="T83CAEB55",
         )
         cls.parish = Parish.objects.create(
             deanery=cls.deanery,
@@ -214,6 +215,7 @@ class MembershipRegistrationTests(TestCase):
         other_deanery = Deanery.objects.create(
             diocese=self.diocese,
             name="Another Registration Deanery",
+            code="TEA39DA07",
         )
         other_parish = Parish.objects.create(
             deanery=other_deanery,

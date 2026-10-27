@@ -21,6 +21,7 @@ class MembershipApprovalServiceTests(TestCase):
         deanery = Deanery.objects.create(
             diocese=diocese,
             name="Test Deanery",
+            code="TD2663FC6",
         )
         parish = Parish.objects.create(
             deanery=deanery,
@@ -270,3 +271,104 @@ class MembershipApprovalServiceTests(TestCase):
         self.assertIsNone(application.member_id)
         self.assertEqual(Member.objects.count(), members_before)
         self.assertEqual(application.reviews.count(), 0)
+
+    def test_final_approval_blocks_possible_duplicate_by_normalized_phone(self):
+        self.application.first_name = "Ada"
+        self.application.last_name = "Okafor"
+        self.application.phone_number = "08012345678"
+        self.application.date_of_birth = "1990-01-01"
+        self.application.stage = MembershipApplication.Stage.APPROVED
+        self.application.save()
+
+        application = MembershipApplication.objects.create(
+            first_name="  ADA ",
+            last_name="OKAFOR",
+            phone_number="+2348012345678",
+            date_of_birth="1995-05-05",
+            parish=self.parish,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+        members_before = Member.objects.count()
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "A possible duplicate member record was found in this parish.",
+        ):
+            self.review(
+                MembershipReview.ReviewLevel.DIOCESE,
+                MembershipReview.Decision.APPROVED,
+                application_id=application.pk,
+            )
+
+        application.refresh_from_db()
+        self.assertEqual(
+            application.stage,
+            MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+        self.assertIsNone(application.member_id)
+        self.assertEqual(application.reviews.count(), 0)
+        self.assertEqual(Member.objects.count(), members_before)
+
+    def test_same_name_with_different_phone_and_birth_date_can_be_approved(self):
+        self.application.first_name = "Ada"
+        self.application.last_name = "Okafor"
+        self.application.phone_number = "08012345678"
+        self.application.date_of_birth = "1990-01-01"
+        self.application.stage = MembershipApplication.Stage.APPROVED
+        self.application.save()
+
+        application = MembershipApplication.objects.create(
+            first_name="Ada",
+            last_name="Okafor",
+            phone_number="08099999999",
+            date_of_birth="1995-05-05",
+            parish=self.parish,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+
+        self.review(
+            MembershipReview.ReviewLevel.DIOCESE,
+            MembershipReview.Decision.APPROVED,
+            application_id=application.pk,
+        )
+
+        application.refresh_from_db()
+        self.assertEqual(application.stage, MembershipApplication.Stage.APPROVED)
+        self.assertIsNotNone(application.member_id)
+
+    def test_final_approval_blocks_duplicate_by_birth_date(self):
+        self.application.first_name = "Ada"
+        self.application.last_name = "Okafor"
+        self.application.phone_number = "08012345678"
+        self.application.date_of_birth = "1990-01-01"
+        self.application.stage = MembershipApplication.Stage.APPROVED
+        self.application.save()
+
+        application = MembershipApplication.objects.create(
+            first_name="Ada",
+            last_name="Okafor",
+            phone_number="08099999999",
+            date_of_birth="1990-01-01",
+            parish=self.parish,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+        members_before = Member.objects.count()
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "A possible duplicate member record was found in this parish.",
+        ):
+            self.review(
+                MembershipReview.ReviewLevel.DIOCESE,
+                MembershipReview.Decision.APPROVED,
+                application_id=application.pk,
+            )
+
+        application.refresh_from_db()
+        self.assertEqual(
+            application.stage,
+            MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+        self.assertIsNone(application.member_id)
+        self.assertEqual(application.reviews.count(), 0)
+        self.assertEqual(Member.objects.count(), members_before)

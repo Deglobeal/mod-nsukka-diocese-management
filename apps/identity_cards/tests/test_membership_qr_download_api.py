@@ -22,6 +22,7 @@ class MembershipQRDownloadAPITests(TestCase):
         cls.deanery = Deanery.objects.create(
             name="QR Deanery",
             diocese=cls.diocese,
+            code="T2C6DFE3B",
         )
         cls.parish = Parish.objects.create(
             name="QR Parish",
@@ -35,6 +36,7 @@ class MembershipQRDownloadAPITests(TestCase):
         cls.other_deanery = Deanery.objects.create(
             name="Other QR Deanery",
             diocese=cls.other_diocese,
+            code="T71715459",
         )
         cls.other_parish = Parish.objects.create(
             name="Other QR Parish",

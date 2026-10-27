@@ -35,6 +35,7 @@ class MembershipEvidenceAPITests(TestCase):
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Evidence Test Deanery",
+            code="T89A88B5B",
         )
         cls.parish = Parish.objects.create(
             deanery=cls.deanery,

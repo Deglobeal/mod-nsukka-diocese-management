@@ -28,6 +28,10 @@ class DeaneryForm(OrganizationForm):
 
     def __init__(self, *args, diocese=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["code"].required = True
+        self.fields["code"].help_text = (
+            "Enter the official code assigned to this Deanery."
+        )
         self.fields["diocese"].queryset = Diocese.objects.filter(
             is_active=True
         )
@@ -37,7 +41,6 @@ class DeaneryForm(OrganizationForm):
             )
             self.fields["diocese"].initial = diocese.pk
             self.fields["diocese"].disabled = True
-
 
 class ParishForm(OrganizationForm):
     deanery = forms.ModelChoiceField(

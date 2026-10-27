@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ dashboard_title }}{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/diocese-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="review-dashboard diocese-dashboard-page">
+    <header class="review-dashboard__header">
+        <p class="review-dashboard__eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1>{{ dashboard_title }}</h1>
+        <p class="review-dashboard__description">{{ dashboard_description }}</p>
+
+        <div class="review-dashboard__scope">
+            <span>Authorized scope</span>
+            {% for scope in scope_labels %}
+                <strong>{{ scope }}</strong>
+            {% endfor %}
+        </div>
+
+        <p class="review-dashboard__footer">
+            <a href="{% url 'organizations:manage' %}">
+                Create and Manage Deaneries
+            </a>
+        </p>
+
+        <form class="review-dashboard__logout"
+              method="post"
+              action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Sign out</button>
+        </form>
+    </header>
+
+    {% if messages %}
+        <section class="review-dashboard__messages" aria-label="Notifications">
+            {% for message in messages %}
+                <p class="review-message {{ message.tags }}">{{ message }}</p>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    <section class="review-dashboard__stats" aria-label="Dashboard summary">
+        <article class="review-stat">
+            <span>Applications awaiting review</span>
+            <strong>{{ pending_count }}</strong>
+        </article>
+    </section>
+
+
+    <section class="review-panel">
+        <header class="review-panel__heading">
+            <h2>Membership review queue</h2>
+            <p>Review each application and record your decision.</p>
+        </header>
+
+        {% for application in applications %}
+            <article class="review-application">
+                <div class="review-application__header">
+                    <div>
+                        <h3>{{ application.applicant_name|default:"Applicant name unavailable" }}</h3>
+                        <p>Application #{{ application.pk }}</p>
+                        <a class="review-application__view-link" href="{% url 'membership_review_dashboard:detail' application.pk %}?level=diocese">View Full Application</a>
+                    </div>
+                    <span class="review-stage">{{ application.get_stage_display }}</span>
+                </div>
+
+                <dl class="review-application__details">
+                    <div>
+                        <dt>Category</dt>
+                        <dd>{{ application.get_category_display|default:"Not specified" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Submitted</dt>
+                        <dd>{{ application.submitted_at|date:"d M Y, H:i" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Parish</dt>
+                        <dd>
+                            {% if application.parish %}
+                                {{ application.parish.name }}
+                            {% elif application.member and application.member.parish %}
+                                {{ application.member.parish.name }}
+                            {% else %}
+                                Not assigned
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+
+                {% with reviews=application.reviews.all %}
+                    {% if reviews %}
+                        <details class="review-history">
+                            <summary>Review history ({{ reviews|length }})</summary>
+                            <ol>
+                                {% for review in reviews %}
+                                    <li>
+                                        <strong>{{ review.get_review_level_display }}</strong>
+                                        — {{ review.get_decision_display }}
+                                        <span>{{ review.reviewed_at|date:"d M Y, H:i" }}</span>
+                                        {% if review.comments %}
+                                            <p>{{ review.comments }}</p>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ol>
+                        </details>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="post" class="review-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="application_id" value="{{ application.pk }}">
+
+                    <div class="review-form__field">
+                        <label for="decision-{{ application.pk }}">Decision</label>
+                        <select id="decision-{{ application.pk }}" name="decision" required>
+                            <option value="">Choose a decision</option>
+                            {% for value, label in decision_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="review-form__field">
+                        <label for="comments-{{ application.pk }}">Comments or information required</label>
+                        <textarea
+                            id="comments-{{ application.pk }}"
+                            name="comments"
+                            rows="3"
+                            maxlength="5000"
+                            placeholder="Explain your decision or specify corrections needed."
+                        ></textarea>
+                    </div>
+
+                    <button type="submit">Record review</button>
+                </form>
+            </article>
+        {% empty %}
+            <div class="review-empty">
+                <h3>No applications awaiting review</h3>
+                <p>Applications assigned to your active review scope will appear here.</p>
+            </div>
+        {% endfor %}
+    </section>
+
+    {% if dashboard_level == "diocese" %}
+        <p class="review-dashboard__footer">
+            <a href="{% url 'identity_cards_web:membership-identities' %}">
+                View membership identity records
+            </a>
+            <span aria-hidden="true"> · </span>
+            <a href="{% url 'identity_cards_web:dashboard' %}">
+                Open identity-card dashboard
+            </a>
+        </p>
+    {% endif %}
+</main>
+{% endblock %}

@@ -17,7 +17,8 @@ class MembershipReviewAPITests(TestCase):
             name="Nsukka Diocese", code="036"
         )
         cls.deanery = Deanery.objects.create(
-            diocese=cls.diocese, name="Test Deanery"
+            diocese=cls.diocese, name="Test Deanery",
+            code="TD2663FC6",
         )
         cls.parish = Parish.objects.create(
             deanery=cls.deanery, name="Test Parish"
@@ -56,7 +57,8 @@ class MembershipReviewAPITests(TestCase):
             name="Other Diocese", code="037"
         )
         other_deanery = Deanery.objects.create(
-            diocese=other_diocese, name="Other Deanery"
+            diocese=other_diocese, name="Other Deanery",
+            code="T2D1B022D",
         )
         other_parish = Parish.objects.create(
             deanery=other_deanery, name="Other Parish"
