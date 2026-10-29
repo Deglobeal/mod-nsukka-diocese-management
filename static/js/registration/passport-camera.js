@@ -3,7 +3,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const photoCanvas = document.getElementById("passport-camera-canvas");
     const whiteScanStatus = document.getElementById("passport-white-scan-status");
     const photoInput = document.getElementById("passport-photo-data");
+    const photoTokenInput = document.getElementById("passport-photo-token");
+    const acceptPhotoButton = document.getElementById("passport-camera-accept");
     const photoPreview = document.getElementById("passport-camera-image");
+    let pendingPhotoData = "";
+    let pendingPhotoToken = "";
+    let previewRequestId = 0;
     const photoPlaceholder = document.getElementById("passport-camera-placeholder");
     const startCameraButton = document.getElementById("passport-camera-start");
     const capturePhotoButton = document.getElementById("passport-camera-capture");
@@ -65,13 +70,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function clearCapturedPhoto() {
+        previewRequestId += 1;
         photoCaptureInProgress = false;
+        pendingPhotoData = "";
+        pendingPhotoToken = "";
         if (photoInput) photoInput.value = "";
+        if (photoTokenInput) photoTokenInput.value = "";
         if (photoPreview) {
             photoPreview.removeAttribute("src");
             photoPreview.hidden = true;
         }
         if (photoPlaceholder) photoPlaceholder.hidden = false;
+        if (acceptPhotoButton) acceptPhotoButton.hidden = true;
         if (retakePhotoButton) retakePhotoButton.hidden = true;
         if (cameraStatus) cameraStatus.textContent = "Photograph required.";
     }
@@ -176,12 +186,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const centerX = left + faceWidth / 2;
         const centerY = top + faceHeight / 2;
 
-        // Keep the detected face well inside the central circular guide.
-        // The extra margin helps prevent faces from touching the guide edge.
+        // Keep the face in the upper portion of a full portrait composition.
+        // Smaller face limits leave room for the head, shoulders and upper chest.
         const circleCenterX = 0.5;
-        const circleCenterY = 0.48;
-        const circleRadiusX = 0.34;
-        const circleRadiusY = 0.39;
+        const circleCenterY = 0.38;
+        const circleRadiusX = 0.42;
+        const circleRadiusY = 0.48;
 
         const corners = [
             [left, top],
@@ -422,20 +432,27 @@ document.addEventListener("DOMContentLoaded", function () {
         photoCaptureInProgress = true;
         stopFaceScan();
 
-        // Crop a centered square from the camera frame.
-        // This removes much of the distant background before validation.
-        const sourceSide = Math.min(video.videoWidth, video.videoHeight);
-        const sourceX = Math.floor((video.videoWidth - sourceSide) / 2);
-        const sourceY = Math.floor((video.videoHeight - sourceSide) / 2);
-        const outputSide = Math.min(sourceSide, 1200);
-        const crop = {
-            sourceX,
-            sourceY,
-            scale: outputSide / sourceSide
-        };
+        // Capture the same centered 9:16 crop shown in the live preview.
+        const sourceWidth = video.videoWidth;
+        const sourceHeight = video.videoHeight;
+        const targetAspect = 4 / 5;
+        const sourceAspect = sourceWidth / sourceHeight;
 
-        photoCanvas.width = outputSide;
-        photoCanvas.height = outputSide;
+        let cropX = 0;
+        let cropY = 0;
+        let cropWidth = sourceWidth;
+        let cropHeight = sourceHeight;
+
+        if (sourceAspect > targetAspect) {
+            cropWidth = sourceHeight * targetAspect;
+            cropX = (sourceWidth - cropWidth) / 2;
+        } else if (sourceAspect < targetAspect) {
+            cropHeight = sourceWidth / targetAspect;
+            cropY = (sourceHeight - cropHeight) / 2;
+        }
+
+        photoCanvas.width = Math.round(cropWidth);
+        photoCanvas.height = Math.round(cropHeight);
 
         const context = photoCanvas.getContext("2d");
         if (!context) {
@@ -448,8 +465,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         context.drawImage(
             video,
-            sourceX, sourceY, sourceSide, sourceSide,
-            0, 0, outputSide, outputSide
+            cropX, cropY, cropWidth, cropHeight,
+            0, 0, photoCanvas.width, photoCanvas.height
         );
 
         // Do not reject the crop using the browser's approximate
@@ -471,70 +488,96 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const reader = new FileReader();
 
-            reader.onload = async function () {
+            reader.onload = function () {
                 const photoData = reader.result;
-                const csrfInput = registrationForm
-                    ? registrationForm.querySelector('[name="csrfmiddlewaretoken"]')
-                    : null;
-                const csrfToken = csrfInput ? csrfInput.value : "";
-                const aiCheckUrl = whiteScanStatus
-                    ? whiteScanStatus.dataset.aiCheckUrl
-                    : "";
 
-                if (!aiCheckUrl || !csrfToken) {
+                if (
+                    typeof photoData !== "string" ||
+                    !photoData.startsWith("data:image/jpeg;base64,")
+                ) {
                     retryCapture(
-                        "The AI check could not be started securely. Retrying automatically…"
+                        "The photograph could not be prepared. Retrying automatically…"
                     );
                     return;
                 }
 
-                cameraStatus.textContent =
-                    "AI is checking the person and white background…";
+                // Process the captured image before displaying the preview.
+                const requestId = ++previewRequestId;
+                const csrfInput = registrationForm
+                    ? registrationForm.querySelector('input[name="csrfmiddlewaretoken"]')
+                    : null;
+                const requestData = new FormData();
+                requestData.append("passport_photo_data", photoData);
 
-                try {
-                    const response = await fetch(aiCheckUrl, {
-                        method: "POST",
-                        credentials: "same-origin",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": csrfToken
-                        },
-                        body: JSON.stringify({ photo_data: photoData })
-                    });
+                cameraStatus.textContent = "Processing your photo…";
+                capturePhotoButton.disabled = true;
+                startCameraButton.disabled = true;
 
-                    const result = await response.json();
-
-                    if (!response.ok || !result.ok) {
-                        retryCapture(
-                            result.message ||
-                            "AI did not approve the photo. Retrying automatically…"
-                        );
-                        return;
-                    }
-
-                    // Keep the exact frame that received AI approval.
-                    photoInput.value = photoData;
-                    photoPreview.src = photoData;
-                    photoPreview.hidden = false;
-                    video.hidden = true;
-                    photoPlaceholder.hidden = true;
-                    retakePhotoButton.hidden = false;
-                    cameraError.hidden = true;
-                    if (whiteScanStatus) {
-                        whiteScanStatus.textContent =
-                            "AI approved: person detected and background is white.";
-                        whiteScanStatus.classList.add("is-white");
-                        whiteScanStatus.classList.remove("is-not-white");
-                    }
-                    cameraStatus.textContent =
-                        "AI approved the photograph. Review it before continuing.";
-                    stopCamera();
-                    photoCaptureInProgress = false;
-                } catch (error) {
-                    retryCapture(
-                        "The AI check could not be reached. Retrying automatically…"
-                    );
+                if (whiteScanStatus) {
+                    whiteScanStatus.textContent =
+                        "Removing the background and preparing your photo…";
+                    whiteScanStatus.classList.remove("is-white", "is-not-white");
                 }
+
+                fetch(photoInput.dataset.processUrl, {
+                    method: "POST",
+                    body: requestData,
+                    credentials: "same-origin",
+                    headers: csrfInput
+                        ? {"X-CSRFToken": csrfInput.value}
+                        : {}
+                })
+                    .then(async function (response) {
+                        const result = await response.json();
+                        if (!response.ok) {
+                            throw new Error(result.error || "Photo processing failed.");
+                        }
+                        return result;
+                    })
+                    .then(function (result) {
+                        if (requestId !== previewRequestId) return;
+
+                        pendingPhotoData = result.photo_data;
+                        pendingPhotoToken = result.photo_token;
+                        photoPreview.src = pendingPhotoData;
+                        photoPreview.hidden = false;
+                        video.hidden = true;
+                        photoPlaceholder.hidden = true;
+                        acceptPhotoButton.hidden = false;
+                        retakePhotoButton.hidden = false;
+                        cameraError.hidden = true;
+
+                        if (whiteScanStatus) {
+                            whiteScanStatus.textContent =
+                                "Review the processed photo and its white background.";
+                            whiteScanStatus.classList.remove("is-white", "is-not-white");
+                        }
+
+                        cameraStatus.textContent =
+                            "Review the processed photo. Choose Use this photo or Retake photo.";
+                        stopCamera();
+                    })
+                    .catch(function (error) {
+                        if (requestId !== previewRequestId) return;
+                        cameraError.textContent =
+                            error.message || "Photo processing failed. Please retake it.";
+                        cameraError.hidden = false;
+                        cameraStatus.textContent =
+                            "The photo could not be processed. Please retake it.";
+                        if (whiteScanStatus) {
+                            whiteScanStatus.textContent =
+                                "Processing failed. Capture another photo.";
+                        }
+                        clearCapturedPhoto();
+                        video.hidden = false;
+                        startCameraButton.disabled = false;
+                        if (cameraStream) capturePhotoButton.disabled = false;
+                    })
+                    .finally(function () {
+                        if (requestId === previewRequestId) {
+                            photoCaptureInProgress = false;
+                        }
+                    });
             };
 
             reader.onerror = function () {
@@ -570,8 +613,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 audio: false,
                 video: {
                     facingMode: "user",
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: 720 },
+                    height: { ideal: 1280 },
+                    aspectRatio: { ideal: 0.8 }
                 }
             });
 
@@ -590,6 +634,13 @@ document.addEventListener("DOMContentLoaded", function () {
             photoPlaceholder.hidden = true;
 
             await video.play();
+
+            const activeVideoTrack = requestedStream.getVideoTracks()[0];
+            console.info(
+                "Passport camera dimensions:",
+                `${video.videoWidth}x${video.videoHeight}`,
+                activeVideoTrack ? activeVideoTrack.getSettings() : {}
+            );
 
             // Do not activate capture for a replaced or stopped stream.
             if (
@@ -647,14 +698,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
         capturePhotoButton.addEventListener("click", capturePhoto);
 
-        retakePhotoButton.addEventListener("click", startCamera);
+        acceptPhotoButton.addEventListener("click", function () {
+            if (!pendingPhotoData || !pendingPhotoToken) {
+                cameraError.textContent =
+                    "Please wait until your processed photo is ready.";
+                cameraError.hidden = false;
+                return;
+            }
 
-        if (photoInput.value) {
+            photoInput.value = pendingPhotoData;
+            photoTokenInput.value = pendingPhotoToken;
+            acceptPhotoButton.hidden = true;
+            cameraError.hidden = true;
+            cameraStatus.textContent = "Processed photo accepted.";
+            if (whiteScanStatus) {
+                whiteScanStatus.textContent = "Photo accepted with a processed white background.";
+                whiteScanStatus.classList.add("is-white");
+                whiteScanStatus.classList.remove("is-not-white");
+            }
+        });
+
+        retakePhotoButton.addEventListener("click", function () {
+            clearCapturedPhoto();
+            video.hidden = false;
+            startCameraButton.disabled = false;
+            startCamera();
+        });
+
+        if (photoInput.value && photoTokenInput.value) {
             photoPreview.src = photoInput.value;
             photoPreview.hidden = false;
             photoPlaceholder.hidden = true;
             retakePhotoButton.hidden = false;
-            cameraStatus.textContent = "Previously captured photograph restored.";
+            cameraStatus.textContent = "Previously accepted processed photo restored.";
+        } else {
+            clearCapturedPhoto();
         }
 
         window.addEventListener("pagehide", stopCamera);
@@ -662,7 +740,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (registrationForm) {
         registrationForm.addEventListener("submit", function (event) {
-            if (!photoInput || !photoInput.value) {
+            if (
+                !photoInput || !photoInput.value ||
+                !photoTokenInput || !photoTokenInput.value
+            ) {
                 event.preventDefault();
                 cameraError.textContent =
                     "Capture and accept your passport photograph before submitting.";
