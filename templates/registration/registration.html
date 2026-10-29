@@ -95,15 +95,19 @@
                         </div>
                         <p id="passport-white-scan-status"
                            class="passport-white-scan-status" aria-live="polite"
-                           data-ai-check-url="{% url 'members:passport_photo_ai_check' %}">
+                           >
                             AI checks for a person and a white background before accepting the photo.
                         </p>
                         <canvas id="passport-camera-canvas" hidden></canvas>
                         <input type="hidden" name="passport_photo_data" id="passport-photo-data"
+                               data-process-url="{% url 'members:passport_photo_process' %}"
                                value="{{ passport_photo_data|default:'' }}">
+                        <input type="hidden" name="passport_photo_token" id="passport-photo-token"
+                               value="{{ passport_photo_token|default:'' }}">
                         <div class="registration-camera-actions">
                             <button type="button" id="passport-camera-start">Start camera</button>
                             <button type="button" id="passport-camera-capture" disabled>Capture photo</button>
+                            <button type="button" id="passport-camera-accept" hidden>Use this photo</button>
                             <button type="button" id="passport-camera-retake" hidden>Retake photo</button>
                         </div>
                         <p id="passport-camera-status" class="registration-camera-status" aria-live="polite">
@@ -303,67 +307,108 @@
 
 
 <style>
-/* Square passport preview and face-positioning guide only. */
+/* Portrait passport preview and face-positioning guide only. */
 .registration-passport-square {
     position: relative;
-    width: min(100%, 380px);
-    aspect-ratio: 1 / 1;
+    display: block;
+    width: min(100%, 300px);
+    aspect-ratio: 4 / 5;
     height: auto;
-    margin-inline: auto;
+    min-height: 0;
+    margin: 12px auto;
+    padding: 0;
     overflow: hidden;
-    background: #f4f1ec;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
     box-sizing: border-box;
 }
+
 .registration-passport-square video,
 .registration-passport-square img {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
+    max-width: none;
+    max-height: none;
     object-fit: cover;
+    object-position: center;
 }
+
 .registration-passport-square video[hidden],
 .registration-passport-square img[hidden] {
     display: none;
 }
+
 .registration-passport-square .registration-camera-guide {
     position: absolute;
-    z-index: 2;
-    left: 50%;
-    top: 44%;
-    width: 58%;
-    height: 68%;
-    transform: translate(-50%, -50%);
-    border: 3px solid #fff;
-    border-radius: 50% 50% 45% 45% / 38% 38% 55% 55%;
-    box-shadow: 0 0 0 999px rgb(0 0 0 / 12%);
+    inset: 0;
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    z-index: 5;
     pointer-events: none;
     box-sizing: border-box;
 }
+
+.registration-passport-square .registration-camera-guide::before,
+.registration-passport-square .registration-camera-guide::after {
+    content: "";
+    position: absolute;
+    display: block;
+    border: 3px solid #7c3aed;
+    box-sizing: border-box;
+}
+
+/* Oval head guide: leave breathing room above the hair. */
+.registration-passport-square .registration-camera-guide::before {
+    width: 36%;
+    height: 34%;
+    left: 32%;
+    top: 4%;
+    border-radius: 50%;
+}
+
+/* Wider shoulder and upper-chest guide. */
+.registration-passport-square .registration-camera-guide::after {
+    width: 96%;
+    height: 49%;
+    left: 2%;
+    bottom: 3%;
+    border-radius: 46% 46% 14% 14% / 42% 42% 10% 10%;
+}
+
 .registration-passport-square .registration-background-warning {
     margin-top: 4px;
 }
+
 .passport-white-scan-status {
-    position: absolute;
-    z-index: 4;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+    position: static;
+    z-index: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
     margin: 0;
     padding: 6px 8px;
     border-radius: 6px;
-    background: rgb(255 255 255 / 92%);
+    background: rgb(255 255 255 / 94%);
     color: #333;
     font-size: 12px;
     text-align: center;
 }
+
 .registration-passport-square #passport-camera-placeholder {
     position: absolute;
+    z-index: 1;
     inset: 0;
     display: grid;
     place-items: center;
     padding: 16px;
     text-align: center;
 }
+
 .registration-passport-square #passport-camera-placeholder[hidden] {
     display: none;
 }
