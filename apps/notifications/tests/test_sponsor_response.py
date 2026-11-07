@@ -69,6 +69,7 @@ class SponsorResponseViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Sponsor confirmation")
         self.assertContains(response, "Dispute this sponsorship")
+        self.assertContains(response, f"#{self.application.pk}")
         verification.refresh_from_db()
         self.assertEqual(
             verification.status,
@@ -167,6 +168,14 @@ class SponsorResponseViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+        self.assertContains(
+            response,
+            f'<a href="{self.response_url(token)}">Reload this page to try again.</a>',
+            status_code=400,
+            html=True,
+        )
+        retry = self.client.get(self.response_url(token))
+        self.assertContains(retry, "Dispute this sponsorship")
         self.assertEqual(response["Cache-Control"], "no-store")
         self.assertEqual(response["Referrer-Policy"], "no-referrer")
         verification.refresh_from_db()

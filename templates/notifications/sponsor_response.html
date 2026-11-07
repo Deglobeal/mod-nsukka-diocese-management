@@ -16,6 +16,7 @@
         {% if invalid_action %}
             <p class="registration-notice">
                 Select either confirmation or dispute to continue.
+                <a href="{{ request.path }}">Reload this page to try again.</a>
             </p>
         {% elif expired %}
             <p class="registration-notice">
@@ -41,7 +42,10 @@
             <p class="registration-description">
                 Your M.O.D. membership ID
                 <strong>{{ verification.official_membership_id }}</strong>
-                was entered as a sponsor for a membership application.
+                was entered as a sponsor for membership application
+                <strong>#{{ verification.application_id }}</strong>.
+                Match this application reference with one shared through a
+                trusted channel before responding.
             </p>
 
             <p class="registration-notice">
