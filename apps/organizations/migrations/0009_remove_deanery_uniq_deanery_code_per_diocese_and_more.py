@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('organizations', '0005_station'),
+        ('organizations', '0006_remove_deanery_uniq_deanery_code_per_diocese_and_more'),
     ]
 
     operations = [
@@ -17,13 +17,5 @@ class Migration(migrations.Migration):
                 help_text='Official Deanery code. Required for every Deanery.',
                 max_length=20,
             ),
-        ),
-        migrations.RemoveConstraint(
-            model_name='deanery',
-            name='uniq_deanery_code_per_diocese',
-        ),
-        migrations.AddConstraint(
-            model_name='deanery',
-            constraint=models.UniqueConstraint(fields=('code',), name='uniq_deanery_code_globally'),
         ),
     ]
