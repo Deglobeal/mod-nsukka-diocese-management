@@ -1,4 +1,8 @@
 import base64
+import hashlib
+from django.core import signing
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 import binascii
 from io import BytesIO
 
@@ -10,6 +14,7 @@ from django.views.decorators.http import require_http_methods
 from PIL import Image, UnidentifiedImageError
 
 from apps.members.forms import MembershipRegistrationForm
+from apps.members.passport_photo_processing import process_passport_photo
 from apps.verification.models import MembershipApplication
 
 
@@ -73,26 +78,109 @@ def _passport_photo_from_post(value):
     return raw, extension
 
 
+
+PASSPORT_PREVIEW_SIGNING_SALT = "members.passport-photo-preview"
+PASSPORT_PREVIEW_MAX_AGE_SECONDS = 30 * 60
+
+
+@require_POST
+def process_passport_photo_preview(request):
+    """Process a captured passport image before the applicant accepts it."""
+    photo_data = request.POST.get("passport_photo_data", "")
+
+    try:
+        raw_photo, _extension = _passport_photo_from_post(photo_data)
+        processed_photo = process_passport_photo(raw_photo)
+
+        with Image.open(BytesIO(processed_photo)) as image:
+            if image.format != "JPEG":
+                raise ValidationError(
+                    "Photo processing did not produce a valid JPEG."
+                )
+            image.verify()
+
+        token = signing.dumps(
+            {
+                "sha256": hashlib.sha256(processed_photo).hexdigest(),
+                "size": len(processed_photo),
+            },
+            salt=PASSPORT_PREVIEW_SIGNING_SALT,
+        )
+
+        processed_data = (
+            "data:image/jpeg;base64,"
+            + base64.b64encode(processed_photo).decode("ascii")
+        )
+
+        return JsonResponse(
+            {
+                "photo_data": processed_data,
+                "photo_token": token,
+            }
+        )
+    except ValidationError as error:
+        message = error.messages[0] if error.messages else str(error)
+        return JsonResponse({"error": message}, status=400)
+    except (UnidentifiedImageError, OSError, ValueError):
+        return JsonResponse(
+            {"error": "The processed photo is invalid. Please retake it."},
+            status=400,
+        )
+
+
 @require_http_methods(["GET", "POST"])
 def membership_registration(request):
     if request.method == "POST":
         # Passport photographs must still come from the camera capture.
         photo_data = request.POST.get("passport_photo_data", "")
+        photo_token = request.POST.get("passport_photo_token", "")
         uploaded_files = request.FILES.copy()
         uploaded_files.pop("passport_photo", None)
         photo_error = None
 
         if photo_data:
             try:
-                photo_bytes, photo_extension = _passport_photo_from_post(
+                photo_bytes, _photo_extension = _passport_photo_from_post(
                     photo_data
                 )
+
+                if photo_token:
+                    # A browser-accepted preview must be the exact processed
+                    # image returned by our preview endpoint and still be valid.
+                    token_data = signing.loads(
+                        photo_token,
+                        salt=PASSPORT_PREVIEW_SIGNING_SALT,
+                        max_age=PASSPORT_PREVIEW_MAX_AGE_SECONDS,
+                    )
+                    if (
+                        token_data.get("sha256")
+                        != hashlib.sha256(photo_bytes).hexdigest()
+                        or token_data.get("size") != len(photo_bytes)
+                    ):
+                        raise ValidationError(
+                            "Your accepted photograph has changed. "
+                            "Please capture and accept it again."
+                        )
+                    with Image.open(BytesIO(photo_bytes)) as image:
+                        if image.format != "JPEG":
+                            raise ValidationError(
+                                "The accepted photograph must be a processed JPEG."
+                            )
+                        image.verify()
+                else:
+                    # Compatibility path for existing tests and older clients.
+                    # The camera UI will submit a token after preview acceptance.
+                    photo_bytes = process_passport_photo(photo_bytes)
+
                 uploaded_files["passport_photo"] = SimpleUploadedFile(
-                    f"camera-capture.{photo_extension}",
+                    "camera-capture.jpg",
                     photo_bytes,
-                    content_type=(
-                        "image/jpeg" if photo_extension == "jpg" else "image/png"
-                    ),
+                    content_type="image/jpeg",
+                )
+            except signing.BadSignature:
+                photo_error = ValidationError(
+                    "Your photo preview has expired or is invalid. "
+                    "Please capture and accept your photograph again."
                 )
             except ValidationError as error:
                 photo_error = error
@@ -137,7 +225,7 @@ def membership_registration(request):
                 )
                 return render(
                     request,
-                    "members/registration.html",
+                    "registration/registration.html",
                     {
                         "form": form,
                         "passport_photo_data": photo_data,
@@ -161,7 +249,7 @@ def membership_registration(request):
 
         return render(
             request,
-            "members/registration.html",
+            "registration/registration.html",
             {
                 "form": form,
                 "passport_photo_data": photo_data,
@@ -172,7 +260,7 @@ def membership_registration(request):
 
     return render(
         request,
-        "members/registration.html",
+        "registration/registration.html",
         {"form": form, "passport_photo_data": ""},
     )
 

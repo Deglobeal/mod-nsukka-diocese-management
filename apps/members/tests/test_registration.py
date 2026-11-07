@@ -1,6 +1,7 @@
 import base64
 from datetime import timedelta
 from io import BytesIO
+from unittest.mock import patch
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
@@ -16,6 +17,17 @@ from apps.verification.models import MembershipApplication
 
 
 class MembershipRegistrationTests(TestCase):
+    def setUp(self):
+        super().setUp()
+        self._passport_processor_patch = patch(
+            "apps.members.views.registration_view.process_passport_photo",
+            side_effect=lambda raw: raw,
+        )
+        self.mock_process_passport_photo = (
+            self._passport_processor_patch.start()
+        )
+        self.addCleanup(self._passport_processor_patch.stop)
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -183,6 +195,26 @@ class MembershipRegistrationTests(TestCase):
         self.assertIn(
             "membership-signatures/",
             application.signature_image.name,
+        )
+
+    def test_registration_rejects_photo_when_background_processing_fails(self):
+        from django.core.exceptions import ValidationError
+
+        self.mock_process_passport_photo.side_effect = ValidationError(
+            "Background removal failed."
+        )
+
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(MembershipApplication.objects.filter(
+            email="ada@example.com"
+        ).exists())
+        self.assertTrue(
+            response.context["form"].errors.get("passport_photo")
         )
 
     def test_registration_rejects_missing_signature(self):
