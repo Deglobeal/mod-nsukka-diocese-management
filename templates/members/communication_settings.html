@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Communication Settings | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/member-communication-settings.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="member-communication-settings">
+    <header class="communication-settings-header">
+        <p class="communication-settings-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
+        <h1>Communication settings</h1>
+        <p>Manage WhatsApp notifications sent to you when someone uses your membership ID as a sponsor.</p>
+        <p class="communication-settings-member">
+            Official member: <strong>{{ member.full_name }}</strong>
+        </p>
+    </header>
+
+    {% if messages %}
+        <div class="communication-settings-messages" aria-live="polite">
+            {% for message in messages %}
+                <p class="communication-settings-message" role="status">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if error_message %}
+        <p class="communication-settings-error" role="alert">{{ error_message }}</p>
+    {% endif %}
+
+    <section class="communication-settings-panel" aria-labelledby="whatsapp-heading">
+        <p class="communication-settings-eyebrow">WHATSAPP</p>
+        <h2 id="whatsapp-heading">Sponsor verification alerts</h2>
+
+        <p>
+            Saved phone number:
+            <strong>{{ saved_phone|default:"No phone number saved" }}</strong>
+        </p>
+
+        {% if normalized_phone %}
+            <p class="communication-settings-note">
+                Consent applies only to {{ normalized_phone }}.
+                If this number changes, you must opt in again.
+            </p>
+        {% else %}
+            <p class="communication-settings-note">
+                A valid Nigerian phone number must be saved to your member
+                profile before you can opt in. Contact your Parish
+                Administrator to update it.
+            </p>
+        {% endif %}
+
+        <div class="communication-settings-status" aria-live="polite">
+            <span>WhatsApp notifications:</span>
+            <strong>{% if whatsapp_enabled %}Enabled{% else %}Not enabled{% endif %}</strong>
+        </div>
+
+        <p>
+            By enabling this option, you agree to receive WhatsApp messages
+            when another person enters your official membership ID as their
+            sponsor during registration. Messages may contain your membership
+            ID and a secure link to acknowledge or dispute the request.
+            This consent is optional and can be withdrawn at any time.
+            Your consent does not approve the applicant's membership.
+        </p>
+
+        <div class="communication-settings-actions">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="opt_in">
+                <input type="hidden" name="phone_number" value="{{ saved_phone }}">
+                <button
+                    type="submit"
+                    class="communication-settings-button"
+                    {% if not normalized_phone or whatsapp_enabled %}disabled{% endif %}
+                >
+                    Enable WhatsApp notifications
+                </button>
+            </form>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="opt_out">
+                <button
+                    type="submit"
+                    class="communication-settings-button communication-settings-button-secondary"
+                    {% if not whatsapp_enabled %}disabled{% endif %}
+                >
+                    Withdraw WhatsApp consent
+                </button>
+            </form>
+        </div>
+
+        <p class="communication-settings-footnote">
+            Consent wording version: {{ consent_version }}.
+            SMS notifications are managed separately and are not disabled
+            by withdrawing WhatsApp consent.
+        </p>
+    </section>
+
+    <footer class="communication-settings-footer">
+        <a href="{% url 'members:portal' %}">Return to public membership portal</a>
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Sign out</button>
+        </form>
+    </footer>
+</section>
+{% endblock %}

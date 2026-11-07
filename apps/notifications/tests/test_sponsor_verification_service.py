@@ -5,7 +5,11 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.members.models import Member, MemberProfile
-from apps.notifications.models import SMSNotification, SponsorVerification
+from apps.notifications.models import (
+    SMSNotification,
+    SponsorVerification,
+    WhatsAppNotification,
+)
 from apps.notifications.services.sponsor_verification import (
     create_sponsor_verification_and_sms,
 )
@@ -96,6 +100,86 @@ class SponsorVerificationServiceTests(TestCase):
             verification.expires_at,
             timezone.now() + timedelta(hours=24, seconds=2),
         )
+        mock_reverse.assert_called_once()
+
+    @override_settings(PUBLIC_BASE_URL="https://members.example.org")
+    @patch(
+        "apps.notifications.services.sponsor_verification.reverse",
+        return_value="/notifications/sponsor/respond/test-token/",
+    )
+    def test_current_sponsor_consent_queues_both_channels(self, mock_reverse):
+        profile = MemberProfile.objects.get(member=self.sponsor)
+        profile.whatsapp_opted_in_at = timezone.now()
+        profile.whatsapp_consent_phone = "+2348012345678"
+        profile.whatsapp_consent_version = "sponsor-whatsapp-v1"
+        profile.save()
+
+        verification, sms = create_sponsor_verification_and_sms(
+            application=self.application,
+            sponsor_contact=self.sponsor_contact,
+        )
+
+        whatsapp = WhatsAppNotification.objects.get(
+            sponsor_verification=verification,
+        )
+        self.assertEqual(sms.status, SMSNotification.Status.QUEUED)
+        self.assertEqual(
+            whatsapp.status,
+            WhatsAppNotification.Status.QUEUED,
+        )
+        self.assertEqual(whatsapp.recipient_phone, sms.recipient_phone)
+        self.assertEqual(whatsapp.message, sms.message)
+        self.assertNotEqual(whatsapp.idempotency_key, sms.idempotency_key)
+        self.assertEqual(WhatsAppNotification.objects.count(), 1)
+        mock_reverse.assert_called_once()
+
+    @override_settings(PUBLIC_BASE_URL="https://members.example.org")
+    @patch(
+        "apps.notifications.services.sponsor_verification.reverse",
+        return_value="/notifications/sponsor/respond/test-token/",
+    )
+    def test_withdrawn_consent_queues_sms_but_not_whatsapp(self, mock_reverse):
+        profile = MemberProfile.objects.get(member=self.sponsor)
+        now = timezone.now()
+        profile.whatsapp_opted_in_at = now - timedelta(minutes=2)
+        profile.whatsapp_opted_out_at = now - timedelta(minutes=1)
+        profile.whatsapp_consent_phone = "+2348012345678"
+        profile.whatsapp_consent_version = "sponsor-whatsapp-v1"
+        profile.save()
+
+        verification, sms = create_sponsor_verification_and_sms(
+            application=self.application,
+            sponsor_contact=self.sponsor_contact,
+        )
+
+        self.assertEqual(sms.status, SMSNotification.Status.QUEUED)
+        self.assertEqual(sms.sponsor_verification, verification)
+        self.assertFalse(WhatsAppNotification.objects.exists())
+        mock_reverse.assert_called_once()
+
+    @override_settings(PUBLIC_BASE_URL="https://members.example.org")
+    @patch(
+        "apps.notifications.services.sponsor_verification.reverse",
+        return_value="/notifications/sponsor/respond/test-token/",
+    )
+    def test_consent_for_old_phone_queues_sms_but_not_whatsapp(
+        self,
+        mock_reverse,
+    ):
+        profile = MemberProfile.objects.get(member=self.sponsor)
+        profile.whatsapp_opted_in_at = timezone.now()
+        profile.whatsapp_consent_phone = "+2348099999999"
+        profile.whatsapp_consent_version = "sponsor-whatsapp-v1"
+        profile.save()
+
+        verification, sms = create_sponsor_verification_and_sms(
+            application=self.application,
+            sponsor_contact=self.sponsor_contact,
+        )
+
+        self.assertEqual(sms.status, SMSNotification.Status.QUEUED)
+        self.assertEqual(sms.sponsor_verification, verification)
+        self.assertFalse(WhatsAppNotification.objects.exists())
         mock_reverse.assert_called_once()
 
     @override_settings(PUBLIC_BASE_URL="https://members.example.org")

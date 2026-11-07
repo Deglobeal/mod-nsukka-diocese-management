@@ -1,4 +1,4 @@
-"""Create sponsor acknowledgement records and queue their SMS notifications."""
+"""Create sponsor acknowledgement records and queue eligible notifications."""
 
 import hashlib
 import secrets
@@ -9,7 +9,15 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.notifications.models import SMSNotification, SponsorVerification
+from apps.members.models import MemberProfile
+from apps.notifications.models import (
+    SMSNotification,
+    SponsorVerification,
+    WhatsAppNotification,
+)
+from apps.notifications.services.whatsapp_consent import (
+    has_current_whatsapp_consent,
+)
 
 
 SPONSOR_RESPONSE_EXPIRY_HOURS = 24
@@ -22,12 +30,12 @@ def create_sponsor_verification_and_sms(
     request=None,
 ):
     """
-    Create a one-time sponsor response record and queue its SMS.
+    Create a one-time sponsor response record and queue SMS and eligible WhatsApp.
 
-    No network request is made here. The raw token is included in the queued
-    SMS message so the delivery worker can send or retry it. The verification
-    record stores only its hash. Treat SMS outbox access as sensitive because
-    queued messages contain bearer response links.
+    SMS is always queued for a valid sponsor. WhatsApp is queued only when
+    the sponsor has current, explicit consent for the saved phone number.
+    No network request is made here. Both queued messages contain a secure
+    bearer response link, so outbox access must be treated as sensitive.
     """
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -75,5 +83,23 @@ def create_sponsor_verification_and_sms(
             provider="sendar",
             idempotency_key=f"sponsor-verification:{application.pk}",
         )
+
+        profile = MemberProfile.objects.filter(
+            member=sponsor_contact.member,
+        ).first()
+
+        if has_current_whatsapp_consent(
+            profile,
+            sponsor_contact.recipient_phone,
+        ):
+            WhatsAppNotification.objects.create(
+                sponsor_verification=verification,
+                recipient_phone=sponsor_contact.recipient_phone,
+                message=message,
+                provider="whatsapp_business",
+                idempotency_key=(
+                    f"sponsor-verification:{application.pk}:whatsapp"
+                ),
+            )
 
     return verification, notification
