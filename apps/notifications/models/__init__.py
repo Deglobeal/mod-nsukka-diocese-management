@@ -1,5 +1,9 @@
-"""Model package for notifications. Keep each Django model in its own module.
+"""Notification models."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .sms_notification import SMSNotification
+from .sponsor_verification import SponsorVerification
+
+__all__ = [
+    "SMSNotification",
+    "SponsorVerification",
+]

@@ -11,6 +11,19 @@ DEBUG = False
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
 
+# Sendar SMS gateway
+SENDAR_API_KEY = os.getenv("SENDAR_API_KEY", "").strip()
+SENDAR_API_BASE_URL = os.getenv(
+    "SENDAR_API_BASE_URL", "https://api.sendar.io"
+).strip().rstrip("/")
+SENDAR_SENDER_ID = os.getenv("SENDAR_SENDER_ID", "").strip()
+SENDAR_ROUTE = os.getenv("SENDAR_ROUTE", "transactional").strip()
+SENDAR_TIMEOUT_SECONDS = int(os.getenv("SENDAR_TIMEOUT_SECONDS", "15"))
+SENDAR_ENVIRONMENT = os.getenv("SENDAR_ENVIRONMENT", "sandbox").strip().lower()
+SENDAR_ENABLED = os.getenv("SENDAR_ENABLED", "False").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

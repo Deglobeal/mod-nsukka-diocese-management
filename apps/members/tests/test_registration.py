@@ -11,7 +11,9 @@ from django.urls import reverse
 from PIL import Image
 from django.utils import timezone
 
-from apps.members.models import Member
+from apps.identity_cards.models import MembershipIdentity
+from apps.members.models import Member, MemberProfile
+from apps.notifications.models import SMSNotification, SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication
 
@@ -96,6 +98,22 @@ class MembershipRegistrationTests(TestCase):
             name="Other Registration Station",
         )
 
+        cls.sponsor = Member.objects.create(
+            first_name="John",
+            last_name="Sponsor",
+            parish=cls.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MemberProfile.objects.create(
+            member=cls.sponsor,
+            phone_number="08012345678",
+        )
+        MembershipIdentity.objects.create(
+            member=cls.sponsor,
+            official_membership_id="MOD-TEST-0001",
+            uniform_id="SP000001",
+        )
+
     def valid_signature_upload(self):
         buffer = BytesIO()
         image = Image.new("RGB", (240, 80), color=(250, 248, 240))
@@ -164,7 +182,10 @@ class MembershipRegistrationTests(TestCase):
     def test_valid_application_is_recorded_for_parish_review(self):
         response = self.client.post(
             reverse("members:register"),
-            self.valid_data(station=str(self.station.pk)),
+            self.valid_data(
+                station=str(self.station.pk),
+                sponsor_additional_phone="08011112222",
+            ),
         )
 
         application = MembershipApplication.objects.get(
@@ -196,6 +217,58 @@ class MembershipRegistrationTests(TestCase):
             "membership-signatures/",
             application.signature_image.name,
         )
+
+        verification = SponsorVerification.objects.get(
+            application=application
+        )
+        notification = SMSNotification.objects.get(
+            sponsor_verification=verification
+        )
+        self.assertEqual(verification.sponsor, self.sponsor)
+        self.assertEqual(
+            verification.official_membership_id,
+            "MOD-TEST-0001",
+        )
+        self.assertEqual(
+            notification.recipient_phone,
+            "+2348012345678",
+        )
+        self.assertNotEqual(
+            notification.recipient_phone,
+            "08011112222",
+        )
+        self.assertEqual(
+            notification.status,
+            SMSNotification.Status.QUEUED,
+        )
+        self.assertEqual(
+            SMSNotification.objects.filter(
+                sponsor_verification=verification
+            ).count(),
+            1,
+        )
+
+    def test_registration_rejects_unknown_sponsor_without_saving(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                sponsor_membership_id="MOD-UNKNOWN-9999",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "sponsor_membership_id",
+            "No member matches the supplied official membership ID.",
+        )
+        self.assertFalse(
+            MembershipApplication.objects.filter(
+                email="ada@example.com"
+            ).exists()
+        )
+        self.assertEqual(SponsorVerification.objects.count(), 0)
+        self.assertEqual(SMSNotification.objects.count(), 0)
 
     def test_registration_rejects_photo_when_background_processing_fails(self):
         from django.core.exceptions import ValidationError
@@ -273,7 +346,7 @@ class MembershipRegistrationTests(TestCase):
                 baptized_catholic="yes",
                 confirmed="yes",
                 previous_diocese="Awgu Diocese",
-                sponsor_membership_id="MOD-TEST-123",
+                sponsor_membership_id="MOD-TEST-0001",
                 sponsor_additional_phone="08011112222",
                 sponsor_rank="Major",
                 marital_status="Single",
@@ -292,7 +365,7 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(application.baptized_catholic, "yes")
         self.assertEqual(application.confirmed, "yes")
         self.assertEqual(application.previous_diocese, "Awgu Diocese")
-        self.assertEqual(application.sponsor_membership_id, "MOD-TEST-123")
+        self.assertEqual(application.sponsor_membership_id, "MOD-TEST-0001")
         self.assertEqual(application.marital_status, "Single")
         self.assertEqual(
             application.next_of_kin_relationship, "Sibling"

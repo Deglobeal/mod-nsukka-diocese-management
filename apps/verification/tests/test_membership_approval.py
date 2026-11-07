@@ -1,9 +1,13 @@
 from django.contrib.auth import get_user_model
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
 from apps.members.models import Member
+from apps.notifications.models import SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.services.membership_approval import (
@@ -34,6 +38,12 @@ class MembershipApprovalServiceTests(TestCase):
             first_name="Ada",
             last_name="Okafor",
             parish=parish,
+        )
+        cls.sponsor = Member.objects.create(
+            first_name="John",
+            last_name="Sponsor",
+            parish=parish,
+            status=Member.Status.ACTIVE,
         )
         cls.application = MembershipApplication.objects.create(
             member=cls.member,
@@ -69,6 +79,89 @@ class MembershipApprovalServiceTests(TestCase):
             decision=decision,
             comments=comments,
         )
+
+    def create_sponsor_verification(self, status):
+        return SponsorVerification.objects.create(
+            application=self.application,
+            sponsor=self.sponsor,
+            official_membership_id="MOD-TEST-SPONSOR",
+            recipient_phone="+2348012345678",
+            token_hash=f"approval-test-{status}",
+            expires_at=timezone.now() + timedelta(hours=24),
+            status=status,
+        )
+
+    def test_disputed_sponsor_blocks_all_approval_levels(self):
+        verification = self.create_sponsor_verification(
+            SponsorVerification.Status.DISPUTED
+        )
+        for stage, level in (
+            (MembershipApplication.Stage.PARISH_REVIEW,
+             MembershipReview.ReviewLevel.PARISH),
+            (MembershipApplication.Stage.DEANERY_REVIEW,
+             MembershipReview.ReviewLevel.DEANERY),
+            (MembershipApplication.Stage.DIOCESE_REVIEW,
+             MembershipReview.ReviewLevel.DIOCESE),
+        ):
+            for member in (self.member, None):
+                with self.subTest(stage=stage, existing_member=member is not None):
+                    self.application.stage = stage
+                    self.application.member = member
+                    self.application.parish = self.parish
+                    self.application.save()
+                    member_count = Member.objects.count()
+                    original_status = self.member.status
+                    with self.assertRaisesMessage(
+                        ValidationError,
+                        "Approval is blocked because the sponsor disputed "
+                        "this membership application. Refer it for administrative review.",
+                    ):
+                        self.review(level, MembershipReview.Decision.APPROVED)
+
+                    self.application.refresh_from_db()
+                    self.member.refresh_from_db()
+                    self.assertEqual(self.application.stage, stage)
+                    self.assertEqual(self.application.reviews.count(), 0)
+                    self.assertEqual(Member.objects.count(), member_count)
+                    self.assertEqual(self.member.status, original_status)
+                    self.assertIsNone(self.application.final_decision_at)
+
+        verification.status = SponsorVerification.Status.ACKNOWLEDGED
+        verification.save()
+        self.review(
+            MembershipReview.ReviewLevel.DIOCESE,
+            MembershipReview.Decision.APPROVED,
+        )
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.stage, MembershipApplication.Stage.APPROVED)
+        self.assertEqual(self.application.member.status, Member.Status.ACTIVE)
+
+    def test_other_sponsor_statuses_do_not_block_parish_approval(self):
+        statuses = (
+            SponsorVerification.Status.ACKNOWLEDGED,
+            SponsorVerification.Status.AWAITING_RESPONSE,
+            SponsorVerification.Status.EXPIRED,
+        )
+
+        for status in statuses:
+            with self.subTest(status=status):
+                verification = self.create_sponsor_verification(status)
+
+                self.review(
+                    MembershipReview.ReviewLevel.PARISH,
+                    MembershipReview.Decision.APPROVED,
+                )
+
+                self.application.refresh_from_db()
+                self.assertEqual(
+                    self.application.stage,
+                    MembershipApplication.Stage.DEANERY_REVIEW,
+                )
+
+                self.application.stage = MembershipApplication.Stage.PARISH_REVIEW
+                self.application.save(update_fields=["stage", "updated_at"])
+                self.application.reviews.all().delete()
+                verification.delete()
 
     def test_parish_approval_advances_to_deanery(self):
         self.review(

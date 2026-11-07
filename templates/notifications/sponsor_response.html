@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sponsor Confirmation | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="registration-page">
+    <div class="registration-card">
+        <p class="registration-eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1 class="registration-title">Sponsor confirmation</h1>
+
+        {% if invalid_action %}
+            <p class="registration-notice">
+                Select either confirmation or dispute to continue.
+                <a href="{{ request.path }}">Reload this page to try again.</a>
+            </p>
+        {% elif expired %}
+            <p class="registration-notice">
+                This sponsor response link has expired. Contact the
+                appropriate M.O.D. administrator if you need assistance.
+            </p>
+        {% elif already_responded %}
+            {% if verification.status == "acknowledged" %}
+                <p class="registration-notice">
+                    Your acknowledgement has already been recorded.
+                </p>
+            {% elif verification.status == "disputed" %}
+                <p class="registration-notice">
+                    Your dispute has already been recorded for administrative
+                    review.
+                </p>
+            {% else %}
+                <p class="registration-notice">
+                    This response link is no longer active.
+                </p>
+            {% endif %}
+        {% else %}
+            <p class="registration-description">
+                Your M.O.D. membership ID
+                <strong>{{ verification.official_membership_id }}</strong>
+                was entered as a sponsor for membership application
+                <strong>#{{ verification.application_id }}</strong>.
+                Match this application reference with one shared through a
+                trusted channel before responding.
+            </p>
+
+            <p class="registration-notice">
+                Confirm only if you recognise and agree to this sponsorship.
+                This response does not approve the applicant's membership.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="registration-field">
+                    <label for="dispute-reason">
+                        Dispute reason (optional)
+                    </label>
+                    <textarea
+                        id="dispute-reason"
+                        name="dispute_reason"
+                        rows="4"
+                        maxlength="2000"
+                        placeholder="Explain why you do not recognise or agree to this sponsorship."
+                    ></textarea>
+                </div>
+
+                <div class="registration-actions">
+                    <button
+                        class="registration-button"
+                        type="submit"
+                        name="action"
+                        value="acknowledge"
+                    >
+                        I acknowledge this sponsorship
+                    </button>
+
+                    <button
+                        class="registration-button registration-button-secondary"
+                        type="submit"
+                        name="action"
+                        value="dispute"
+                    >
+                        Dispute this sponsorship
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

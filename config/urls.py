@@ -8,6 +8,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", HomeView.as_view(), name="public_home"),
     path("members/", include("apps.members.urls")),
+    path("notifications/", include("apps.notifications.urls")),
     path("organizations/", include("apps.organizations.urls")),
     path("accounts/", include("apps.accounts.urls")),
     path("medical/", include("apps.medical.urls")),

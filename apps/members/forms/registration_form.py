@@ -218,8 +218,9 @@ class MembershipRegistrationForm(forms.ModelForm):
                 "autocomplete": "off",
             }),
             help_text=(
-                "The sponsor lookup is not connected yet. Entering an ID "
-                "here does not verify the sponsor."
+                "This ID is checked against the official membership register. "
+                "A confirmation request is queued for the phone number saved "
+                "in the sponsor's member profile."
             ),
         )
         self.fields["sponsor_additional_phone"] = forms.CharField(
