@@ -26,8 +26,8 @@ class Deanery(models.Model):
                 name="uniq_deanery_name_per_diocese",
             ),
             models.UniqueConstraint(
-                fields=["code"],
-                name="uniq_deanery_code_globally",
+                fields=["diocese", "code"],
+                name="uniq_deanery_code_per_diocese",
             ),
         ]
 

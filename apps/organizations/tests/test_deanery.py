@@ -114,22 +114,22 @@ class DeaneryModelTests(TestCase):
                     code="D01",
                 )
 
-    def test_duplicate_code_is_rejected_across_different_dioceses(self):
+    def test_same_code_is_allowed_across_different_dioceses(self):
         another_diocese = Diocese.objects.create(
             name="Another Diocese",
             code="037",
         )
 
-        Deanery.objects.create(
+        first = Deanery.objects.create(
             name="Central",
             diocese=self.diocese,
             code="D01",
         )
+        second = Deanery.objects.create(
+            name="Central",
+            diocese=another_diocese,
+            code="D01",
+        )
 
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                Deanery.objects.create(
-                    name="Central",
-                    diocese=another_diocese,
-                    code="D01",
-                )
+        self.assertEqual(first.code, second.code)
+        self.assertNotEqual(first.diocese_id, second.diocese_id)
