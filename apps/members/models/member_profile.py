@@ -13,6 +13,20 @@ class MemberProfile(models.Model):
     # Contact and personal information.
     email = models.EmailField(blank=True, default="")
     phone_number = models.CharField(max_length=30, blank=True, default="")
+
+    # Explicit WhatsApp notification consent for the saved contact number.
+    whatsapp_opted_in_at = models.DateTimeField(null=True, blank=True)
+    whatsapp_opted_out_at = models.DateTimeField(null=True, blank=True)
+    whatsapp_consent_phone = models.CharField(
+        max_length=16,
+        blank=True,
+        default="",
+    )
+    whatsapp_consent_version = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+    )
     sex = models.CharField(max_length=30, blank=True, default="")
     date_of_birth = models.DateField(null=True, blank=True)
     category = models.CharField(max_length=30, blank=True, default="")

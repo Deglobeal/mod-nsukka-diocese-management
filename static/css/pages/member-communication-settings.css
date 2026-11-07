@@ -1,0 +1,137 @@
+.member-communication-settings {
+    width: min(100% - 2rem, 48rem);
+    margin: var(--space-8) auto;
+    color: var(--color-text);
+}
+
+.communication-settings-header,
+.communication-settings-panel {
+    padding: var(--space-6);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+}
+
+.communication-settings-header {
+    margin-bottom: var(--space-5);
+}
+
+.communication-settings-eyebrow {
+    color: var(--color-accent-text);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.communication-settings-header h1 {
+    margin: var(--space-2) 0;
+}
+
+.communication-settings-member,
+.communication-settings-note,
+.communication-settings-footnote {
+    color: var(--color-text-muted);
+}
+
+.communication-settings-status {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin: var(--space-5) 0;
+    padding: var(--space-4);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-muted);
+}
+
+.communication-settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+}
+
+.communication-settings-button,
+.communication-settings-footer button {
+    min-height: var(--button-height);
+    padding: var(--button-padding-block) var(--button-padding-inline);
+    border: var(--button-border-width) solid var(--button-primary-border);
+    border-radius: var(--button-radius);
+    background: var(--button-primary-background);
+    color: var(--button-primary-text);
+    font: inherit;
+    font-weight: var(--button-font-weight);
+    cursor: pointer;
+    transition: var(--button-transition);
+}
+
+.communication-settings-button:hover,
+.communication-settings-footer button:hover {
+    border-color: var(--button-primary-border-hover);
+    background: var(--button-primary-background-hover);
+}
+
+.communication-settings-button-secondary {
+    border-color: var(--button-secondary-border);
+    background: var(--button-secondary-background);
+    color: var(--button-secondary-text);
+}
+
+.communication-settings-button-secondary:hover {
+    border-color: var(--button-secondary-border-hover);
+    background: var(--button-secondary-background-hover);
+    color: var(--button-secondary-text-hover);
+}
+
+.communication-settings-button:focus-visible,
+.communication-settings-footer button:focus-visible {
+    outline: var(--border-width-medium) solid var(--color-primary);
+    outline-offset: var(--space-1);
+}
+
+.communication-settings-button:disabled {
+    opacity: var(--button-disabled-opacity);
+    cursor: not-allowed;
+}
+
+.communication-settings-error {
+    padding: var(--space-4);
+    border: var(--border-width-thin) solid var(--color-danger-border);
+    border-radius: var(--radius-control);
+    background: var(--color-danger-background);
+    color: var(--color-danger-text);
+}
+
+.communication-settings-messages {
+    margin-bottom: var(--space-4);
+}
+
+.communication-settings-message {
+    padding: var(--space-4);
+    border: var(--border-width-thin) solid var(--color-success-border);
+    border-radius: var(--radius-control);
+    background: var(--color-success-background);
+    color: var(--color-success-text);
+}
+
+.communication-settings-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+}
+
+@media (max-width: 36rem) {
+    .communication-settings-actions,
+    .communication-settings-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .communication-settings-actions form,
+    .communication-settings-button,
+    .communication-settings-footer button {
+        width: 100%;
+    }
+}
