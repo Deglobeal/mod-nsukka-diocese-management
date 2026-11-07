@@ -8,6 +8,7 @@ class SMSNotification(models.Model):
     class Status(models.TextChoices):
         QUEUED = "queued", "Queued"
         SENDING = "sending", "Sending"
+        SIMULATED = "simulated", "Simulated (Not Sent)"
         SENT = "sent", "Sent"
         DELIVERED = "delivered", "Delivered"
         FAILED = "failed", "Failed"
@@ -42,6 +43,7 @@ class SMSNotification(models.Model):
     next_attempt_at = models.DateTimeField(default=timezone.now)
 
     last_error = models.TextField(blank=True, default="")
+    processing_started_at = models.DateTimeField(null=True, blank=True)
     provider_response = models.JSONField(default=dict, blank=True)
 
     sent_at = models.DateTimeField(null=True, blank=True)
