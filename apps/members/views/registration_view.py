@@ -185,6 +185,6 @@ def registration_received(request, application_id):
 
     return render(
         request,
-        "members/registration_received.html",
+        "registration/registration_received.html",
         {"application": application},
     )
