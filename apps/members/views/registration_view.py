@@ -15,6 +15,13 @@ from PIL import Image, UnidentifiedImageError
 
 from apps.members.forms import MembershipRegistrationForm
 from apps.members.passport_photo_processing import process_passport_photo
+from apps.notifications.services.sponsor_lookup import (
+    SponsorLookupError,
+    find_active_sponsor,
+)
+from apps.notifications.services.sponsor_verification import (
+    create_sponsor_verification_and_sms,
+)
 from apps.verification.models import MembershipApplication
 
 
@@ -196,7 +203,16 @@ def membership_registration(request):
                 "Please capture and accept your passport photograph using the camera.",
             )
 
+        sponsor_contact = None
         if form_is_valid and photo_data and not photo_error:
+            try:
+                sponsor_contact = find_active_sponsor(
+                    form.cleaned_data["sponsor_membership_id"]
+                )
+            except SponsorLookupError as error:
+                form.add_error("sponsor_membership_id", str(error))
+
+        if form_is_valid and photo_data and not photo_error and sponsor_contact:
             application = form.save(commit=False)
             application.stage = MembershipApplication.Stage.PARISH_REVIEW
             application.member = None
@@ -206,6 +222,11 @@ def membership_registration(request):
                     # The ModelForm assigns the validated signature upload.
                     # The model field retains its private storage and random path.
                     application.save()
+                    create_sponsor_verification_and_sms(
+                        application=application,
+                        sponsor_contact=sponsor_contact,
+                        request=request,
+                    )
             except Exception:
                 # Database transactions cannot roll back filesystem writes.
                 for image_field in (

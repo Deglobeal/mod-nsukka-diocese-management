@@ -6,6 +6,7 @@ from apps.accounts.services.office_authorization import (
     authorize_membership_reviewer,
 )
 from apps.members.models import Member
+from apps.notifications.models import SponsorVerification
 from apps.verification.models import MembershipApplication, MembershipReview
 
 
@@ -145,6 +146,19 @@ def record_membership_review(
         application=application,
         review_level=review_level,
     )
+
+    if (
+        review_level == MembershipReview.ReviewLevel.PARISH
+        and decision == MembershipReview.Decision.APPROVED
+        and SponsorVerification.objects.filter(
+            application=application,
+            status=SponsorVerification.Status.DISPUTED,
+        ).exists()
+    ):
+        raise ValidationError(
+            "Parish approval is blocked because the sponsor disputed "
+            "this membership application. Refer it for administrative review."
+        )
 
     review = MembershipReview.objects.create(
         application=application,
