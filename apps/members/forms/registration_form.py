@@ -352,6 +352,14 @@ class MembershipRegistrationForm(forms.ModelForm):
             "Maximum size 2 MB. Stored privately."
         )
 
+        self.fields["sex"].widget = forms.Select(
+            choices=[
+                ("", "Select sex"),
+                ("Male", "Male"),
+                ("Female", "Female"),
+            ]
+        )
+
         optional_fields = {
             "middle_name",
             "sex",
