@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, router, transaction
 
 
 class MemberProfile(models.Model):
@@ -82,6 +82,26 @@ class MemberProfile(models.Model):
     class Meta:
         verbose_name = "Member Profile"
         verbose_name_plural = "Member Profiles"
+
+    def save(self, *args, **kwargs):
+        # Serialize phone edits with consent writes and permanently revoke old consent.
+        using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        update_fields = kwargs.get("update_fields")
+        with transaction.atomic(using=using):
+            if self.pk and (update_fields is None or "phone_number" in update_fields):
+                previous = type(self).objects.using(using).select_for_update().filter(
+                    pk=self.pk
+                ).first()
+                if previous and previous.phone_number != self.phone_number:
+                    self.whatsapp_opted_in_at = None
+                    self.whatsapp_consent_phone = ""
+                    self.whatsapp_consent_version = ""
+                    if update_fields is not None:
+                        kwargs["update_fields"] = set(update_fields) | {
+                            "whatsapp_opted_in_at", "whatsapp_consent_phone",
+                            "whatsapp_consent_version",
+                        }
+            return super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Profile: {self.member.full_name}"

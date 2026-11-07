@@ -4,6 +4,7 @@ This implementation deliberately supports simulation only. It never makes
 network requests or sends WhatsApp messages.
 """
 
+import re
 from datetime import timedelta
 
 from django.db import connection, transaction
@@ -26,13 +27,13 @@ class SimulatedWhatsAppProvider:
         }
 
 
-def _claim_next_notification(now):
+def _claim_next_notification(now=None):
     """Atomically claim one eligible WhatsApp notification."""
     with transaction.atomic():
         queryset = WhatsAppNotification.objects.filter(
             provider="whatsapp_business",
             status=WhatsAppNotification.Status.QUEUED,
-            next_attempt_at__lte=now,
+            next_attempt_at__lte=now or timezone.now(),
             attempt_count__lt=F("max_attempts"),
         ).order_by("created_at", "pk")
 
@@ -47,7 +48,7 @@ def _claim_next_notification(now):
 
         notification.status = WhatsAppNotification.Status.SENDING
         notification.attempt_count += 1
-        notification.processing_started_at = now
+        notification.processing_started_at = now or timezone.now()
         notification.last_error = ""
         notification.save(
             update_fields=[
@@ -58,14 +59,35 @@ def _claim_next_notification(now):
                 "updated_at",
             ]
         )
-        return notification.pk
+        return notification
 
 
-def _finish_simulated_delivery(notification_id, response):
+def _owns_claim(notification, claim):
+    return (
+        notification.status == WhatsAppNotification.Status.SENDING
+        and notification.attempt_count == claim.attempt_count
+        and notification.processing_started_at == claim.processing_started_at
+    )
+
+
+def _failure_details(stage, exc, message):
+    detail = str(exc).replace(message, "[redacted message]") if message else str(exc)
+    # Sponsor response URLs contain bearer tokens, including when logged separately.
+    tokens = re.findall(r"/sponsor/respond/([^/\s]+)", message)
+    for token in tokens:
+        detail = detail.replace(token, "[redacted token]")
+    detail = re.sub(r"(?i)bearer\s+\S+", "Bearer [redacted]", detail)
+    detail = " ".join(detail.split())[:500]
+    return f"WhatsApp {stage} failed ({type(exc).__name__}): {detail}"
+
+
+def _finish_simulated_delivery(claim, response):
     with transaction.atomic():
         notification = WhatsAppNotification.objects.select_for_update().get(
-            pk=notification_id
+            pk=claim.pk
         )
+        if not _owns_claim(notification, claim):
+            return False
         notification.status = WhatsAppNotification.Status.SIMULATED
         notification.provider_response = response
         notification.provider_message_id = ""
@@ -86,13 +108,17 @@ def _finish_simulated_delivery(notification_id, response):
             ]
         )
 
+        return True
 
-def _record_failure(notification_id, now, error):
+
+def _record_failure(claim, now, error):
     with transaction.atomic():
         notification = WhatsAppNotification.objects.select_for_update().get(
-            pk=notification_id
+            pk=claim.pk
         )
 
+        if not _owns_claim(notification, claim):
+            return False
         notification.processing_started_at = None
         notification.last_error = error
 
@@ -117,6 +143,8 @@ def _record_failure(notification_id, now, error):
                 "updated_at",
             ]
         )
+
+        return True
 
 
 def _recover_stale_claims(now, lease_minutes):
@@ -156,10 +184,10 @@ def process_whatsapp_outbox(
     if lease_minutes < 1:
         raise ValueError("lease_minutes must be at least 1.")
 
-    now = now or timezone.now()
+    operation_now = now or timezone.now()
     provider = SimulatedWhatsAppProvider()
 
-    recovered = _recover_stale_claims(now, lease_minutes)
+    recovered = _recover_stale_claims(operation_now, lease_minutes)
 
     exhausted = WhatsAppNotification.objects.filter(
         provider="whatsapp_business",
@@ -168,7 +196,7 @@ def process_whatsapp_outbox(
     ).update(
         status=WhatsAppNotification.Status.FAILED,
         last_error="Maximum delivery attempts reached.",
-        updated_at=now,
+        updated_at=operation_now,
     )
 
     processed = 0
@@ -176,28 +204,29 @@ def process_whatsapp_outbox(
     failed = 0
 
     while processed < batch_size:
-        notification_id = _claim_next_notification(now)
-        if notification_id is None:
+        notification = _claim_next_notification(now)
+        if notification is None:
             break
 
         processed += 1
-        notification = WhatsAppNotification.objects.get(pk=notification_id)
 
+        stage = "simulation"
         try:
             response = provider.send(
                 recipient=notification.recipient_phone,
                 message=notification.message,
                 idempotency_key=notification.idempotency_key,
             )
-            _finish_simulated_delivery(notification_id, response)
-            simulated += 1
-        except Exception:
-            _record_failure(
-                notification_id,
-                now,
-                "Simulated WhatsApp delivery attempt failed.",
-            )
-            failed += 1
+            stage = "completion update"
+            if _finish_simulated_delivery(notification, response):
+                simulated += 1
+        except Exception as exc:
+            if _record_failure(
+                notification,
+                now or timezone.now(),
+                _failure_details(stage, exc, notification.message),
+            ):
+                failed += 1
 
     return {
         "processed": processed,

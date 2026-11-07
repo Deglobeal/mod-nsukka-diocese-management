@@ -8,6 +8,10 @@ from django.utils import timezone
 
 from apps.notifications.models import WhatsAppNotification
 from apps.notifications.services.whatsapp_outbox import (
+    _claim_next_notification,
+    _finish_simulated_delivery,
+    _record_failure,
+    _recover_stale_claims,
     SimulatedWhatsAppProvider,
     process_whatsapp_outbox,
 )
@@ -188,3 +192,75 @@ class WhatsAppOutboxTests(TestCase):
 
         with self.assertRaises(ValueError):
             process_whatsapp_outbox(simulate=True, batch_size=501)
+
+    def test_obsolete_claim_cannot_finish_or_fail_reclaimed_notification(self):
+        notification = self.create_notification()
+        now = timezone.now()
+        old_claim = _claim_next_notification(now)
+        later = now + timedelta(minutes=11)
+        _recover_stale_claims(later, 10)
+        new_claim = _claim_next_notification(later)
+        self.assertFalse(_finish_simulated_delivery(old_claim, {"obsolete": True}))
+        self.assertFalse(_record_failure(old_claim, later, "obsolete failure"))
+        notification.refresh_from_db()
+        self.assertEqual(notification.status, WhatsAppNotification.Status.SENDING)
+        self.assertEqual(notification.processing_started_at, later)
+        self.assertTrue(_finish_simulated_delivery(new_claim, {"current": True}))
+        self.assertFalse(_record_failure(old_claim, later, "obsolete failure"))
+        notification.refresh_from_db()
+        self.assertEqual(notification.provider_response, {"current": True})
+        self.assertEqual(notification.last_error, "")
+
+    def test_retry_uses_failure_time_and_each_claim_gets_a_fresh_lease(self):
+        first = self.create_notification()
+        second = self.create_notification(idempotency_key="second")
+        start = timezone.now()
+        failure_time = start + timedelta(minutes=8)
+        clock = [start]
+        leases = []
+
+        def send(**kwargs):
+            active = WhatsAppNotification.objects.get(
+                idempotency_key=kwargs["idempotency_key"]
+            )
+            leases.append(active.processing_started_at)
+            if len(leases) == 1:
+                clock[0] = failure_time
+                raise RuntimeError("temporary failure")
+            return {"sent": False}
+
+        with mock.patch(
+            "apps.notifications.services.whatsapp_outbox.timezone.now",
+            side_effect=lambda: clock[0],
+        ), mock.patch.object(SimulatedWhatsAppProvider, "send", side_effect=send):
+            result = process_whatsapp_outbox(simulate=True, batch_size=2)
+        first.refresh_from_db()
+        self.assertEqual(first.next_attempt_at, failure_time + timedelta(seconds=60))
+        self.assertEqual(leases, [start, failure_time])
+        self.assertEqual(result["simulated"], 1)
+
+    def test_failure_diagnostics_redact_message_and_bearer_token(self):
+        token = "synthetic-secret-token"
+        message = f"Sponsor link https://example.test/notifications/sponsor/respond/{token}/"
+        notification = self.create_notification(message=message)
+        with mock.patch.object(SimulatedWhatsAppProvider, "send", side_effect=ValueError(
+            f"provider unavailable: {message} token={token} Bearer extra-secret"
+        )):
+            process_whatsapp_outbox(simulate=True)
+        notification.refresh_from_db()
+        self.assertIn("simulation failed (ValueError)", notification.last_error)
+        self.assertIn("provider unavailable", notification.last_error)
+        for secret in (message, token, "extra-secret"):
+            self.assertNotIn(secret, notification.last_error)
+
+    def test_completion_failure_is_identified_and_requeued(self):
+        notification = self.create_notification()
+        with mock.patch(
+            "apps.notifications.services.whatsapp_outbox._finish_simulated_delivery",
+            side_effect=RuntimeError("database unavailable"),
+        ):
+            result = process_whatsapp_outbox(simulate=True)
+        notification.refresh_from_db()
+        self.assertEqual(result["failed"], 1)
+        self.assertEqual(notification.status, WhatsAppNotification.Status.QUEUED)
+        self.assertIn("completion update failed (RuntimeError)", notification.last_error)

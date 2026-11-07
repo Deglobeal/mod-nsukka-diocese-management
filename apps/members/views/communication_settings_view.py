@@ -3,6 +3,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -15,6 +16,7 @@ from apps.notifications.services.whatsapp_consent import (
 
 
 @login_required
+@transaction.atomic
 def communication_settings(request):
     """Allow an active linked member to manage consent for their own number."""
     account = (
@@ -33,7 +35,7 @@ def communication_settings(request):
         )
 
     member = account.member
-    profile = MemberProfile.objects.filter(member=member).first()
+    profile = MemberProfile.objects.select_for_update().filter(member=member).first()
     error_message = ""
 
     if request.method == "POST":
@@ -43,28 +45,33 @@ def communication_settings(request):
             if profile is None:
                 profile = MemberProfile.objects.create(member=member)
 
-            try:
-                consent_phone = normalize_nigerian_phone(profile.phone_number)
-            except ValueError:
+            if request.POST.get("phone_number") != profile.phone_number:
                 error_message = (
-                    "Your saved profile must contain a valid Nigerian phone "
-                    "number before you can enable WhatsApp notifications. "
-                    "Ask your Parish Administrator to update it first."
+                    "Your saved phone number changed. Review it and opt in again."
                 )
             else:
-                profile.whatsapp_opted_in_at = timezone.now()
-                profile.whatsapp_consent_phone = consent_phone
-                profile.whatsapp_consent_version = WHATSAPP_CONSENT_VERSION
-                profile.save(update_fields=[
-                    "whatsapp_opted_in_at",
-                    "whatsapp_consent_phone",
-                    "whatsapp_consent_version",
-                ])
-                messages.success(
-                    request,
-                    "WhatsApp notifications are enabled for your saved phone number.",
-                )
-                return redirect("members:communication_settings")
+                try:
+                    consent_phone = normalize_nigerian_phone(profile.phone_number)
+                except ValueError:
+                    error_message = (
+                        "Your saved profile must contain a valid Nigerian phone "
+                        "number before you can enable WhatsApp notifications. "
+                        "Ask your Parish Administrator to update it first."
+                    )
+                else:
+                    profile.whatsapp_opted_in_at = timezone.now()
+                    profile.whatsapp_consent_phone = consent_phone
+                    profile.whatsapp_consent_version = WHATSAPP_CONSENT_VERSION
+                    profile.save(update_fields=[
+                        "whatsapp_opted_in_at",
+                        "whatsapp_consent_phone",
+                        "whatsapp_consent_version",
+                    ])
+                    messages.success(
+                        request,
+                        "WhatsApp notifications are enabled for your saved phone number.",
+                    )
+                    return redirect("members:communication_settings")
 
         elif action == "opt_out":
             if profile is not None:

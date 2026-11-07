@@ -70,6 +70,7 @@
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="opt_in">
+                <input type="hidden" name="phone_number" value="{{ saved_phone }}">
                 <button
                     type="submit"
                     class="communication-settings-button"

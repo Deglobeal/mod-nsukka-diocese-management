@@ -100,7 +100,7 @@ class MemberCommunicationSettingsTests(TestCase):
     def test_member_can_opt_in_for_saved_phone_number(self):
         self.client.force_login(self.user)
 
-        response = self.client.post(self.url, {"action": "opt_in"})
+        response = self.client.post(self.url, {"action": "opt_in", "phone_number": self.profile.phone_number})
 
         self.assertRedirects(
             response,
@@ -151,7 +151,7 @@ class MemberCommunicationSettingsTests(TestCase):
         self.profile.save(update_fields=["phone_number"])
         self.client.force_login(self.user)
 
-        response = self.client.post(self.url, {"action": "opt_in"})
+        response = self.client.post(self.url, {"action": "opt_in", "phone_number": self.profile.phone_number})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "valid Nigerian phone number")
@@ -178,7 +178,7 @@ class MemberCommunicationSettingsTests(TestCase):
     def test_other_user_cannot_change_linked_members_consent(self):
         self.client.force_login(self.other_user)
 
-        response = self.client.post(self.url, {"action": "opt_in"})
+        response = self.client.post(self.url, {"action": "opt_in", "phone_number": self.profile.phone_number})
 
         self.assertEqual(response.status_code, 403)
         self.profile.refresh_from_db()
@@ -192,3 +192,31 @@ class MemberCommunicationSettingsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.profile.refresh_from_db()
         self.assertIsNone(self.profile.whatsapp_opted_in_at)
+
+    def test_stale_or_missing_displayed_phone_cannot_grant_consent(self):
+        self.client.force_login(self.user)
+        self.profile.phone_number = "08098765432"
+        self.profile.save(update_fields=["phone_number"])
+        for data in ({"action": "opt_in", "phone_number": "08012345678"},
+                     {"action": "opt_in"}):
+            response = self.client.post(self.url, data)
+            self.assertContains(response, "Review it and opt in again")
+            self.profile.refresh_from_db()
+            self.assertIsNone(self.profile.whatsapp_opted_in_at)
+            self.assertEqual(self.profile.whatsapp_consent_phone, "")
+            self.assertEqual(self.profile.whatsapp_consent_version, "")
+
+    def test_phone_round_trip_does_not_restore_consent(self):
+        self.test_member_can_opt_in_for_saved_phone_number()
+        for phone in ("08098765432", "08012345678"):
+            self.profile.phone_number = phone
+            self.profile.save(update_fields=["phone_number"])
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.whatsapp_opted_in_at)
+        self.assertEqual(self.profile.whatsapp_consent_phone, "")
+        response = self.client.get(self.url)
+        self.assertFalse(response.context["whatsapp_enabled"])
+
+    def test_portal_links_to_settings_through_login(self):
+        response = self.client.get(reverse("members:portal"))
+        self.assertContains(response, self.url)
