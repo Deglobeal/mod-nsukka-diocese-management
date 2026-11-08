@@ -1,6 +1,11 @@
 """Server-side passport background removal and white-background compositing."""
 
+import hashlib
+import os
+import tempfile
+import urllib.request
 from io import BytesIO
+from pathlib import Path
 from threading import Lock
 
 from django.core.exceptions import ValidationError
@@ -16,17 +21,85 @@ MIN_DIMENSION = 100
 MAX_DIMENSION = 4000
 
 
+def _model_path() -> Path:
+    """Find a verified U2NET model or download it into the runtime temp directory."""
+    expected_md5 = "60024c5c889badc19c04ad937298a77b"
+    model_url = (
+        "https://github.com/danielgatis/rembg/releases/download/"
+        "v0.0.0/u2net.onnx"
+    )
+
+    configured_path = os.environ.get("U2NET_MODEL_PATH")
+    candidates = [
+        Path(configured_path).expanduser() if configured_path else None,
+        Path.home() / ".rembg/models/u2net/u2net.onnx",
+        Path.home() / ".u2net/u2net.onnx",
+        Path(tempfile.gettempdir()) / "u2net.onnx",
+    ]
+
+    def is_valid(candidate: Path) -> bool:
+        if not candidate.is_file():
+            return False
+
+        digest = hashlib.md5()
+        with candidate.open("rb") as model_file:
+            for chunk in iter(lambda: model_file.read(1024 * 1024), b""):
+                digest.update(chunk)
+
+        return digest.hexdigest() == expected_md5
+
+    for candidate in candidates:
+        if candidate is not None and is_valid(candidate):
+            return candidate
+
+    destination = Path(tempfile.gettempdir()) / "u2net.onnx"
+    temporary_path = None
+
+    try:
+        digest = hashlib.md5()
+
+        with urllib.request.urlopen(model_url, timeout=120) as response:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=destination.parent,
+                prefix="u2net-",
+                suffix=".download",
+                delete=False,
+            ) as temporary_file:
+                temporary_path = Path(temporary_file.name)
+
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    digest.update(chunk)
+                    temporary_file.write(chunk)
+
+        if digest.hexdigest() != expected_md5:
+            raise RuntimeError("The downloaded U2NET model failed checksum verification.")
+
+        os.replace(temporary_path, destination)
+        return destination
+
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink()
+
+
 def _get_session():
-    """Load the background-removal model once per application process."""
+    """Load the U2NET ONNX session once per application process."""
     global _session
 
     if _session is None:
         with _session_lock:
             if _session is None:
                 try:
-                    from rembg import new_session
+                    import onnxruntime as ort
 
-                    _session = new_session(_MODEL_NAME)
+                    _session = ort.InferenceSession(
+                        str(_model_path()),
+                        providers=["CPUExecutionProvider"],
+                    )
                 except Exception as exc:
                     raise ValidationError(
                         "Passport photo processing is temporarily unavailable. "
@@ -35,6 +108,53 @@ def _get_session():
 
     return _session
 
+
+def _predict_foreground_mask(image: Image.Image) -> Image.Image:
+    """Run U2NET inference using the same preprocessing as rembg's U2NET session."""
+    import numpy as np
+
+    session = _get_session()
+
+    normalized_image = image.convert("RGB").resize(
+        (320, 320),
+        Image.Resampling.LANCZOS,
+    )
+    image_array = np.array(normalized_image)
+    image_array = image_array / max(np.max(image_array), 1e-6)
+
+    mean = (0.485, 0.456, 0.406)
+    std = (0.229, 0.224, 0.225)
+
+    normalized = np.zeros(
+        (image_array.shape[0], image_array.shape[1], 3)
+    )
+    for channel in range(3):
+        normalized[:, :, channel] = (
+            image_array[:, :, channel] - mean[channel]
+        ) / std[channel]
+
+    model_input = {
+        session.get_inputs()[0].name:
+            np.expand_dims(normalized.transpose((2, 0, 1)), 0).astype(
+                np.float32
+            )
+    }
+
+    prediction = session.run(None, model_input)[0][:, 0, :, :]
+    maximum = np.max(prediction)
+    minimum = np.min(prediction)
+
+    if maximum <= minimum:
+        raise ValueError("U2NET returned an invalid foreground mask.")
+
+    prediction = (prediction - minimum) / (maximum - minimum)
+    prediction = np.squeeze(prediction)
+
+    mask = Image.fromarray(
+        (prediction.clip(0, 1) * 255).astype("uint8"),
+        mode="L",
+    )
+    return mask.resize(image.size, Image.Resampling.LANCZOS)
 
 def _enhance_passport_photo(image: Image.Image) -> Image.Image:
     """Apply restrained luminance correction and sharpening without retouching."""
@@ -103,19 +223,9 @@ def process_passport_photo(raw: bytes) -> bytes:
                 "Please retake the photograph."
             )
 
-        from rembg import remove
-
-        result = remove(image, session=_get_session())
-
-        if isinstance(result, bytes):
-            with Image.open(BytesIO(result)) as result_image:
-                foreground = result_image.convert("RGBA")
-        elif isinstance(result, Image.Image):
-            foreground = result.convert("RGBA")
-        else:
-            raise ValidationError(
-                "The background could not be removed. Please retake the photo."
-            )
+        mask = _predict_foreground_mask(image)
+        foreground = image.convert("RGBA")
+        foreground.putalpha(mask)
 
         if foreground.size != image.size:
             raise ValidationError(

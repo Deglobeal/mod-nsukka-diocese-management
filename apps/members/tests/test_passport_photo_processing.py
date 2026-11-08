@@ -12,9 +12,10 @@ from apps.members.passport_photo_processing import process_passport_photo
 class PassportPhotoProcessingTests(SimpleTestCase):
     def make_input_jpeg(self):
         buffer = BytesIO()
-        Image.new("RGB", (120, 120), (80, 100, 120)).save(
-            buffer, format="JPEG"
-        )
+        image = Image.new("RGB", (120, 120), (80, 100, 120))
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((35, 20, 85, 100), fill=(180, 40, 40))
+        image.save(buffer, format="JPEG")
         return buffer.getvalue()
 
     def test_background_is_composited_to_white(self):
@@ -22,9 +23,9 @@ class PassportPhotoProcessingTests(SimpleTestCase):
         draw = ImageDraw.Draw(foreground)
         draw.rectangle((35, 20, 85, 100), fill=(180, 40, 40, 255))
 
-        with (
-            patch("apps.members.passport_photo_processing._get_session"),
-            patch("rembg.remove", return_value=foreground),
+        with patch(
+            "apps.members.passport_photo_processing._predict_foreground_mask",
+            return_value=foreground.getchannel("A"),
         ):
             result = process_passport_photo(self.make_input_jpeg())
 
