@@ -92,13 +92,30 @@ class SponsorVerificationServiceTests(TestCase):
             notification.recipient_phone,
             "+2348012345678",
         )
+        response_url = (
+            "https://members.example.org/notifications/"
+            "sponsor/respond/test-token/"
+        )
         self.assertIn(
-            "https://members.example.org/notifications/sponsor/respond/test-token/",
+            f"REVIEW REGISTRATION: {response_url}",
             notification.message,
         )
+        self.assertIn("Applicant: Ada Applicant", notification.message)
+        self.assertIn("Parish: Sponsor Service Parish", notification.message)
+        self.assertIn(
+            f"Application reference: #{self.application.pk}",
+            notification.message,
+        )
+        self.assertNotIn("AUTHORIZE:", notification.message)
+        self.assertNotIn("DECLINE:", notification.message)
+        self.assertIn("expires in 48 hours (2 days)", notification.message)
         self.assertLessEqual(
             verification.expires_at,
-            timezone.now() + timedelta(hours=24, seconds=2),
+            timezone.now() + timedelta(hours=48, seconds=2),
+        )
+        self.assertGreaterEqual(
+            verification.expires_at,
+            timezone.now() + timedelta(hours=48) - timedelta(seconds=2),
         )
         mock_reverse.assert_called_once()
 
@@ -198,7 +215,7 @@ class SponsorVerificationServiceTests(TestCase):
 
         self.assertNotIn("ada@example.com", notification.message)
         self.assertNotIn("+2348012345678", notification.message)
-        self.assertNotIn("Ada Applicant", notification.message)
+        self.assertIn("Applicant: Ada Applicant", notification.message)
 
     @override_settings(PUBLIC_BASE_URL="")
     @patch(

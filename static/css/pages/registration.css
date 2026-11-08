@@ -27,6 +27,15 @@
     line-height: 1.25;
 }
 
+.sponsor-applicant-photo {
+    display: block;
+    width: 160px;
+    aspect-ratio: 8 / 9;
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-control);
+    object-fit: cover;
+}
+
 .registration-description {
     margin: 0 0 var(--space-5);
     color: var(--color-text-muted);

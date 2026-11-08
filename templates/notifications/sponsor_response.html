@@ -15,8 +15,8 @@
 
         {% if invalid_action %}
             <p class="registration-notice">
-                Select either confirmation or dispute to continue.
-                <a href="{{ request.path }}">Reload this page to try again.</a>
+                Choose either AUTHORIZE or DECLINE to submit your response.
+                Your previous choice has not been recorded.
             </p>
         {% elif expired %}
             <p class="registration-notice">
@@ -26,11 +26,11 @@
         {% elif already_responded %}
             {% if verification.status == "acknowledged" %}
                 <p class="registration-notice">
-                    Your acknowledgement has already been recorded.
+                    Your authorization has already been recorded.
                 </p>
             {% elif verification.status == "disputed" %}
                 <p class="registration-notice">
-                    Your dispute has already been recorded for administrative
+                    Your decline has already been recorded for administrative
                     review.
                 </p>
             {% else %}
@@ -42,22 +42,62 @@
             <p class="registration-description">
                 Your M.O.D. membership ID
                 <strong>{{ verification.official_membership_id }}</strong>
-                was entered as a sponsor for membership application
+                was entered as a sponsor for application
                 <strong>#{{ verification.application_id }}</strong>.
-                Match this application reference with one shared through a
-                trusted channel before responding.
+                Review the applicant's details before making your decision.
+            </p>
+
+            <div class="registration-field">
+                <h2>Applicant profile</h2>
+
+                {% if has_passport_photo %}
+                    <img
+                        src="{{ passport_photo_url }}"
+                        alt="Applicant passport photograph"
+                        class="sponsor-applicant-photo"
+                        loading="eager"
+                    >
+                {% endif %}
+
+                <p>
+                    <strong>Full name:</strong>
+                    {{ application.applicant_name|default:"Not provided" }}
+                </p>
+                <p>
+                    <strong>Parish:</strong>
+                    {{ application.parish.name|default:"Not provided" }}
+                </p>
+                <p>
+                    <strong>Station:</strong>
+                    {{ application.station.name|default:"Not provided" }}
+                </p>
+                <p>
+                    <strong>Category:</strong>
+                    {{ application.get_category_display|default:"Not provided" }}
+                </p>
+                <p>
+                    <strong>Application reference:</strong>
+                    #{{ application.pk }}
+                </p>
+            </div>
+
+            <p class="registration-notice">
+                AUTHORIZE only if you recognise the applicant and agree to be
+                listed as their sponsor. DECLINE if you do not recognise or
+                agree to this sponsorship.
             </p>
 
             <p class="registration-notice">
-                Confirm only if you recognise and agree to this sponsorship.
-                This response does not approve the applicant's membership.
+                Your response does not approve the applicant's membership.
+                The normal Parish, Deanery, and Diocese review process still
+                applies. Your choice is recorded only after submission.
             </p>
 
             <form method="post">
                 {% csrf_token %}
                 <div class="registration-field">
                     <label for="dispute-reason">
-                        Dispute reason (optional)
+                        Reason for declining (optional)
                     </label>
                     <textarea
                         id="dispute-reason"
@@ -75,7 +115,7 @@
                         name="action"
                         value="acknowledge"
                     >
-                        I acknowledge this sponsorship
+                        AUTHORIZE sponsorship
                     </button>
 
                     <button
@@ -84,7 +124,7 @@
                         name="action"
                         value="dispute"
                     >
-                        Dispute this sponsorship
+                        DECLINE sponsorship
                     </button>
                 </div>
             </form>

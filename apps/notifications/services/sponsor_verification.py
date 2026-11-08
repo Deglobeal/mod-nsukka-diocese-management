@@ -20,7 +20,7 @@ from apps.notifications.services.whatsapp_consent import (
 )
 
 
-SPONSOR_RESPONSE_EXPIRY_HOURS = 24
+SPONSOR_RESPONSE_EXPIRY_HOURS = 48
 
 
 def create_sponsor_verification_and_sms(
@@ -60,10 +60,16 @@ def create_sponsor_verification_and_sms(
     )
 
     message = (
-        f"Your M.O.D. membership ID "
+        "Your M.O.D. membership ID "
         f"{sponsor_contact.official_membership_id} was entered as a sponsor "
-        f"for a membership application. Confirm or dispute this request: "
-        f"{response_url}"
+        "for this membership application.\n"
+        f"Applicant: {application.applicant_name}\n"
+        f"Parish: {application.parish.name}\n"
+        f"Application reference: #{application.pk}\n"
+        f"REVIEW REGISTRATION: {response_url}\n"
+        "Review the applicant's details before choosing whether to authorize "
+        "or decline the sponsorship. Opening the link does not record a "
+        "decision. This link expires in 48 hours (2 days)."
     )
 
     with transaction.atomic():
