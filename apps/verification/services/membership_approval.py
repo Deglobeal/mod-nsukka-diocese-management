@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -5,8 +6,10 @@ from django.utils import timezone
 from apps.accounts.services.office_authorization import (
     authorize_membership_reviewer,
 )
+from apps.audit.models import AuditEvent
 from apps.members.models import Member
 from apps.notifications.models import SponsorVerification
+from apps.notifications.services.in_app_notifications import notify_membership_review
 from apps.verification.models import MembershipApplication, MembershipReview
 
 
@@ -18,6 +21,39 @@ NEXT_STAGE = {
     MembershipApplication.Stage.DIOCESE_REVIEW:
         MembershipApplication.Stage.APPROVED,
 }
+
+
+def _record_review_audit_event(*, application, reviewer, review_level, decision):
+    """Append a minimal, immutable audit event for a successful review."""
+    parish = application.parish
+
+    if parish is None and application.member_id:
+        parish = application.member.parish
+
+    if parish is None:
+        raise ValidationError(
+            "Cannot record the review audit event without an assigned parish."
+        )
+
+    deanery = parish.deanery
+    diocese = deanery.diocese
+
+    actor_name = reviewer.get_full_name().strip() or reviewer.get_username()
+
+    return AuditEvent.objects.create(
+        actor=reviewer,
+        actor_name_snapshot=actor_name,
+        action=AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+        content_type=ContentType.objects.get_for_model(MembershipApplication),
+        object_id=application.pk,
+        diocese=diocese,
+        deanery=deanery,
+        parish=parish,
+        metadata={
+            "review_level": review_level,
+            "decision": decision,
+        },
+    )
 
 
 def _normalized_name_part(value):
@@ -126,7 +162,11 @@ def record_membership_review(
     application = (
         MembershipApplication.objects
         .select_for_update(of=("self",))
-        .select_related("member", "parish", "station")
+        .select_related(
+            "member__parish__deanery__diocese",
+            "parish__deanery__diocese",
+            "station",
+        )
         .get(pk=application_id)
     )
 
@@ -168,6 +208,12 @@ def record_membership_review(
     )
 
     if decision == MembershipReview.Decision.NEEDS_INFORMATION:
+        _record_review_audit_event(
+            application=application,
+            reviewer=reviewer,
+            review_level=review_level,
+            decision=decision,
+        )
         return review
 
     if decision == MembershipReview.Decision.REJECTED:
@@ -184,6 +230,12 @@ def record_membership_review(
                 "final_decision_reason",
                 "updated_at",
             ]
+        )
+        _record_review_audit_event(
+            application=application,
+            reviewer=reviewer,
+            review_level=review_level,
+            decision=decision,
         )
         return review
 
@@ -240,7 +292,31 @@ def record_membership_review(
                 "updated_at",
             ]
         )
+        event = _record_review_audit_event(
+            application=application,
+            reviewer=reviewer,
+            review_level=review_level,
+            decision=decision,
+        )
+        notify_membership_review(
+            application=application,
+            event=event,
+            review_level=review_level,
+            decision=decision,
+        )
         return review
 
     application.save(update_fields=["stage", "updated_at"])
+    event = _record_review_audit_event(
+        application=application,
+        reviewer=reviewer,
+        review_level=review_level,
+        decision=decision,
+    )
+    notify_membership_review(
+        application=application,
+        event=event,
+        review_level=review_level,
+        decision=decision,
+    )
     return review

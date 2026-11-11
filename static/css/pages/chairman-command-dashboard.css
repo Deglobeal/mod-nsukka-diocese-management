@@ -551,3 +551,98 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+.chairman-activity-list {
+    display: grid;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.chairman-activity-list__item {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    justify-content: space-between;
+    min-width: 0;
+    padding: var(--space-4) 0;
+}
+
+.chairman-activity-list__item:first-child {
+    padding-top: 0;
+}
+
+.chairman-activity-list__item:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.chairman-activity-list__item > div {
+    min-width: 0;
+}
+
+.chairman-activity-list__item p {
+    margin: var(--space-1) 0 0;
+    overflow-wrap: anywhere;
+}
+
+.chairman-activity-list__item time {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+}
+
+.chairman-notification--unread {
+    background: var(--color-surface-accent);
+    border-radius: var(--radius-md);
+    margin: 0 calc(-1 * var(--space-3));
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+}
+
+.chairman-notification__actions {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.chairman-notification__actions form {
+    margin: 0;
+}
+
+.chairman-notification__actions button {
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    color: var(--color-on-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    padding: var(--space-2) var(--space-3);
+}
+
+.chairman-notification__actions button:focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+.chairman-notification__unread-label {
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+}
+
+@media (max-width: 420px) {
+    .chairman-activity-list__item {
+        flex-direction: column;
+    }
+
+    .chairman-activity-list__item time {
+        white-space: normal;
+    }
+}

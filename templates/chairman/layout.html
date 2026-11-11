@@ -110,14 +110,19 @@
                 Leadership and Appointments
                 <small>Coming later</small>
             </span>
-            <span class="chairman-nav__unavailable">
+            <a class="chairman-nav__link{% if active_section == 'notifications' %} is-active{% endif %}"
+               href="{% url 'chairman:notifications' %}"
+               {% if active_section == "notifications" %}aria-current="page"{% endif %}>
                 Notifications
-                <small>Coming later</small>
-            </span>
-            <span class="chairman-nav__unavailable">
+                {% if unread_notification_count %}
+                    <small>{{ unread_notification_count }} unread</small>
+                {% endif %}
+            </a>
+            <a class="chairman-nav__link{% if active_section == 'audit' %} is-active{% endif %}"
+               href="{% url 'chairman:audit-history' %}"
+               {% if active_section == "audit" %}aria-current="page"{% endif %}>
                 Audit History
-                <small>Coming later</small>
-            </span>
+            </a>
         </nav>
 
         <div class="chairman-content">

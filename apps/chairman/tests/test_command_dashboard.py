@@ -1,13 +1,16 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.utils import timezone
 from django.urls import reverse
 
 from apps.accounts.models import OfficeAssignment
+from apps.audit.models import AuditEvent
 from apps.identity_cards.models import MembershipIdentity
 from apps.members.models import Member
+from apps.notifications.models import InAppNotification
 from apps.notifications.models import SponsorVerification
 from apps.organizations.models import Deanery, Diocese, Parish, Station
 from apps.verification.models import MembershipApplication, MembershipReview
@@ -231,6 +234,14 @@ class ChairmanCommandDashboardTests(TestCase):
             with self.subTest(label=label):
                 self.assertContains(response, label)
         self.assertContains(response, "Coming later")
+        self.assertContains(
+            response,
+            f'href="{reverse("chairman:notifications")}"',
+        )
+        self.assertContains(
+            response,
+            f'href="{reverse("chairman:audit-history")}"',
+        )
         self.assertNotContains(response, 'href="#"')
 
     def test_navigation_routes_render_independent_content_and_active_states(self):
@@ -549,3 +560,167 @@ class ChairmanCommandDashboardTests(TestCase):
         response = self.client.get(reverse("chairman:dashboard"))
 
         self.assertEqual(response.status_code, 403)
+
+    def _create_audit_event(self, diocese, deanery, parish):
+        return AuditEvent.objects.create(
+            actor=self.chairman,
+            actor_name_snapshot=self.chairman.username,
+            action=AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+            content_type=ContentType.objects.get_for_model(MembershipApplication),
+            object_id=self.application.pk,
+            diocese=diocese,
+            deanery=deanery,
+            parish=parish,
+            metadata={"review_level": "diocese", "decision": "approved"},
+        )
+
+    def test_audit_history_is_scoped_to_authorized_diocese(self):
+        own_event = self._create_audit_event(
+            self.diocese, self.deanery, self.parish
+        )
+        self._create_audit_event(
+            self.other_diocese, self.other_deanery, self.other_parish
+        )
+        self.client.force_login(self.chairman)
+
+        response = self.client.get(reverse("chairman:audit-history"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.diocese.name)
+        self.assertNotContains(response, self.other_diocese.name)
+        self.assertEqual(list(response.context["audit_events"]), [own_event])
+
+    def test_overview_recent_audit_activity_is_scoped(self):
+        own_event = self._create_audit_event(
+            self.diocese, self.deanery, self.parish
+        )
+        self._create_audit_event(
+            self.other_diocese, self.other_deanery, self.other_parish
+        )
+        self.client.force_login(self.chairman)
+
+        response = self.client.get(reverse("chairman:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            list(response.context["recent_audit_activity"]), [own_event]
+        )
+        self.assertNotContains(response, self.other_diocese.name)
+
+    def test_inbox_is_limited_to_recipient_and_authorized_diocese(self):
+        own = InAppNotification.objects.create(
+            recipient=self.chairman,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="Own Diocese notification",
+            message="A review is waiting.",
+            diocese=self.diocese,
+            deanery=self.deanery,
+        )
+        InAppNotification.objects.create(
+            recipient=self.chairman,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="Outside Diocese notification",
+            message="Must remain hidden.",
+            diocese=self.other_diocese,
+            deanery=self.other_deanery,
+        )
+        InAppNotification.objects.create(
+            recipient=self.deanery_admin,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="Another recipient notification",
+            message="Must remain private.",
+            diocese=self.diocese,
+            deanery=self.deanery,
+        )
+        self.client.force_login(self.chairman)
+
+        response = self.client.get(reverse("chairman:notifications"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, own.title)
+        self.assertNotContains(response, "Outside Diocese notification")
+        self.assertNotContains(response, "Another recipient notification")
+        self.assertEqual(response.context["unread_notification_count"], 1)
+        self.assertEqual(list(response.context["notifications"]), [own])
+
+    def test_chairman_can_mark_only_own_notification_read(self):
+        own = InAppNotification.objects.create(
+            recipient=self.chairman,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="Own notification",
+            message="Please review.",
+            diocese=self.diocese,
+            deanery=self.deanery,
+        )
+        other_recipient = InAppNotification.objects.create(
+            recipient=self.deanery_admin,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="Deanery notification",
+            message="For another recipient.",
+            diocese=self.diocese,
+            deanery=self.deanery,
+        )
+        outside_scope = InAppNotification.objects.create(
+            recipient=self.chairman,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="Outside notification",
+            message="Outside authorized scope.",
+            diocese=self.other_diocese,
+            deanery=self.other_deanery,
+        )
+        self.client.force_login(self.chairman)
+
+        response = self.client.post(
+            reverse("chairman:notification-read", args=[own.pk])
+        )
+        self.assertRedirects(
+            response,
+            reverse("chairman:notifications"),
+            fetch_redirect_response=False,
+        )
+        own.refresh_from_db()
+        self.assertIsNotNone(own.read_at)
+
+        for notification in (other_recipient, outside_scope):
+            with self.subTest(notification=notification.title):
+                response = self.client.post(
+                    reverse(
+                        "chairman:notification-read",
+                        args=[notification.pk],
+                    )
+                )
+                self.assertEqual(response.status_code, 404)
+                notification.refresh_from_db()
+                self.assertIsNone(notification.read_at)
+
+    def test_mark_notification_read_requires_post(self):
+        notification = InAppNotification.objects.create(
+            recipient=self.chairman,
+            notification_type=InAppNotification.Type.REVIEW_REQUIRED,
+            title="POST only",
+            message="Read state changes require POST.",
+            diocese=self.diocese,
+            deanery=self.deanery,
+        )
+        self.client.force_login(self.chairman)
+
+        response = self.client.get(
+            reverse("chairman:notification-read", args=[notification.pk])
+        )
+
+        self.assertEqual(response.status_code, 405)
+        notification.refresh_from_db()
+        self.assertIsNone(notification.read_at)
+
+    def test_inbox_and_audit_pages_reject_unassigned_and_local_roles(self):
+        for user in (
+            self.unassigned_staff,
+            self.unassigned_superuser,
+            self.deanery_admin,
+            self.parish_admin,
+        ):
+            for route in ("chairman:notifications", "chairman:audit-history"):
+                with self.subTest(user=user.username, route=route):
+                    self.client.force_login(user)
+                    response = self.client.get(reverse(route))
+                    self.assertEqual(response.status_code, 403)

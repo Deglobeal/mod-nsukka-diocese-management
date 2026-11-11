@@ -1,10 +1,16 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
-from django.shortcuts import render
-from django.views.decorators.http import require_GET
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_GET, require_POST
 
+from apps.notifications.models import InAppNotification
 from apps.accounts.services.office_authorization import (
     authorize_diocese_chairman,
+)
+from apps.chairman.selectors.activity import (
+    get_chairman_audit_history,
+    get_chairman_inbox,
 )
 from apps.chairman.selectors.command_dashboard import (
     get_chairman_shell_data,
@@ -42,6 +48,14 @@ SECTION_DETAILS = {
     "stations": (
         "Stations",
         "Review stations and their associated membership records.",
+    ),
+    "notifications": (
+        "Notifications",
+        "Membership workflow notifications addressed to you.",
+    ),
+    "audit": (
+        "Audit History",
+        "Immutable history of membership review decisions in your authorized Diocese.",
     ),
 }
 
@@ -249,3 +263,54 @@ def station_detail(request, station_id):
 @login_required
 def chairman_membership_applications(request):
     return membership_review_dashboard(request, "diocese")
+
+@login_required
+@require_GET
+def chairman_notifications(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="notifications",
+        template="chairman/notifications.html",
+        data=get_chairman_inbox(
+            recipient=request.user,
+            diocese_ids=diocese_ids,
+        ),
+    )
+
+
+@login_required
+@require_POST
+def mark_notification_read(request, notification_id):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    notification = get_object_or_404(
+        InAppNotification.objects.filter(
+            recipient=request.user,
+            diocese_id__in=diocese_ids,
+        ),
+        pk=notification_id,
+    )
+
+    if notification.read_at is None:
+        notification.read_at = timezone.now()
+        notification.save(update_fields=["read_at"])
+
+    return redirect("chairman:notifications")
+
+
+@login_required
+@require_GET
+def chairman_audit_history(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="audit",
+        template="chairman/audit_history.html",
+        data={
+            "audit_events": get_chairman_audit_history(
+                diocese_ids=diocese_ids,
+            ),
+        },
+    )

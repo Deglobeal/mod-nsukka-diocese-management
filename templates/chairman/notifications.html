@@ -1,0 +1,53 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+<section class="chairman-panel" aria-labelledby="notifications-heading">
+    <header class="chairman-panel__heading">
+        <div>
+            <p class="chairman-panel__eyebrow">PERSONAL INBOX</p>
+            <h2 id="notifications-heading">Notifications</h2>
+            <p>Workflow updates addressed to your chairman account.</p>
+        </div>
+        <p class="chairman-muted">
+            {{ unread_notification_count }} unread
+        </p>
+    </header>
+
+    <ul class="chairman-activity-list chairman-notification-list">
+        {% for notification in notifications %}
+            <li class="chairman-activity-list__item{% if not notification.is_read %} chairman-notification--unread{% endif %}">
+                <div>
+                    <strong>{{ notification.title }}</strong>
+                    <p>{{ notification.message }}</p>
+                    <p class="chairman-muted">
+                        {{ notification.get_notification_type_display }}
+                        · {{ notification.diocese.name }}
+                        {% if notification.deanery %} · {{ notification.deanery.name }}{% endif %}
+                        {% if notification.parish %} · {{ notification.parish.name }}{% endif %}
+                    </p>
+                    <time datetime="{{ notification.created_at|date:'c' }}">
+                        {{ notification.created_at|date:"M j, Y · H:i" }}
+                    </time>
+                    {% if notification.action_url %}
+                        <p><a class="chairman-text-link" href="{{ notification.action_url }}">Open related page</a></p>
+                    {% endif %}
+                </div>
+
+                <div class="chairman-notification__actions">
+                    {% if notification.is_read %}
+                        <span class="chairman-muted">Read</span>
+                    {% else %}
+                        <span class="chairman-notification__unread-label">Unread</span>
+                        <form method="post" action="{% url 'chairman:notification-read' notification.pk %}">
+                            {% csrf_token %}
+                            <button type="submit">Mark as read</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </li>
+        {% empty %}
+            <li class="chairman-muted">You have no notifications yet.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}
