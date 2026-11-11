@@ -7,6 +7,9 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from apps.accounts.models import OfficeAssignment
+from apps.chairman.selectors.command_dashboard import (
+    get_chairman_shell_data,
+)
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
@@ -194,14 +197,31 @@ def membership_review_dashboard(request, dashboard_level):
                 ),
             })
 
+    chairman_shell_data = {}
+    if dashboard_level == "diocese":
+        chairman_shell_data = get_chairman_shell_data(
+            diocese_ids={
+                assignment.diocese_id for assignment in assignments
+            }
+        )
+
     return render(
         request,
-        f"verification/dashboards/{dashboard_level}.html",
+        (
+            "chairman/membership_applications.html"
+            if dashboard_level == "diocese"
+            else f"verification/dashboards/{dashboard_level}.html"
+        ),
         {
+            **chairman_shell_data,
             "dashboard_level": dashboard_level,
             "dashboard_title": config["title"],
             "dashboard_description": config["description"],
             "scope_labels": scope_labels,
+            "dashboard_scopes": scope_labels,
+            "active_section": (
+                "applications" if dashboard_level == "diocese" else ""
+            ),
             "applications": applications,
             "pending_count": applications.count(),
             "decision_choices": MembershipReview.Decision.choices,

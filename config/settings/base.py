@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.identity_cards.apps.IdentityCardsConfig",
     "apps.medical.apps.MedicalConfig",
     "apps.accounts.apps.AccountsConfig",
+    "apps.chairman.apps.ChairmanConfig",
     "apps.complaints.apps.ComplaintsConfig",
     "apps.recognition.apps.RecognitionConfig",
     "apps.transfers.apps.TransfersConfig",

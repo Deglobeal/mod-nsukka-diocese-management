@@ -1,0 +1,251 @@
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
+from django.shortcuts import render
+from django.views.decorators.http import require_GET
+
+from apps.accounts.services.office_authorization import (
+    authorize_diocese_chairman,
+)
+from apps.chairman.selectors.command_dashboard import (
+    get_chairman_shell_data,
+    get_deanery_detail,
+    get_deanery_directory,
+    get_member_directory,
+    get_overview_data,
+    get_parish_detail,
+    get_parish_directory,
+    get_station_detail,
+    get_station_directory,
+)
+from apps.verification.views.membership_review_dashboard_view import (
+    membership_review_dashboard,
+)
+
+
+SECTION_DETAILS = {
+    "overview": (
+        "Overview",
+        "Diocese-wide operational statistics and membership status.",
+    ),
+    "members": (
+        "Membership Directory",
+        "Search and review member records in your authorized Diocese.",
+    ),
+    "deaneries": (
+        "Deaneries",
+        "Review deaneries and their parish and member coverage.",
+    ),
+    "parishes": (
+        "Parishes",
+        "Review parish codes, deanery, stations, members, and status.",
+    ),
+    "stations": (
+        "Stations",
+        "Review stations and their associated membership records.",
+    ),
+}
+
+
+def _render_chairman_page(
+    request,
+    *,
+    diocese_ids,
+    section,
+    template,
+    data=None,
+):
+    context = {
+        **get_chairman_shell_data(diocese_ids=diocese_ids),
+        "active_section": section,
+        "page_title": SECTION_DETAILS[section][0],
+        "page_description": SECTION_DETAILS[section][1],
+        "current_path": request.path,
+        **(data or {}),
+    }
+    return render(request, template, context)
+
+
+def _directory_parameters(request):
+    return {
+        "search_query": request.GET.get("q", "").strip()[:100],
+        "page_number": request.GET.get("page", 1),
+    }
+
+
+@login_required
+@require_GET
+def command_dashboard(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="overview",
+        template="chairman/command_dashboard.html",
+        data=get_overview_data(
+            diocese_ids=diocese_ids,
+        ),
+    )
+
+
+@login_required
+@require_GET
+def member_directory(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="members",
+        template="chairman/member_directory.html",
+        data=get_member_directory(
+            diocese_ids=diocese_ids,
+            **_directory_parameters(request),
+        ),
+    )
+
+
+@login_required
+@require_GET
+def deanery_directory(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="deaneries",
+        template="chairman/organization_directory.html",
+        data={
+            "organization_type": "deanery",
+            **get_deanery_directory(
+                diocese_ids=diocese_ids,
+                **_directory_parameters(request),
+            ),
+        },
+    )
+
+
+@login_required
+@require_GET
+def deanery_detail(request, deanery_id):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    data = get_deanery_detail(
+        diocese_ids=diocese_ids,
+        deanery_id=deanery_id,
+    )
+    if data is None:
+        raise Http404("Deanery not found.")
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="deaneries",
+        template="chairman/organization_detail.html",
+        data={
+            "organization_type": "deanery",
+            "active_deanery_id": data["organization"].pk,
+            "page_title": data["organization"].name,
+            "page_description": (
+                f"Deanery in {data['organization'].diocese.name}."
+            ),
+            **data,
+        },
+    )
+
+
+@login_required
+@require_GET
+def parish_directory(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="parishes",
+        template="chairman/organization_directory.html",
+        data={
+            "organization_type": "parish",
+            **get_parish_directory(
+                diocese_ids=diocese_ids,
+                **_directory_parameters(request),
+            ),
+        },
+    )
+
+
+@login_required
+@require_GET
+def parish_detail(request, parish_id):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    data = get_parish_detail(
+        diocese_ids=diocese_ids,
+        parish_id=parish_id,
+        **_directory_parameters(request),
+    )
+    if data is None:
+        raise Http404("Parish not found.")
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="parishes",
+        template="chairman/organization_detail.html",
+        data={
+            "organization_type": "parish",
+            "active_deanery_id": data["organization"].deanery_id,
+            "active_parish_id": data["organization"].pk,
+            "page_title": data["organization"].name,
+            "page_description": (
+                f"Parish in {data['organization'].deanery.name} Deanery."
+            ),
+            **data,
+        },
+    )
+
+
+@login_required
+@require_GET
+def station_directory(request):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="stations",
+        template="chairman/organization_directory.html",
+        data={
+            "organization_type": "station",
+            **get_station_directory(
+                diocese_ids=diocese_ids,
+                **_directory_parameters(request),
+            ),
+        },
+    )
+
+
+@login_required
+@require_GET
+def station_detail(request, station_id):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    data = get_station_detail(
+        diocese_ids=diocese_ids,
+        station_id=station_id,
+        **_directory_parameters(request),
+    )
+    if data is None:
+        raise Http404("Station not found.")
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="stations",
+        template="chairman/organization_detail.html",
+        data={
+            "organization_type": "station",
+            "active_deanery_id": data["organization"].parish.deanery_id,
+            "active_parish_id": data["organization"].parish_id,
+            "active_station_id": data["organization"].pk,
+            "page_title": data["organization"].name,
+            "page_description": (
+                f"Station in {data['organization'].parish.name} Parish."
+            ),
+            **data,
+        },
+    )
+
+
+@login_required
+def chairman_membership_applications(request):
+    return membership_review_dashboard(request, "diocese")

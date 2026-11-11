@@ -11,6 +11,7 @@ urlpatterns = [
     path("notifications/", include("apps.notifications.urls")),
     path("organizations/", include("apps.organizations.urls")),
     path("accounts/", include("apps.accounts.urls")),
+    path("chairman/", include("apps.chairman.urls")),
     path("medical/", include("apps.medical.urls")),
     path("identity-cards/", include("apps.identity_cards.web_urls")),
     path("verification/", include("apps.verification.web_urls")),

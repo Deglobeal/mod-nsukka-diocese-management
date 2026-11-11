@@ -10,3 +10,9 @@
 8. Complaint confidentiality, review, evidence and appeal rules.
 9. Recognition and promotion approval workflows.
 10. Backup, restore, incident response, and data retention requirements.
+
+## Chairman succession — deferred
+
+The 48-hour activation and 72-hour onboarding/succession rules are requirements
+for a later stage. Stage 1 does not implement activation deadlines, successor
+selection, onboarding workflows, notifications, or automatic reassignment.
