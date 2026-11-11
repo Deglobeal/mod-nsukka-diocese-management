@@ -14,6 +14,29 @@ ROLE_FOR_STAGE = {
 }
 
 
+def authorize_diocese_chairman(*, user):
+    """Return the dioceses covered by a user's active diocesan assignments."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        raise PermissionDenied("An authenticated Diocese Chairman is required.")
+
+    diocese_ids = tuple(
+        OfficeAssignment.objects.filter(
+            user=user,
+            role=OfficeAssignment.Role.DIOCESE_ADMIN,
+            is_active=True,
+        )
+        .order_by()
+        .values_list("diocese_id", flat=True)
+        .distinct()
+    )
+    if not diocese_ids:
+        raise PermissionDenied(
+            "An active diocesan assignment is required to access this dashboard."
+        )
+
+    return diocese_ids
+
+
 def authorize_membership_reviewer(*, user, application, review_level):
     """Require an active assignment at the application's review level."""
     if user is None or not getattr(user, "is_authenticated", False):

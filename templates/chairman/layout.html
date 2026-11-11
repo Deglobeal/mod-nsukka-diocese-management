@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Chairman Command Dashboard" }} | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/chairman-command-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/diocese-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/membership-review-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="chairman-shell">
+    <header class="chairman-topbar">
+        <div class="chairman-brand">
+            <p class="chairman-eyebrow">M.O.D. NSUKKA DIOCESE</p>
+            <p class="chairman-brand__title">Command Dashboard</p>
+        </div>
+        <div class="chairman-identity">
+            <div>
+                <span>Signed in as</span>
+                <strong>{{ user.get_full_name|default:user.get_username }}</strong>
+                <span class="chairman-identity__role">Diocesan Chairman</span>
+            </div>
+            <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit">Sign out</button>
+            </form>
+        </div>
+    </header>
+
+    {% if dashboard_scopes %}
+        <div class="chairman-scope" aria-label="Authorized diocesan scope">
+            <span>Authorized Diocese</span>
+            {% for scope in dashboard_scopes %}
+                <strong>{{ scope }}</strong>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="chairman-workspace">
+        <nav class="chairman-nav" aria-label="Diocesan Chairman navigation">
+            <a class="chairman-nav__link{% if active_section == 'overview' %} is-active{% endif %}"
+               href="{% url 'chairman:dashboard' %}"
+               {% if active_section == "overview" %}aria-current="page"{% endif %}>Overview</a>
+            <a class="chairman-nav__link{% if active_section == 'members' %} is-active{% endif %}"
+               href="{% url 'chairman:members' %}"
+               {% if active_section == "members" %}aria-current="page"{% endif %}>Membership Directory</a>
+            <a class="chairman-nav__link{% if active_section == 'applications' %} is-active{% endif %}"
+               href="{% url 'chairman:membership-applications' %}"
+               {% if active_section == "applications" %}aria-current="page"{% endif %}>Membership Applications</a>
+            <a class="chairman-nav__link{% if active_section == 'deaneries' %} is-active{% endif %}"
+               href="{% url 'chairman:deaneries' %}"
+               {% if active_section == "deaneries" %}aria-current="page"{% endif %}>Deaneries</a>
+            <a class="chairman-nav__link{% if active_section == 'parishes' %} is-active{% endif %}"
+               href="{% url 'chairman:parishes' %}"
+               {% if active_section == "parishes" %}aria-current="page"{% endif %}>Parishes</a>
+            <a class="chairman-nav__link{% if active_section == 'stations' %} is-active{% endif %}"
+               href="{% url 'chairman:stations' %}"
+               {% if active_section == "stations" %}aria-current="page"{% endif %}>Stations</a>
+            <details class="chairman-nav__hierarchy"
+                     {% if active_section == "deaneries" or active_section == "parishes" or active_section == "stations" %}open{% endif %}>
+                <summary>Organizational hierarchy</summary>
+                <ul class="chairman-tree">
+                    {% for deanery in navigation_deaneries %}
+                        <li>
+                            <details {% if active_deanery_id == deanery.pk %}open{% endif %}>
+                                <summary>
+                                    <a href="{% url 'chairman:deanery-detail' deanery.pk %}"
+                                       {% if active_deanery_id == deanery.pk %}aria-current="page"{% endif %}>
+                                        {{ deanery.name }}
+                                    </a>
+                                </summary>
+                                <ul>
+                                    {% for parish in deanery.parishes.all %}
+                                        <li>
+                                            <details {% if active_parish_id == parish.pk %}open{% endif %}>
+                                                <summary>
+                                                    <a href="{% url 'chairman:parish-detail' parish.pk %}"
+                                                       {% if active_parish_id == parish.pk %}aria-current="page"{% endif %}>
+                                                        {{ parish.name }}
+                                                    </a>
+                                                </summary>
+                                                <ul>
+                                                    {% for station in parish.stations.all %}
+                                                        <li>
+                                                            <a href="{% url 'chairman:station-detail' station.pk %}"
+                                                               {% if active_station_id == station.pk %}aria-current="page"{% endif %}>
+                                                                {{ station.name }}
+                                                            </a>
+                                                        </li>
+                                                    {% empty %}
+                                                        <li class="chairman-tree__empty">No stations</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </details>
+                                        </li>
+                                    {% empty %}
+                                        <li class="chairman-tree__empty">No parishes</li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
+                        </li>
+                    {% empty %}
+                        <li class="chairman-tree__empty">No deaneries</li>
+                    {% endfor %}
+                </ul>
+            </details>
+            <span class="chairman-nav__unavailable">
+                Leadership and Appointments
+                <small>Coming later</small>
+            </span>
+            <span class="chairman-nav__unavailable">
+                Notifications
+                <small>Coming later</small>
+            </span>
+            <span class="chairman-nav__unavailable">
+                Audit History
+                <small>Coming later</small>
+            </span>
+        </nav>
+
+        <div class="chairman-content">
+            {% if messages %}
+                <section class="chairman-messages" aria-label="Notifications">
+                    {% for message in messages %}
+                        <p class="review-message {{ message.tags }}">{{ message }}</p>
+                    {% endfor %}
+                </section>
+            {% endif %}
+            <header class="chairman-page-heading">
+                <p class="chairman-page-heading__eyebrow">DIOCESE OPERATIONS</p>
+                <h1>{% block page_heading %}{{ page_title|default:"Overview" }}{% endblock %}</h1>
+                {% block page_description %}
+                    <p class="chairman-page-heading__description">
+                        {{ page_description }}
+                    </p>
+                {% endblock %}
+            </header>
+            {% block dashboard_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

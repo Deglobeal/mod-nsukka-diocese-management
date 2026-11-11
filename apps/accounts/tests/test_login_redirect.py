@@ -88,10 +88,10 @@ class RoleAwareLoginRedirectTests(TestCase):
             "membership_review_dashboard:deanery",
         )
 
-    def test_diocese_admin_redirects_to_diocese_dashboard(self):
+    def test_diocese_admin_redirects_to_chairman_dashboard(self):
         self.login_and_check_redirect(
             "redirect_diocese_admin",
-            "membership_review_dashboard:diocese",
+            "chairman:dashboard",
         )
 
     def test_unassigned_user_redirects_to_public_home(self):

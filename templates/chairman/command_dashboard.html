@@ -1,0 +1,68 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+    <section class="chairman-stats" aria-label="Diocesan operational statistics">
+        <article class="chairman-stat-card">
+            <h2>Dioceses in scope</h2>
+            <p>{{ diocese_count }}</p>
+        </article>
+        <article class="chairman-stat-card">
+            <h2>Total members</h2>
+            <p>{{ member_count }}</p>
+        </article>
+        <article class="chairman-stat-card">
+            <h2>Active members</h2>
+            <p>{{ active_member_count }}</p>
+        </article>
+        <article class="chairman-stat-card">
+            <h2>Active deaneries</h2>
+            <p>{{ active_deanery_count }}</p>
+        </article>
+        <article class="chairman-stat-card">
+            <h2>Active parishes</h2>
+            <p>{{ active_parish_count }}</p>
+        </article>
+        <article class="chairman-stat-card">
+            <h2>Active stations</h2>
+            <p>{{ active_station_count }}</p>
+        </article>
+    </section>
+
+    <section class="chairman-panel" aria-labelledby="membership-status-heading">
+        <header class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">MEMBERSHIP</p>
+                <h2 id="membership-status-heading">Member status summary</h2>
+            </div>
+            <a class="chairman-text-link" href="{% url 'chairman:members' %}">
+                Open membership directory
+            </a>
+        </header>
+        <ul class="chairman-status-list">
+            {% for item in member_status_counts %}
+                <li>
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count }}</strong>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="chairman-overview-links" aria-label="Operational sections">
+        <a class="chairman-overview-link" href="{% url 'chairman:deaneries' %}">
+            <span class="chairman-overview-link__label">Deanery oversight</span>
+            <span>Review deaneries and their parishes</span>
+            <strong>View deaneries →</strong>
+        </a>
+        <a class="chairman-overview-link" href="{% url 'chairman:parishes' %}">
+            <span class="chairman-overview-link__label">Parish oversight</span>
+            <span>Review parishes, stations and member totals</span>
+            <strong>View parishes →</strong>
+        </a>
+        <a class="chairman-overview-link" href="{% url 'chairman:stations' %}">
+            <span class="chairman-overview-link__label">Station visibility</span>
+            <span>Review station membership records</span>
+            <strong>View stations →</strong>
+        </a>
+    </section>
+{% endblock %}
