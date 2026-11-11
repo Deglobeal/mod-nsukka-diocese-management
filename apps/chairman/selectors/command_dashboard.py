@@ -1,6 +1,7 @@
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 
+from apps.chairman.selectors.activity import get_recent_audit_activity
 from apps.identity_cards.models import MembershipIdentity
 from apps.members.models import Member
 from apps.organizations.models import Deanery, Diocese, Parish, Station
@@ -73,6 +74,9 @@ def get_overview_data(*, diocese_ids):
             is_active=True,
         ).count(),
         "diocese_count": Diocese.objects.filter(pk__in=diocese_ids).count(),
+        "recent_audit_activity": get_recent_audit_activity(
+            diocese_ids=diocese_ids,
+        ),
     }
 
 

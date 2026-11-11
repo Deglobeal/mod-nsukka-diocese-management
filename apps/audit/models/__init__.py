@@ -1,5 +1,5 @@
-"""Model package for audit. Keep each Django model in its own module.
+"""Audit models; each model is defined in its own module."""
 
-Example future layout: from .member import Member
-Do not combine unrelated model classes into one file.
-"""
+from .audit_event import AuditEvent
+
+__all__ = ["AuditEvent"]

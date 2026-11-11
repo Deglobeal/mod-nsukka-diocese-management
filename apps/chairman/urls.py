@@ -1,7 +1,10 @@
 from django.urls import path
 
 from apps.chairman.views.command_dashboard_view import (
+    chairman_audit_history,
     chairman_membership_applications,
+    chairman_notifications,
+    mark_notification_read,
     command_dashboard,
     deanery_detail,
     deanery_directory,
@@ -16,6 +19,13 @@ app_name = "chairman"
 
 urlpatterns = [
     path("", command_dashboard, name="dashboard"),
+    path("notifications/", chairman_notifications, name="notifications"),
+    path(
+        "notifications/<int:notification_id>/read/",
+        mark_notification_read,
+        name="notification-read",
+    ),
+    path("audit-history/", chairman_audit_history, name="audit-history"),
     path("members/", member_directory, name="members"),
     path(
         "membership-applications/",

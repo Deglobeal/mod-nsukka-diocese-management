@@ -48,6 +48,46 @@
         </ul>
     </section>
 
+    <section class="chairman-panel" aria-labelledby="recent-activity-heading">
+        <header class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">ACCOUNTABILITY</p>
+                <h2 id="recent-activity-heading">Recent audit activity</h2>
+                <p>Recorded membership review decisions in your authorized Diocese.</p>
+            </div>
+            <a class="chairman-text-link" href="{% url 'chairman:audit-history' %}">
+                View audit history
+            </a>
+        </header>
+
+        {% if recent_audit_activity %}
+            <ul class="chairman-activity-list">
+                {% for event in recent_audit_activity %}
+                    <li class="chairman-activity-list__item">
+                        <div>
+                            <strong>{{ event.get_action_display }}</strong>
+                            <p>
+                                {{ event.actor_name_snapshot|default:"System actor" }}
+                                · {{ event.get_metadata_review_level_display|default:event.metadata.review_level }}
+                                · {{ event.metadata.decision|title }}
+                            </p>
+                            <p class="chairman-muted">
+                                {{ event.diocese.name }}
+                                {% if event.deanery %} · {{ event.deanery.name }}{% endif %}
+                                {% if event.parish %} · {{ event.parish.name }}{% endif %}
+                            </p>
+                        </div>
+                        <time datetime="{{ event.created_at|date:'c' }}">
+                            {{ event.created_at|date:"M j, Y · H:i" }}
+                        </time>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="chairman-muted">No audit activity has been recorded yet.</p>
+        {% endif %}
+    </section>
+
     <section class="chairman-overview-links" aria-label="Operational sections">
         <a class="chairman-overview-link" href="{% url 'chairman:deaneries' %}">
             <span class="chairman-overview-link__label">Deanery oversight</span>
