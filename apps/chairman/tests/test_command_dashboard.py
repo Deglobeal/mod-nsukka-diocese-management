@@ -9,6 +9,7 @@ from django.urls import reverse
 from apps.accounts.models import OfficeAssignment
 from apps.audit.models import AuditEvent
 from apps.identity_cards.models import MembershipIdentity
+from apps.members.forms.registration_form import MembershipRegistrationForm
 from apps.members.models import Member
 from apps.notifications.models import InAppNotification
 from apps.notifications.models import SponsorVerification
@@ -133,6 +134,11 @@ class ChairmanCommandDashboardTests(TestCase):
             parish=cls.parish,
         )
 
+        cls.ordinary_member = user_model.objects.create_user(
+            username="command_ordinary_member",
+            password="test-only-password",
+        )
+
     def test_anonymous_user_is_redirected_to_login(self):
         response = self.client.get(reverse("chairman:dashboard"))
 
@@ -173,6 +179,394 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertNotContains(response, "Ada Okafor")
         self.assertNotContains(response, "Outside Scope")
         self.assertNotContains(response, "Ngozi Eze")
+
+    def test_dashboard_shows_all_organization_creation_actions(self):
+        self.client.force_login(self.chairman)
+        response = self.client.get(reverse("chairman:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        for label, route_name in (
+            ("Create Deanery", "chairman:deanery-create"),
+            ("Create Parish", "chairman:parish-create"),
+            ("Create Station", "chairman:station-create"),
+        ):
+            with self.subTest(label=label):
+                self.assertContains(response, label)
+                self.assertContains(response, reverse(route_name))
+
+    def test_chairman_can_create_each_organization_at_its_correct_level(self):
+        self.client.force_login(self.chairman)
+        cases = (
+            (
+                "chairman:deanery-create",
+                {"diocese": self.diocese.pk},
+                Deanery,
+                "New Command Deanery",
+                "NCD001",
+                "chairman:deanery-detail",
+                self.diocese,
+            ),
+            (
+                "chairman:parish-create",
+                {"deanery": self.deanery.pk},
+                Parish,
+                "New Command Parish",
+                "NCP001",
+                "chairman:parish-detail",
+                self.deanery,
+            ),
+            (
+                "chairman:station-create",
+                {"parish": self.parish.pk},
+                Station,
+                "New Command Station",
+                "NCS001",
+                "chairman:station-detail",
+                self.parish,
+            ),
+        )
+
+        for (
+            route_name,
+            parent,
+            model,
+            name,
+            code,
+            detail_route,
+            expected_parent,
+        ) in cases:
+            with self.subTest(route=route_name):
+                response = self.client.post(
+                    reverse(route_name),
+                    {**parent, "name": name, "code": code, "is_active": "on"},
+                    follow=True,
+                )
+                organization = model.objects.get(name=name)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(organization.is_active)
+                self.assertEqual(
+                    organization.diocese
+                    if model is Deanery
+                    else organization.deanery
+                    if model is Parish
+                    else organization.parish,
+                    expected_parent,
+                )
+                self.assertEqual(
+                    response.redirect_chain,
+                    [(reverse(detail_route, args=[organization.pk]), 302)],
+                )
+                self.assertContains(response, "was created successfully")
+
+    def test_created_active_organizations_are_available_for_registration(self):
+        self.client.force_login(self.chairman)
+        self.client.post(
+            reverse("chairman:deanery-create"),
+            {
+                "diocese": self.diocese.pk,
+                "name": "Registration Ready Deanery",
+                "code": "RRD001",
+                "is_active": "on",
+            },
+        )
+        deanery = Deanery.objects.get(name="Registration Ready Deanery")
+        self.client.post(
+            reverse("chairman:parish-create"),
+            {
+                "deanery": deanery.pk,
+                "name": "Registration Ready Parish",
+                "code": "RRP001",
+                "is_active": "on",
+            },
+        )
+        parish = Parish.objects.get(name="Registration Ready Parish")
+        self.client.post(
+            reverse("chairman:station-create"),
+            {
+                "parish": parish.pk,
+                "name": "Registration Ready Station",
+                "code": "RRS001",
+                "is_active": "on",
+            },
+        )
+        station = Station.objects.get(name="Registration Ready Station")
+
+        registration_form = MembershipRegistrationForm()
+
+        self.assertIn(deanery, registration_form.fields["deanery"].queryset)
+        self.assertIn(parish, registration_form.fields["parish"].queryset)
+        self.assertIn(station, registration_form.fields["station"].queryset)
+
+    def test_codes_remain_unique_within_parents_not_globally(self):
+        OfficeAssignment.objects.create(
+            user=self.chairman,
+            role=OfficeAssignment.Role.DIOCESE_ADMIN,
+            diocese=self.other_diocese,
+        )
+        self.client.force_login(self.chairman)
+
+        response = self.client.post(
+            reverse("chairman:deanery-create"),
+            {
+                "diocese": self.other_diocese.pk,
+                "name": "Other Diocese Deanery",
+                "code": self.deanery.code,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        other_deanery = Deanery.objects.get(name="Other Diocese Deanery")
+        self.assertEqual(other_deanery.diocese, self.other_diocese)
+        self.assertEqual(other_deanery.code, self.deanery.code)
+
+        second_deanery = Deanery.objects.create(
+            diocese=self.diocese,
+            name="Second Authorized Deanery",
+            code="SAD001",
+        )
+        response = self.client.post(
+            reverse("chairman:parish-create"),
+            {
+                "deanery": second_deanery.pk,
+                "name": "Second Deanery Parish",
+                "code": self.parish.code,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        second_parish = Parish.objects.get(name="Second Deanery Parish")
+        self.assertEqual(second_parish.code, self.parish.code)
+
+        response = self.client.post(
+            reverse("chairman:station-create"),
+            {
+                "parish": second_parish.pk,
+                "name": "Second Parish Station",
+                "code": self.station.code,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        second_station = Station.objects.get(name="Second Parish Station")
+        self.assertEqual(second_station.code, self.station.code)
+
+    def test_creation_pages_reject_anonymous_and_non_chairman_users(self):
+        routes_and_data = (
+            (
+                "chairman:deanery-create",
+                {
+                    "diocese": self.diocese.pk,
+                    "name": "Unauthorized Deanery",
+                    "code": "UND001",
+                },
+            ),
+            (
+                "chairman:parish-create",
+                {
+                    "deanery": self.deanery.pk,
+                    "name": "Unauthorized Parish",
+                    "code": "UNP001",
+                },
+            ),
+            (
+                "chairman:station-create",
+                {
+                    "parish": self.parish.pk,
+                    "name": "Unauthorized Station",
+                    "code": "UNS001",
+                },
+            ),
+        )
+        non_chairmen = (
+            self.unassigned_staff,
+            self.unassigned_superuser,
+            self.deanery_admin,
+            self.parish_admin,
+            self.ordinary_member,
+        )
+
+        for route_name, data in routes_and_data:
+            url = reverse(route_name)
+            with self.subTest(route=route_name, user="anonymous"):
+                self.client.logout()
+                response = self.client.get(url)
+                self.assertRedirects(
+                    response,
+                    f"{reverse('accounts:login')}?next={url}",
+                    fetch_redirect_response=False,
+                )
+            for user in non_chairmen:
+                with self.subTest(route=route_name, user=user.username):
+                    self.client.force_login(user)
+                    self.assertEqual(self.client.get(url).status_code, 403)
+                    self.assertEqual(
+                        self.client.post(url, data).status_code,
+                        403,
+                    )
+
+    def test_creation_forms_reject_parents_outside_authorized_diocese(self):
+        self.client.force_login(self.chairman)
+        cases = (
+            (
+                "chairman:deanery-create",
+                "diocese",
+                self.other_diocese.pk,
+                Deanery,
+                "Unauthorized Diocese Deanery",
+                "UOD001",
+            ),
+            (
+                "chairman:parish-create",
+                "deanery",
+                self.other_deanery.pk,
+                Parish,
+                "Unauthorized Diocese Parish",
+                "UDP001",
+            ),
+            (
+                "chairman:station-create",
+                "parish",
+                self.other_parish.pk,
+                Station,
+                "Unauthorized Diocese Station",
+                "UDS001",
+            ),
+        )
+
+        for route_name, parent_field, parent_id, model, name, code in cases:
+            with self.subTest(route=route_name):
+                get_response = self.client.get(reverse(route_name))
+                self.assertNotIn(
+                    parent_id,
+                    get_response.context["form"].fields[
+                        parent_field
+                    ].queryset.values_list("pk", flat=True),
+                )
+                response = self.client.post(
+                    reverse(route_name),
+                    {
+                        parent_field: parent_id,
+                        "name": name,
+                        "code": code,
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(parent_field, response.context["form"].errors)
+                self.assertFalse(model.objects.filter(name=name).exists())
+
+    def test_creation_forms_require_codes_and_validate_parent_duplicates(self):
+        self.client.force_login(self.chairman)
+        cases = (
+            (
+                "chairman:deanery-create",
+                {"diocese": self.diocese.pk},
+                Deanery,
+                self.deanery.name,
+                self.deanery.code,
+            ),
+            (
+                "chairman:parish-create",
+                {"deanery": self.deanery.pk},
+                Parish,
+                self.parish.name,
+                self.parish.code,
+            ),
+            (
+                "chairman:station-create",
+                {"parish": self.parish.pk},
+                Station,
+                self.station.name,
+                self.station.code,
+            ),
+        )
+
+        for route_name, parent, model, duplicate_name, duplicate_code in cases:
+            with self.subTest(route=route_name, error="missing code"):
+                response = self.client.post(
+                    reverse(route_name),
+                    {**parent, "name": "Missing Official Code"},
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("code", response.context["form"].errors)
+                self.assertContains(response, "This field is required.")
+                self.assertContains(response, 'id="id_code_errors"')
+                self.assertEqual(
+                    response.context["form"]["name"].value(),
+                    "Missing Official Code",
+                )
+                self.assertFalse(
+                    model.objects.filter(name="Missing Official Code").exists()
+                )
+
+            for field, value in (
+                ("name", duplicate_name),
+                ("code", duplicate_code),
+            ):
+                name = (
+                    value
+                    if field == "name"
+                    else f"Unique {model.__name__}"
+                )
+                code = (
+                    value
+                    if field == "code"
+                    else f"UNQ{model.__name__[0]}01"
+                )
+                with self.subTest(route=route_name, duplicate=field):
+                    response = self.client.post(
+                        reverse(route_name),
+                        {**parent, "name": name, "code": code},
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(response.context["form"].errors)
+                    self.assertTrue(
+                        any(
+                            "already exists" in error
+                            for errors in response.context["form"].errors.values()
+                            for error in errors
+                        )
+                    )
+                    self.assertEqual(
+                        model.objects.filter(name=name).count(),
+                        1 if field == "name" else 0,
+                    )
+
+    def test_creation_links_are_available_in_directories_and_details(self):
+        self.client.force_login(self.chairman)
+        for route_name, label in (
+            ("chairman:deaneries", "Create Deanery"),
+            ("chairman:parishes", "Create Parish"),
+            ("chairman:stations", "Create Station"),
+        ):
+            with self.subTest(route=route_name):
+                response = self.client.get(reverse(route_name))
+                self.assertContains(response, label)
+
+        response = self.client.get(
+            reverse("chairman:deanery-detail", args=[self.deanery.pk])
+        )
+        self.assertContains(response, "Create Parish")
+        self.assertContains(response, f"?deanery={self.deanery.pk}")
+        parish_form_response = self.client.get(
+            reverse("chairman:parish-create"),
+            {"deanery": self.deanery.pk},
+        )
+        self.assertEqual(
+            parish_form_response.context["form"]["deanery"].value(),
+            str(self.deanery.pk),
+        )
+
+        response = self.client.get(
+            reverse("chairman:parish-detail", args=[self.parish.pk])
+        )
+        self.assertContains(response, "Create Station")
+        self.assertContains(response, f"?parish={self.parish.pk}")
+        station_form_response = self.client.get(
+            reverse("chairman:station-create"),
+            {"parish": self.parish.pk},
+        )
+        self.assertEqual(
+            station_form_response.context["form"]["parish"].value(),
+            str(self.parish.pk),
+        )
 
     def test_directory_search_returns_matching_membership_record(self):
         self.client.force_login(self.chairman)

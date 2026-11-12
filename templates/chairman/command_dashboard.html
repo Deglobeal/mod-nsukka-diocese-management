@@ -48,6 +48,33 @@
         </ul>
     </section>
 
+    <section class="chairman-panel" aria-labelledby="organization-actions-heading">
+        <header class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">ORGANIZATION MANAGEMENT</p>
+                <h2 id="organization-actions-heading">Build the diocesan structure</h2>
+                <p>Create and maintain the Diocese → Deanery → Parish → Station hierarchy.</p>
+            </div>
+        </header>
+        <div class="chairman-management-actions">
+            <a class="chairman-management-action" href="{% url 'chairman:deanery-create' %}">
+                <span class="chairman-management-action__title">Create Deanery</span>
+                <span>Add a Deanery to an authorized Diocese.</span>
+                <strong>Start creation</strong>
+            </a>
+            <a class="chairman-management-action" href="{% url 'chairman:parish-create' %}">
+                <span class="chairman-management-action__title">Create Parish</span>
+                <span>Place a Parish under an existing Deanery.</span>
+                <strong>Start creation</strong>
+            </a>
+            <a class="chairman-management-action" href="{% url 'chairman:station-create' %}">
+                <span class="chairman-management-action__title">Create Station</span>
+                <span>Place a Station under an existing Parish.</span>
+                <strong>Start creation</strong>
+            </a>
+        </div>
+    </section>
+
     <section class="chairman-panel" aria-labelledby="recent-activity-heading">
         <header class="chairman-panel__heading">
             <div>

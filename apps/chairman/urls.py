@@ -6,6 +6,7 @@ from apps.chairman.views.command_dashboard_view import (
     chairman_notifications,
     mark_notification_read,
     command_dashboard,
+    create_organization,
     deanery_detail,
     deanery_directory,
     member_directory,
@@ -27,6 +28,24 @@ urlpatterns = [
     ),
     path("audit-history/", chairman_audit_history, name="audit-history"),
     path("members/", member_directory, name="members"),
+    path(
+        "deaneries/create/",
+        create_organization,
+        {"organization_type": "deanery"},
+        name="deanery-create",
+    ),
+    path(
+        "parishes/create/",
+        create_organization,
+        {"organization_type": "parish"},
+        name="parish-create",
+    ),
+    path(
+        "stations/create/",
+        create_organization,
+        {"organization_type": "station"},
+        name="station-create",
+    ),
     path(
         "membership-applications/",
         chairman_membership_applications,

@@ -119,7 +119,7 @@ class OrganizationManagementTests(TestCase):
             Diocese.objects.filter(name="New Diocese", code="038").exists()
         )
 
-    def test_diocese_admin_can_create_deanery_in_own_diocese(self):
+    def test_diocese_admin_uses_chairman_dashboard_to_create_deanery(self):
         self.client.force_login(self.diocese_admin)
 
         response = self.client.post(
@@ -133,9 +133,8 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Deanery.objects.get(name="New Local Deanery")
-        self.assertEqual(created.diocese, self.diocese)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Deanery.objects.filter(name="New Local Deanery").exists())
 
     def test_diocese_admin_cannot_create_diocese(self):
         self.client.force_login(self.diocese_admin)
@@ -154,7 +153,7 @@ class OrganizationManagementTests(TestCase):
             Diocese.objects.filter(name="Unauthorized Diocese").exists()
         )
 
-    def test_deanery_admin_can_create_parish_in_own_deanery(self):
+    def test_deanery_admin_cannot_create_parish(self):
         self.client.force_login(self.deanery_admin)
 
         response = self.client.post(
@@ -168,11 +167,10 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Parish.objects.get(name="New Local Parish")
-        self.assertEqual(created.deanery, self.deanery)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Parish.objects.filter(name="New Local Parish").exists())
 
-    def test_deanery_admin_posted_foreign_deanery_is_forced_to_own_scope(self):
+    def test_deanery_admin_cannot_create_parish_in_foreign_deanery(self):
         self.client.force_login(self.deanery_admin)
 
         response = self.client.post(
@@ -186,12 +184,10 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Parish.objects.get(name="Scoped Parish")
-        self.assertEqual(created.deanery, self.deanery)
-        self.assertNotEqual(created.deanery, self.foreign_deanery)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Parish.objects.filter(name="Scoped Parish").exists())
 
-    def test_parish_admin_can_create_station_in_own_parish(self):
+    def test_parish_admin_cannot_create_station(self):
         self.client.force_login(self.parish_admin)
 
         response = self.client.post(
@@ -205,11 +201,10 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Station.objects.get(name="New Local Station")
-        self.assertEqual(created.parish, self.parish)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Station.objects.filter(name="New Local Station").exists())
 
-    def test_parish_admin_posted_foreign_parish_is_forced_to_own_scope(self):
+    def test_parish_admin_cannot_create_station_in_foreign_parish(self):
         self.client.force_login(self.parish_admin)
 
         response = self.client.post(
@@ -223,10 +218,26 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Station.objects.get(name="Scoped Station")
-        self.assertEqual(created.parish, self.parish)
-        self.assertNotEqual(created.parish, self.foreign_parish)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Station.objects.filter(name="Scoped Station").exists())
+
+    def test_superuser_cannot_create_deanery_without_chairman_assignment(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            self.url,
+            {
+                "create_type": "deanery",
+                "diocese": self.diocese.pk,
+                "name": "Unassigned Superuser Deanery",
+                "code": "USD001",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            Deanery.objects.filter(name="Unassigned Superuser Deanery").exists()
+        )
 
     def test_user_without_assignment_is_denied(self):
         with self.assertRaises(PermissionDenied):

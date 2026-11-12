@@ -302,7 +302,6 @@ class MembershipRegistrationForm(forms.ModelForm):
         self.fields["deanery"].queryset = Deanery.objects.filter(
             is_active=True,
             diocese__is_active=True,
-            diocese__name="Nsukka Diocese",
         ).select_related("diocese").order_by("name")
         self.fields["deanery"].empty_label = "Select your deanery"
 
@@ -310,7 +309,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             is_active=True,
             deanery__is_active=True,
             deanery__diocese__is_active=True,
-            deanery__diocese__name="Nsukka Diocese",
         ).select_related("deanery").order_by("name")
 
         selected_deanery = None
@@ -330,7 +328,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             parish__is_active=True,
             parish__deanery__is_active=True,
             parish__deanery__diocese__is_active=True,
-            parish__deanery__diocese__name="Nsukka Diocese",
         ).select_related("parish").order_by("parish__name", "name")
         self.fields["station"].required = False
         self.fields["station"].empty_label = "No station / Select later"

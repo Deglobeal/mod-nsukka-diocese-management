@@ -12,6 +12,7 @@ from PIL import Image
 from django.utils import timezone
 
 from apps.identity_cards.models import MembershipIdentity
+from apps.members.forms.registration_form import MembershipRegistrationForm
 from apps.members.models import Member, MemberProfile
 from apps.notifications.models import SMSNotification, SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
@@ -178,6 +179,80 @@ class MembershipRegistrationTests(TestCase):
         self.assertContains(response, "Patron")
         self.assertContains(response, "Chaplain")
         self.assertContains(response, "Select your deanery")
+
+    def test_registration_uses_active_organizations_across_dioceses(self):
+        other_diocese = Diocese.objects.create(
+            name="Awgu Diocese",
+            code="038",
+        )
+        other_deanery = Deanery.objects.create(
+            diocese=other_diocese,
+            name="Awgu Deanery",
+            code="AWG001",
+        )
+        other_parish = Parish.objects.create(
+            deanery=other_deanery,
+            name="Awgu Parish",
+            code="AWP001",
+        )
+        other_station = Station.objects.create(
+            parish=other_parish,
+            name="Awgu Station",
+            code="AWS001",
+        )
+
+        inactive_diocese = Diocese.objects.create(
+            name="Inactive Diocese",
+            code="039",
+            is_active=False,
+        )
+        inactive_diocese_deanery = Deanery.objects.create(
+            diocese=inactive_diocese,
+            name="Inactive Diocese Deanery",
+            code="IDD001",
+        )
+        inactive_deanery = Deanery.objects.create(
+            diocese=self.diocese,
+            name="Inactive Deanery",
+            code="IND001",
+            is_active=False,
+        )
+        inactive_deanery_parish = Parish.objects.create(
+            deanery=inactive_deanery,
+            name="Inactive Deanery Parish",
+            code="IDP001",
+        )
+        inactive_parish = Parish.objects.create(
+            deanery=self.deanery,
+            name="Inactive Parish",
+            code="INP001",
+            is_active=False,
+        )
+        inactive_station = Station.objects.create(
+            parish=self.parish,
+            name="Inactive Station",
+            code="INS001",
+            is_active=False,
+        )
+
+        form = MembershipRegistrationForm()
+
+        self.assertIn(other_deanery, form.fields["deanery"].queryset)
+        self.assertIn(other_parish, form.fields["parish"].queryset)
+        self.assertIn(other_station, form.fields["station"].queryset)
+        self.assertNotIn(
+            inactive_diocese_deanery,
+            form.fields["deanery"].queryset,
+        )
+        self.assertNotIn(
+            inactive_deanery_parish,
+            form.fields["parish"].queryset,
+        )
+        self.assertNotIn(inactive_parish, form.fields["parish"].queryset)
+        self.assertNotIn(
+            inactive_station,
+            form.fields["station"].queryset,
+        )
 
     def test_valid_application_is_recorded_for_parish_review(self):
         response = self.client.post(
