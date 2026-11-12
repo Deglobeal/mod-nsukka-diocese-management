@@ -185,6 +185,13 @@ class ChairmanCommandDashboardTests(TestCase):
         response = self.client.get(reverse("chairman:dashboard"))
 
         self.assertEqual(response.status_code, 200)
+        quick_actions_position = response.content.index(
+            b'aria-label="Create organizational unit"'
+        )
+        statistics_position = response.content.index(
+            b'aria-label="Diocesan operational statistics"'
+        )
+        self.assertLess(quick_actions_position, statistics_position)
         for label, route_name in (
             ("Create Deanery", "chairman:deanery-create"),
             ("Create Parish", "chairman:parish-create"),
@@ -789,6 +796,22 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertContains(
             response,
             'aria-current="page">Membership Applications</a>',
+        )
+        self.assertContains(
+            response,
+            'aria-label="Create organizational unit"',
+        )
+        self.assertContains(
+            response,
+            reverse("chairman:deanery-create"),
+        )
+        self.assertContains(
+            response,
+            reverse("chairman:parish-create"),
+        )
+        self.assertContains(
+            response,
+            reverse("chairman:station-create"),
         )
         self.assertNotContains(response, "Parish Chairman Dashboard")
 

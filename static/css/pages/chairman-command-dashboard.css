@@ -626,37 +626,11 @@
     padding: var(--space-2) var(--space-3);
 }
 
-.chairman-management-actions {
-    display: grid;
-    gap: var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-}
-
-.chairman-management-action {
-    background: var(--color-surface-accent);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-text);
-    display: grid;
-    gap: var(--space-2);
-    min-width: 0;
-    padding: var(--space-4);
-    text-decoration: none;
-}
-
-.chairman-management-action:hover {
-    border-color: var(--color-primary);
-}
-
-.chairman-management-action__title {
-    color: var(--color-primary);
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-bold);
-}
-
-.chairman-management-action strong {
-    color: var(--color-link);
-    margin-top: var(--space-2);
+.chairman-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin: calc(-1 * var(--space-3)) 0 var(--space-5);
 }
 
 .chairman-primary-button {
