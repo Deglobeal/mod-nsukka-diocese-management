@@ -3,7 +3,7 @@
 
 {% block title %}Organization Management | M.O.D. Nsukka Diocese{% endblock %}
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/organization-management.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/organization-management.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -132,7 +132,7 @@
                     {% csrf_token %}
                     <input type="hidden" name="create_type" value="diocese">
                     {% for field in diocese_form %}
-                        <div class="organization-field">
+                        <div class="organization-field{% if field.field.widget.input_type == 'checkbox' %} organization-field--checkbox{% endif %}">
                             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
                             {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}

@@ -1,5 +1,6 @@
 .organization-page {
-    width: min(100% - 32px, var(--content-width));
+    box-sizing: border-box;
+    width: min(calc(100% - 2 * var(--page-gutter)), var(--content-width));
     margin: var(--space-8) auto;
     color: var(--color-page-text);
 }
@@ -36,7 +37,7 @@
 
 .organization-summary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
     gap: var(--space-4);
     margin-bottom: var(--space-6);
 }
@@ -99,13 +100,26 @@
 }
 
 .organization-form-section {
-    padding: var(--space-4) 0;
+    padding: var(--space-4);
     border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    scroll-margin-top: var(--space-5);
+}
+
+.organization-form-section[open] {
+    background: var(--color-surface-muted);
 }
 
 .organization-form-section summary {
     cursor: pointer;
     font-weight: 700;
+    padding: var(--space-2);
+}
+
+.organization-form-section summary:focus-visible {
+    border-radius: var(--radius-control);
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 2px;
 }
 
 .organization-form {
@@ -119,12 +133,24 @@
     gap: var(--space-2);
 }
 
+.organization-field--checkbox {
+    align-items: center;
+    column-gap: var(--space-3);
+    grid-template-columns: 1.25rem minmax(0, 1fr);
+}
+
+.organization-field--checkbox label {
+    grid-column: 2;
+    grid-row: 1;
+}
+
 .organization-field label {
     font-weight: 600;
 }
 
 .organization-field input,
 .organization-field select {
+    box-sizing: border-box;
     width: 100%;
     min-height: 44px;
     padding: var(--space-2) var(--space-3);
@@ -132,6 +158,24 @@
     border-radius: var(--radius-control);
     background: var(--color-surface);
     color: var(--color-text);
+}
+
+.organization-field input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    grid-column: 1;
+    grid-row: 1;
+    height: 1.25rem;
+    min-height: 0;
+    width: 1.25rem;
+}
+
+.organization-field small {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.organization-field small[role="alert"] {
+    color: var(--color-danger-text);
 }
 
 .organization-button {
@@ -143,7 +187,24 @@
     background: var(--color-primary);
     color: var(--color-on-primary);
     cursor: pointer;
+    font: inherit;
     font-weight: 700;
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.organization-button:hover {
+    background: var(--color-primary-hover, var(--color-primary));
+    box-shadow: var(--shadow-sm);
+}
+
+.organization-button:focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 2px;
+}
+
+.organization-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
 }
 
 .organization-message {
@@ -169,12 +230,12 @@
         flex-direction: column;
     }
 
-    .organization-summary {
-        grid-template-columns: 1fr;
-    }
-
     .organization-stat,
     .organization-panel {
         padding: var(--space-4);
+    }
+
+    .organization-button {
+        width: 100%;
     }
 }

@@ -4,7 +4,7 @@
 {% block title %}{{ page_title|default:"Chairman Command Dashboard" }} | M.O.D. Nsukka Diocese{% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/chairman-command-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/chairman-command-dashboard.css' %}?v=3">
 <link rel="stylesheet" href="{% static 'css/pages/diocese-dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/membership-review-dashboard.css' %}">
 {% endblock %}
@@ -133,6 +133,7 @@
                     {% endfor %}
                 </section>
             {% endif %}
+
             <header class="chairman-page-heading">
                 <p class="chairman-page-heading__eyebrow">DIOCESE OPERATIONS</p>
                 <h1>{% block page_heading %}{{ page_title|default:"Overview" }}{% endblock %}</h1>

@@ -190,6 +190,7 @@ class OrganizationManagementTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Deanery.objects.filter(name="New Local Deanery").exists())
 
+
     def test_diocese_admin_cannot_create_diocese(self):
         self.client.force_login(self.diocese_admin)
 
