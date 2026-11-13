@@ -37,6 +37,11 @@
                 <p class="chairman-panel__eyebrow">ORGANIZATION DETAILS</p>
                 <h2 id="organization-summary-heading">{{ organization.name }}</h2>
             </div>
+            {% if organization_type == "deanery" %}
+                <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}?deanery={{ organization.pk }}">Create Parish</a>
+            {% elif organization_type == "parish" %}
+                <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}?parish={{ organization.pk }}">Create Station</a>
+            {% endif %}
             <span class="chairman-status-tag{% if not organization.is_active %} chairman-status-tag--inactive{% endif %}">
                 {% if organization.is_active %}Active{% else %}Inactive{% endif %}
             </span>

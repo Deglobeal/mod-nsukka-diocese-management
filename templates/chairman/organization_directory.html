@@ -12,6 +12,13 @@
                     {% if organization_type == "deanery" %}Select a deanery to inspect its parishes and membership totals.{% elif organization_type == "parish" %}Select a parish to inspect its stations and members.{% else %}Select a station to inspect its associated members.{% endif %}
                 </p>
             </div>
+            {% if organization_type == "deanery" %}
+                <a class="chairman-primary-button" href="{% url 'chairman:deanery-create' %}">Create Deanery</a>
+            {% elif organization_type == "parish" %}
+                <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}">Create Parish</a>
+            {% else %}
+                <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}">Create Station</a>
+            {% endif %}
         </header>
 
         <form class="chairman-search" method="get" action="{{ current_path }}">

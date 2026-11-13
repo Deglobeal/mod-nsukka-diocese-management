@@ -1,13 +1,25 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import (
+    require_GET,
+    require_http_methods,
+    require_POST,
+)
 
 from apps.notifications.models import InAppNotification
 from apps.accounts.services.office_authorization import (
     authorize_diocese_chairman,
 )
+from apps.organizations.management_forms import (
+    DeaneryForm,
+    ParishForm,
+    StationForm,
+)
+from apps.organizations.models import Deanery, Diocese, Parish
 from apps.chairman.selectors.activity import (
     get_chairman_audit_history,
     get_chairman_inbox,
@@ -22,6 +34,10 @@ from apps.chairman.selectors.command_dashboard import (
     get_parish_directory,
     get_station_detail,
     get_station_directory,
+)
+from apps.verification.models import MembershipApplication, MembershipReview
+from apps.verification.selectors.membership_review_queue import (
+    get_membership_review_queue,
 )
 from apps.verification.views.membership_review_dashboard_view import (
     membership_review_dashboard,
@@ -59,6 +75,33 @@ SECTION_DETAILS = {
     ),
 }
 
+ORGANIZATION_CREATE_DETAILS = {
+    "deanery": {
+        "title": "Create Deanery",
+        "description": "Add a Deanery to an authorized Diocese.",
+        "section": "deaneries",
+        "parent_field": "diocese",
+        "destination": "chairman:deanery-detail",
+        "success_label": "Deanery",
+    },
+    "parish": {
+        "title": "Create Parish",
+        "description": "Add a Parish to an authorized Deanery.",
+        "section": "parishes",
+        "parent_field": "deanery",
+        "destination": "chairman:parish-detail",
+        "success_label": "Parish",
+    },
+    "station": {
+        "title": "Create Station",
+        "description": "Add a Station to an authorized Parish.",
+        "section": "stations",
+        "parent_field": "parish",
+        "destination": "chairman:station-detail",
+        "success_label": "Station",
+    },
+}
+
 
 def _render_chairman_page(
     request,
@@ -87,17 +130,122 @@ def _directory_parameters(request):
 
 
 @login_required
-@require_GET
+@require_http_methods(["GET", "POST"])
+def create_organization(request, organization_type):
+    diocese_ids = authorize_diocese_chairman(user=request.user)
+    details = ORGANIZATION_CREATE_DETAILS.get(organization_type)
+    if details is None:
+        raise Http404("Organization type not found.")
+
+    dioceses = Diocese.objects.filter(pk__in=diocese_ids).order_by("name")
+    deaneries = Deanery.objects.filter(
+        diocese_id__in=diocese_ids,
+    ).select_related("diocese")
+    parishes = Parish.objects.filter(
+        deanery__diocese_id__in=diocese_ids,
+    ).select_related("deanery__diocese")
+
+    form_config = {
+        "deanery": (
+            DeaneryForm,
+            {"dioceses": dioceses},
+        ),
+        "parish": (
+            ParishForm,
+            {"deaneries": deaneries, "include_inactive": True},
+        ),
+        "station": (
+            StationForm,
+            {"parishes": parishes, "include_inactive": True},
+        ),
+    }
+    form_class, form_kwargs = form_config[organization_type]
+
+    parent_field = details["parent_field"]
+    parent_querysets = {
+        "diocese": dioceses,
+        "deanery": deaneries,
+        "parish": parishes,
+    }
+    initial = {}
+    if request.method == "GET":
+        parent_id = request.GET.get(parent_field)
+        if parent_id and parent_querysets[parent_field].filter(
+            pk=parent_id,
+        ).exists():
+            initial[parent_field] = parent_id
+
+    form = form_class(
+        request.POST if request.method == "POST" else None,
+        initial=initial,
+        **form_kwargs,
+    )
+    if request.method == "POST" and form.is_valid():
+        organization = form.save()
+        messages.success(
+            request,
+            f"{details['success_label']} “{organization.name}” was "
+            "created successfully.",
+        )
+        return redirect(details["destination"], organization.pk)
+
+    for field in form:
+        if field.errors:
+            field.field.widget.attrs["aria-invalid"] = "true"
+            descriptions = []
+            if field.help_text:
+                descriptions.append(f"{field.auto_id}_help")
+            descriptions.append(f"{field.auto_id}_errors")
+            field.field.widget.attrs["aria-describedby"] = " ".join(
+                descriptions
+            )
+
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section=details["section"],
+        template="chairman/organization_form.html",
+        data={
+            "form": form,
+            "organization_type": organization_type,
+            "organization_label": details["success_label"],
+            "page_title": details["title"],
+            "page_description": details["description"],
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
 def command_dashboard(request):
     diocese_ids = authorize_diocese_chairman(user=request.user)
+    if request.method == "POST":
+        return membership_review_dashboard(
+            request,
+            "diocese",
+            return_url=(
+                f"{reverse('chairman:dashboard')}#membership-applications"
+            ),
+        )
+
+    applications = (
+        get_membership_review_queue(user=request.user)
+        .filter(stage=MembershipApplication.Stage.DIOCESE_REVIEW)
+        .prefetch_related("reviews")
+        .order_by("-submitted_at")
+    )
     return _render_chairman_page(
         request,
         diocese_ids=diocese_ids,
         section="overview",
         template="chairman/command_dashboard.html",
-        data=get_overview_data(
-            diocese_ids=diocese_ids,
-        ),
+        data={
+            **get_overview_data(diocese_ids=diocese_ids),
+            "show_organization_creation_actions": True,
+            "applications": applications,
+            "pending_count": applications.count(),
+            "decision_choices": MembershipReview.Decision.choices,
+        },
     )
 
 
@@ -261,8 +409,20 @@ def station_detail(request, station_id):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def chairman_membership_applications(request):
-    return membership_review_dashboard(request, "diocese")
+    if request.method == "POST":
+        return membership_review_dashboard(
+            request,
+            "diocese",
+            return_url=(
+                f"{reverse('chairman:dashboard')}#membership-applications"
+            ),
+        )
+    authorize_diocese_chairman(user=request.user)
+    return redirect(
+        f"{reverse('chairman:dashboard')}#membership-applications"
+    )
 
 @login_required
 @require_GET

@@ -255,7 +255,8 @@ class MembershipReviewDashboardTests(TestCase):
 
         self.client.force_login(self.diocese_admin)
         response = self.client.get(
-            reverse("membership_review_dashboard:diocese")
+            reverse("membership_review_dashboard:diocese"),
+            follow=True,
         )
 
         self.assertEqual(response.status_code, 200)

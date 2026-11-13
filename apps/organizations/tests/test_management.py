@@ -101,6 +101,60 @@ class OrganizationManagementTests(TestCase):
         self.assertContains(response, "Create a diocese")
         self.assertContains(response, "Nsukka Diocese")
 
+    def test_generic_management_does_not_expose_chairman_creation_forms(self):
+        for user in (
+            self.superuser,
+            self.diocese_admin,
+            self.deanery_admin,
+            self.parish_admin,
+        ):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+
+                response = self.client.get(self.url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIsNone(response.context["deanery_form"])
+                self.assertIsNone(response.context["parish_form"])
+                self.assertIsNone(response.context["station_form"])
+                self.assertNotContains(response, "Create a deanery")
+                self.assertNotContains(response, "Create a parish")
+                self.assertNotContains(response, "Create a station")
+
+    def test_requested_type_does_not_enable_generic_child_creation(self):
+        self.client.force_login(self.diocese_admin)
+
+        for organization_type in ("deanery", "parish", "station"):
+            with self.subTest(organization_type=organization_type):
+                response = self.client.get(
+                    self.url,
+                    {"create": organization_type},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.context["requested_type"],
+                    organization_type,
+                )
+                self.assertIsNone(response.context[f"{organization_type}_form"])
+                self.assertNotContains(
+                    response,
+                    f"Create a {organization_type}",
+                )
+
+    def test_requested_diocese_type_opens_system_level_creation_form(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url, {"create": "diocese"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["requested_type"], "diocese")
+        self.assertIsNotNone(response.context["diocese_form"])
+        self.assertRegex(
+            response.content.decode(),
+            r'<details class="organization-form-section"\s+open>',
+        )
+
     def test_superuser_can_create_diocese(self):
         self.client.force_login(self.superuser)
 
@@ -119,7 +173,7 @@ class OrganizationManagementTests(TestCase):
             Diocese.objects.filter(name="New Diocese", code="038").exists()
         )
 
-    def test_diocese_admin_can_create_deanery_in_own_diocese(self):
+    def test_diocese_admin_uses_chairman_dashboard_to_create_deanery(self):
         self.client.force_login(self.diocese_admin)
 
         response = self.client.post(
@@ -133,30 +187,9 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Deanery.objects.get(name="New Local Deanery")
-        self.assertEqual(created.diocese, self.diocese)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Deanery.objects.filter(name="New Local Deanery").exists())
 
-    def test_creation_links_open_the_matching_scoped_form(self):
-        self.client.force_login(self.diocese_admin)
-
-        for organization_type in ("deanery", "parish", "station"):
-            with self.subTest(organization_type=organization_type):
-                response = self.client.get(
-                    self.url,
-                    {"create": organization_type},
-                )
-
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(
-                    response.context["requested_type"],
-                    organization_type,
-                )
-                self.assertRegex(
-                    response.content.decode(),
-                    rf'<details\s+id="{organization_type}-form"\s+'
-                    rf'class="organization-form-section"\s+open\s*>',
-                )
 
     def test_diocese_admin_cannot_create_diocese(self):
         self.client.force_login(self.diocese_admin)
@@ -175,7 +208,7 @@ class OrganizationManagementTests(TestCase):
             Diocese.objects.filter(name="Unauthorized Diocese").exists()
         )
 
-    def test_deanery_admin_can_create_parish_in_own_deanery(self):
+    def test_deanery_admin_cannot_create_parish(self):
         self.client.force_login(self.deanery_admin)
 
         response = self.client.post(
@@ -189,11 +222,10 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Parish.objects.get(name="New Local Parish")
-        self.assertEqual(created.deanery, self.deanery)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Parish.objects.filter(name="New Local Parish").exists())
 
-    def test_deanery_admin_posted_foreign_deanery_is_forced_to_own_scope(self):
+    def test_deanery_admin_cannot_create_parish_in_foreign_deanery(self):
         self.client.force_login(self.deanery_admin)
 
         response = self.client.post(
@@ -207,12 +239,10 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Parish.objects.get(name="Scoped Parish")
-        self.assertEqual(created.deanery, self.deanery)
-        self.assertNotEqual(created.deanery, self.foreign_deanery)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Parish.objects.filter(name="Scoped Parish").exists())
 
-    def test_parish_admin_can_create_station_in_own_parish(self):
+    def test_parish_admin_cannot_create_station(self):
         self.client.force_login(self.parish_admin)
 
         response = self.client.post(
@@ -226,11 +256,10 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Station.objects.get(name="New Local Station")
-        self.assertEqual(created.parish, self.parish)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Station.objects.filter(name="New Local Station").exists())
 
-    def test_parish_admin_posted_foreign_parish_is_forced_to_own_scope(self):
+    def test_parish_admin_cannot_create_station_in_foreign_parish(self):
         self.client.force_login(self.parish_admin)
 
         response = self.client.post(
@@ -244,10 +273,26 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        created = Station.objects.get(name="Scoped Station")
-        self.assertEqual(created.parish, self.parish)
-        self.assertNotEqual(created.parish, self.foreign_parish)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Station.objects.filter(name="Scoped Station").exists())
+
+    def test_superuser_cannot_create_deanery_without_chairman_assignment(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            self.url,
+            {
+                "create_type": "deanery",
+                "diocese": self.diocese.pk,
+                "name": "Unassigned Superuser Deanery",
+                "code": "USD001",
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            Deanery.objects.filter(name="Unassigned Superuser Deanery").exists()
+        )
 
     def test_user_without_assignment_is_denied(self):
         with self.assertRaises(PermissionDenied):

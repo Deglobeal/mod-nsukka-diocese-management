@@ -1,6 +1,29 @@
 {% extends "chairman/layout.html" %}
 
 {% block dashboard_content %}
+    {% if show_organization_creation_actions %}
+        <section class="chairman-organization-actions" aria-labelledby="chairman-organization-actions-title">
+            <div class="chairman-organization-actions__heading">
+                <h2 id="chairman-organization-actions-title">Organization management</h2>
+                <p>Create or extend the Diocese hierarchy.</p>
+            </div>
+            <nav class="chairman-quick-actions" aria-label="Create organizational unit">
+                <a class="chairman-primary-button" href="{% url 'chairman:deanery-create' %}">
+                    <span>Create Deanery</span>
+                    <small>Add a Deanery to your Diocese</small>
+                </a>
+                <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}">
+                    <span>Create Parish</span>
+                    <small>Add a Parish to a Deanery</small>
+                </a>
+                <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}">
+                    <span>Create Station</span>
+                    <small>Add a Station to a Parish</small>
+                </a>
+            </nav>
+        </section>
+    {% endif %}
+
     <section class="chairman-stats" aria-label="Diocesan operational statistics">
         <article class="chairman-stat-card">
             <h2>Dioceses in scope</h2>
@@ -27,6 +50,56 @@
             <p>{{ active_station_count }}</p>
         </article>
     </section>
+
+    <div class="chairman-overview-grid">
+        <section class="chairman-panel" aria-labelledby="membership-categories-heading">
+            <header class="chairman-panel__heading">
+                <div>
+                    <p class="chairman-panel__eyebrow">MEMBERSHIP</p>
+                    <h2 id="membership-categories-heading">Active membership categories</h2>
+                </div>
+            </header>
+            <ul class="chairman-status-list">
+                {% for category in membership_categories %}
+                    <li>
+                        <span>{{ category.label }}</span>
+                        <strong>{{ category.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="chairman-panel" aria-labelledby="identity-records-heading">
+            <header class="chairman-panel__heading">
+                <div>
+                    <p class="chairman-panel__eyebrow">RECORDS AND IDENTIFICATION</p>
+                    <h2 id="identity-records-heading">Membership identity records</h2>
+                </div>
+            </header>
+            <ul class="chairman-status-list">
+                <li><span>Allocated identity records</span><strong>{{ identity_record_count }}</strong></li>
+                <li><span>Issued membership cards</span><strong>{{ issued_card_count }}</strong></li>
+                <li><span>Eligible for card issuance</span><strong>{{ eligible_card_count }}</strong></li>
+            </ul>
+            {% if has_single_diocese_assignment %}
+                <p>
+                    <a class="chairman-text-link" href="{% url 'identity_cards_web:membership-identities' %}">
+                        View membership identity records
+                    </a>
+                    <span aria-hidden="true"> · </span>
+                    <a class="chairman-text-link" href="{% url 'identity_cards_web:dashboard' %}">
+                        Open card centre
+                    </a>
+                </p>
+            {% else %}
+                <p class="chairman-muted">
+                    Open identity and card records through an individually assigned Diocese.
+                </p>
+            {% endif %}
+        </section>
+    </div>
+
+    {% include "chairman/components/membership_application_queue.html" %}
 
     <section class="chairman-panel" aria-labelledby="membership-status-heading">
         <header class="chairman-panel__heading">
@@ -103,6 +176,11 @@
             <span class="chairman-overview-link__label">Station visibility</span>
             <span>Review station membership records</span>
             <strong>View stations →</strong>
+        </a>
+        <a class="chairman-overview-link" href="{% url 'identity_cards_web:membership-identities' %}">
+            <span class="chairman-overview-link__label">Membership identities</span>
+            <span>View allocated membership IDs</span>
+            <strong>View membership identity records →</strong>
         </a>
     </section>
 {% endblock %}
