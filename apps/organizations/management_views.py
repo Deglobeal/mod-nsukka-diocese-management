@@ -171,6 +171,7 @@ def organization_management(request):
             stations=stations,
             submitted_form=form,
             submitted_type=create_type,
+            requested_type=request.GET.get("create", ""),
         )
         context[f"{create_type}_form"] = form
         return render(request, "organizations/manage.html", context)
@@ -181,6 +182,7 @@ def organization_management(request):
         deaneries=deaneries,
         parishes=parishes,
         stations=stations,
+        requested_type=request.GET.get("create", ""),
     )
     return render(request, "organizations/manage.html", context)
 
@@ -194,6 +196,7 @@ def _build_context(
     stations,
     submitted_form=None,
     submitted_type="",
+    requested_type="",
 ):
     level = scope["level"]
     return {
@@ -208,4 +211,5 @@ def _build_context(
         "station_form": None,
         "submitted_form": submitted_form,
         "submitted_type": submitted_type,
+        "requested_type": requested_type,
     }

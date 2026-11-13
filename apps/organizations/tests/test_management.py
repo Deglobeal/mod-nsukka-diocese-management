@@ -101,6 +101,60 @@ class OrganizationManagementTests(TestCase):
         self.assertContains(response, "Create a diocese")
         self.assertContains(response, "Nsukka Diocese")
 
+    def test_generic_management_does_not_expose_chairman_creation_forms(self):
+        for user in (
+            self.superuser,
+            self.diocese_admin,
+            self.deanery_admin,
+            self.parish_admin,
+        ):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+
+                response = self.client.get(self.url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIsNone(response.context["deanery_form"])
+                self.assertIsNone(response.context["parish_form"])
+                self.assertIsNone(response.context["station_form"])
+                self.assertNotContains(response, "Create a deanery")
+                self.assertNotContains(response, "Create a parish")
+                self.assertNotContains(response, "Create a station")
+
+    def test_requested_type_does_not_enable_generic_child_creation(self):
+        self.client.force_login(self.diocese_admin)
+
+        for organization_type in ("deanery", "parish", "station"):
+            with self.subTest(organization_type=organization_type):
+                response = self.client.get(
+                    self.url,
+                    {"create": organization_type},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.context["requested_type"],
+                    organization_type,
+                )
+                self.assertIsNone(response.context[f"{organization_type}_form"])
+                self.assertNotContains(
+                    response,
+                    f"Create a {organization_type}",
+                )
+
+    def test_requested_diocese_type_opens_system_level_creation_form(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url, {"create": "diocese"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["requested_type"], "diocese")
+        self.assertIsNotNone(response.context["diocese_form"])
+        self.assertRegex(
+            response.content.decode(),
+            r'<details class="organization-form-section"\s+open>',
+        )
+
     def test_superuser_can_create_diocese(self):
         self.client.force_login(self.superuser)
 
