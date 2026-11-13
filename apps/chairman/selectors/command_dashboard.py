@@ -1,10 +1,14 @@
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, OuterRef, Q, Subquery
 
 from apps.chairman.selectors.activity import get_recent_audit_activity
-from apps.identity_cards.models import MembershipIdentity
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.identity_cards.selectors.membership_card_dashboard import (
+    eligible_members_for_card_issuance,
+)
 from apps.members.models import Member
 from apps.organizations.models import Deanery, Diocese, Parish, Station
+from apps.verification.models import MembershipApplication
 
 
 PAGE_SIZE = 25
@@ -46,10 +50,30 @@ def get_overview_data(*, diocese_ids):
     member_scope = Member.objects.filter(
         parish__deanery__diocese_id__in=diocese_ids,
     )
+    active_members = member_scope.filter(status=Member.Status.ACTIVE)
     status_totals = {
         row["status"]: row["total"]
         for row in member_scope.values("status").annotate(total=Count("pk"))
     }
+    latest_approved_category = (
+        MembershipApplication.objects.filter(
+            member_id=OuterRef("pk"),
+            stage=MembershipApplication.Stage.APPROVED,
+        )
+        .order_by("-final_decision_at", "-submitted_at", "-pk")
+        .values("category")[:1]
+    )
+    category_totals = {
+        row["approved_category"]: row["total"]
+        for row in (
+            active_members.annotate(
+                approved_category=Subquery(latest_approved_category),
+            )
+            .values("approved_category")
+            .annotate(total=Count("pk"))
+        )
+    }
+    dioceses = Diocese.objects.filter(pk__in=diocese_ids)
     return {
         "member_count": member_scope.count(),
         "member_status_counts": [
@@ -74,6 +98,32 @@ def get_overview_data(*, diocese_ids):
             is_active=True,
         ).count(),
         "diocese_count": Diocese.objects.filter(pk__in=diocese_ids).count(),
+        "membership_categories": [
+            {
+                "key": category,
+                "label": label,
+                "count": category_totals.get(category, 0),
+            }
+            for category, label in (
+                (
+                    MembershipApplication.Category.REGULAR_MEMBER,
+                    "Regular Member",
+                ),
+                (MembershipApplication.Category.PATRON, "Patron"),
+                (MembershipApplication.Category.CHAPLAIN, "Chaplain"),
+            )
+        ],
+        "identity_record_count": MembershipIdentity.objects.filter(
+            member__parish__deanery__diocese_id__in=diocese_ids,
+        ).count(),
+        "issued_card_count": MembershipCard.objects.filter(
+            member__parish__deanery__diocese_id__in=diocese_ids,
+        ).count(),
+        "eligible_card_count": sum(
+            eligible_members_for_card_issuance(diocese=diocese).count()
+            for diocese in dioceses
+        ),
+        "has_single_diocese_assignment": len(diocese_ids) == 1,
         "recent_audit_activity": get_recent_audit_activity(
             diocese_ids=diocese_ids,
         ),

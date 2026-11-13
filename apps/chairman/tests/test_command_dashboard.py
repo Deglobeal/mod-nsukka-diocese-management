@@ -169,6 +169,10 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertEqual(response.context["active_deanery_count"], 1)
         self.assertEqual(response.context["active_parish_count"], 1)
         self.assertEqual(response.context["active_station_count"], 1)
+        self.assertEqual(response.context["pending_count"], 1)
+        self.assertEqual(response.context["identity_record_count"], 1)
+        self.assertEqual(response.context["issued_card_count"], 0)
+        self.assertEqual(response.context["eligible_card_count"], 0)
         status_counts = {
             item["value"]: item["count"]
             for item in response.context["member_status_counts"]
@@ -176,6 +180,20 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertEqual(status_counts[Member.Status.ACTIVE], 1)
         self.assertEqual(status_counts[Member.Status.PENDING_REVIEW], 1)
         self.assertContains(response, "Member status summary")
+        self.assertContains(response, "Active membership categories")
+        self.assertContains(response, "Membership identity records")
+        self.assertContains(response, "Applications awaiting final review")
+        self.assertContains(
+            response,
+            f'action="{reverse("chairman:dashboard")}#membership-applications"',
+        )
+        self.assertContains(
+            response,
+            reverse(
+                "chairman:membership-application-detail",
+                args=[self.application.pk],
+            ),
+        )
         self.assertNotContains(response, "Ada Okafor")
         self.assertNotContains(response, "Outside Scope")
         self.assertNotContains(response, "Ngozi Eze")
@@ -538,6 +556,11 @@ class ChairmanCommandDashboardTests(TestCase):
 
     def test_creation_links_are_available_in_directories_and_details(self):
         self.client.force_login(self.chairman)
+        all_creation_actions = (
+            ("Create Deanery", "chairman:deanery-create"),
+            ("Create Parish", "chairman:parish-create"),
+            ("Create Station", "chairman:station-create"),
+        )
         for route_name, label in (
             ("chairman:deaneries", "Create Deanery"),
             ("chairman:parishes", "Create Parish"),
@@ -546,6 +569,12 @@ class ChairmanCommandDashboardTests(TestCase):
             with self.subTest(route=route_name):
                 response = self.client.get(reverse(route_name))
                 self.assertContains(response, label)
+                for action_label, action_route in all_creation_actions:
+                    self.assertContains(response, action_label)
+                    self.assertContains(
+                        response,
+                        reverse(action_route),
+                    )
 
         response = self.client.get(
             reverse("chairman:deanery-detail", args=[self.deanery.pk])
@@ -785,17 +814,20 @@ class ChairmanCommandDashboardTests(TestCase):
             reverse("chairman:membership-applications")
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(
+        self.assertRedirects(
             response,
-            "chairman/membership_applications.html",
+            f"{reverse('chairman:dashboard')}#membership-applications",
+            fetch_redirect_response=False,
         )
+        response = self.client.get(reverse("chairman:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "chairman/command_dashboard.html")
         self.assertContains(response, "Diocesan Chairman")
-        self.assertContains(response, "Membership Applications")
+        self.assertContains(response, "Applications awaiting final review")
         self.assertContains(response, "Chika Nwosu")
         self.assertContains(
             response,
-            'aria-current="page">Membership Applications</a>',
+            'href="/chairman/#membership-applications"',
         )
         self.assertContains(
             response,
@@ -819,7 +851,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.client.force_login(self.chairman)
 
         response = self.client.post(
-            reverse("chairman:membership-applications"),
+            reverse("chairman:dashboard"),
             {
                 "application_id": self.application.pk,
                 "decision": MembershipReview.Decision.APPROVED,
@@ -829,7 +861,7 @@ class ChairmanCommandDashboardTests(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("chairman:membership-applications"),
+            f"{reverse('chairman:dashboard')}#membership-applications",
             fetch_redirect_response=False,
         )
         self.application.refresh_from_db()
@@ -854,7 +886,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.client.force_login(self.chairman)
 
         response = self.client.post(
-            reverse("chairman:membership-applications"),
+            reverse("chairman:dashboard"),
             {
                 "application_id": self.application.pk,
                 "decision": MembershipReview.Decision.APPROVED,
@@ -866,7 +898,12 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.redirect_chain,
-            [(reverse("chairman:membership-applications"), 302)],
+            [
+                (
+                    f"{reverse('chairman:dashboard')}#membership-applications",
+                    302,
+                )
+            ],
         )
         self.assertContains(
             response,
@@ -874,7 +911,7 @@ class ChairmanCommandDashboardTests(TestCase):
         )
         self.assertTemplateUsed(
             response,
-            "chairman/membership_applications.html",
+            "chairman/command_dashboard.html",
         )
         self.application.refresh_from_db()
         self.pending_member.refresh_from_db()
@@ -894,28 +931,25 @@ class ChairmanCommandDashboardTests(TestCase):
             SponsorVerification.Status.DISPUTED,
         )
 
-    def test_diocese_verification_route_uses_unified_shell(self):
+    def test_diocese_verification_route_redirects_to_unified_dashboard(self):
         self.client.force_login(self.chairman)
 
         response = self.client.get(
             reverse("membership_review_dashboard:diocese")
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(
+        self.assertRedirects(
             response,
-            "chairman/membership_applications.html",
+            f"{reverse('chairman:dashboard')}#membership-applications",
+            fetch_redirect_response=False,
         )
-        self.assertContains(response, "Diocesan Chairman navigation")
-        self.assertContains(response, "Membership Applications")
-        self.assertContains(response, "Chika Nwosu")
 
     def test_diocese_application_detail_uses_unified_shell(self):
         self.client.force_login(self.chairman)
 
         response = self.client.get(
             reverse(
-                "membership_review_dashboard:detail",
+                "chairman:membership-application-detail",
                 args=[self.application.pk],
             ),
             {"level": "diocese"},
@@ -931,7 +965,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertContains(response, "Chika Nwosu")
         self.assertContains(
             response,
-            reverse("chairman:membership-applications"),
+            reverse("chairman:dashboard"),
         )
 
     def test_membership_applications_reject_unassigned_privileged_and_local_roles(self):

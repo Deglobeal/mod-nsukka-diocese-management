@@ -1,0 +1,110 @@
+<section
+    id="membership-applications"
+    class="review-panel chairman-application-queue"
+    aria-labelledby="applications-heading"
+>
+    <header class="review-panel__heading">
+        <p class="chairman-panel__eyebrow">MEMBERSHIP REVIEW</p>
+        <h2 id="applications-heading">Applications awaiting final review</h2>
+        <p>Review applications forwarded through Parish and Deanery stages.</p>
+    </header>
+
+    <section class="review-dashboard__stats" aria-label="Application summary">
+        <article class="review-stat">
+            <span>Applications awaiting diocesan review</span>
+            <strong>{{ pending_count }}</strong>
+        </article>
+    </section>
+
+    {% for application in applications %}
+        <article class="review-application">
+            <div class="review-application__header">
+                <div>
+                    <h3>{{ application.applicant_name|default:"Applicant name unavailable" }}</h3>
+                    <p>Application #{{ application.pk }}</p>
+                    <a class="review-application__view-link"
+                       href="{% url 'chairman:membership-application-detail' application.pk %}?level=diocese">
+                        View full application
+                    </a>
+                </div>
+                <span class="review-stage">{{ application.get_stage_display }}</span>
+            </div>
+
+            <dl class="review-application__details">
+                <div>
+                    <dt>Category</dt>
+                    <dd>{{ application.get_category_display|default:"Not specified" }}</dd>
+                </div>
+                <div>
+                    <dt>Submitted</dt>
+                    <dd>{{ application.submitted_at|date:"d M Y, H:i" }}</dd>
+                </div>
+                <div>
+                    <dt>Parish</dt>
+                    <dd>
+                        {% if application.parish %}
+                            {{ application.parish.name }}
+                        {% elif application.member and application.member.parish %}
+                            {{ application.member.parish.name }}
+                        {% else %}
+                            Not assigned
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+
+            {% with reviews=application.reviews.all %}
+                {% if reviews %}
+                    <details class="review-history">
+                        <summary>Review history ({{ reviews|length }})</summary>
+                        <ol>
+                            {% for review in reviews %}
+                                <li>
+                                    <strong>{{ review.get_review_level_display }}</strong>
+                                    — {{ review.get_decision_display }}
+                                    <span>{{ review.reviewed_at|date:"d M Y, H:i" }}</span>
+                                    {% if review.comments %}
+                                        <p>{{ review.comments }}</p>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ol>
+                    </details>
+                {% endif %}
+            {% endwith %}
+
+            <form method="post" action="{% url 'chairman:dashboard' %}#membership-applications" class="review-form">
+                {% csrf_token %}
+                <input type="hidden" name="application_id" value="{{ application.pk }}">
+
+                <div class="review-form__field">
+                    <label for="decision-{{ application.pk }}">Diocese decision</label>
+                    <select id="decision-{{ application.pk }}" name="decision" required>
+                        <option value="">Choose a decision</option>
+                        {% for value, label in decision_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="review-form__field">
+                    <label for="comments-{{ application.pk }}">Comments or corrections</label>
+                    <textarea
+                        id="comments-{{ application.pk }}"
+                        name="comments"
+                        rows="3"
+                        maxlength="5000"
+                        placeholder="Explain your decision or specify corrections needed."
+                    ></textarea>
+                </div>
+
+                <button type="submit">Record Diocese decision</button>
+            </form>
+        </article>
+    {% empty %}
+        <div class="review-empty" role="status">
+            <h3>No applications awaiting final review</h3>
+            <p>Applications assigned to your active Diocese scope will appear here.</p>
+        </div>
+    {% endfor %}
+</section>

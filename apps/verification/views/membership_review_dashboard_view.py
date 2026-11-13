@@ -2,13 +2,14 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import OuterRef, Q, Subquery
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from apps.accounts.models import OfficeAssignment
-from apps.chairman.selectors.command_dashboard import (
-    get_chairman_shell_data,
+from apps.accounts.services.office_authorization import (
+    authorize_diocese_chairman,
 )
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.selectors.membership_review_queue import (
@@ -54,7 +55,7 @@ def _assignment_scope_label(assignment, level):
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def membership_review_dashboard(request, dashboard_level):
+def membership_review_dashboard(request, dashboard_level, return_url=None):
     config = DASHBOARD_CONFIG.get(dashboard_level)
     if config is None:
         raise Http404("Dashboard not found.")
@@ -76,6 +77,12 @@ def membership_review_dashboard(request, dashboard_level):
         _assignment_scope_label(assignment, dashboard_level)
         for assignment in assignments
     })
+    if dashboard_level == "diocese" and request.method == "GET":
+        return redirect(
+            f"{reverse('chairman:dashboard')}#membership-applications"
+        )
+
+    review_return_url = return_url or request.path
 
     if request.method == "POST":
         application_id = request.POST.get("application_id", "").strip()
@@ -84,18 +91,18 @@ def membership_review_dashboard(request, dashboard_level):
 
         if not application_id.isdigit():
             messages.error(request, "Select a valid membership application.")
-            return redirect(request.path)
+            return redirect(review_return_url)
 
         allowed_decisions = {
             choice[0] for choice in MembershipReview.Decision.choices
         }
         if decision not in allowed_decisions:
             messages.error(request, "Select a valid review decision.")
-            return redirect(request.path)
+            return redirect(review_return_url)
 
         if len(comments) > 5000:
             messages.error(request, "Comments must not exceed 5,000 characters.")
-            return redirect(request.path)
+            return redirect(review_return_url)
 
         try:
             review = record_membership_review(
@@ -114,13 +121,13 @@ def membership_review_dashboard(request, dashboard_level):
                 request,
                 "Review could not be recorded: " + " ".join(exc.messages),
             )
-            return redirect(request.path)
+            return redirect(review_return_url)
 
         messages.success(
             request,
             f"Review recorded: {review.get_decision_display()}.",
         )
-        return redirect(request.path)
+        return redirect(review_return_url)
 
     applications = (
         get_membership_review_queue(user=request.user)
@@ -197,31 +204,14 @@ def membership_review_dashboard(request, dashboard_level):
                 ),
             })
 
-    chairman_shell_data = {}
-    if dashboard_level == "diocese":
-        chairman_shell_data = get_chairman_shell_data(
-            diocese_ids={
-                assignment.diocese_id for assignment in assignments
-            }
-        )
-
     return render(
         request,
-        (
-            "chairman/membership_applications.html"
-            if dashboard_level == "diocese"
-            else f"verification/dashboards/{dashboard_level}.html"
-        ),
+        f"verification/dashboards/{dashboard_level}.html",
         {
-            **chairman_shell_data,
             "dashboard_level": dashboard_level,
             "dashboard_title": config["title"],
             "dashboard_description": config["description"],
             "scope_labels": scope_labels,
-            "dashboard_scopes": scope_labels,
-            "active_section": (
-                "applications" if dashboard_level == "diocese" else ""
-            ),
             "applications": applications,
             "pending_count": applications.count(),
             "decision_choices": MembershipReview.Decision.choices,
@@ -238,5 +228,19 @@ def deanery_chairman_dashboard(request):
     return membership_review_dashboard(request, "deanery")
 
 
+@login_required
+@require_http_methods(["GET", "POST"])
 def diocese_chairman_dashboard(request):
-    return membership_review_dashboard(request, "diocese")
+    if request.method == "POST":
+        return membership_review_dashboard(
+            request,
+            "diocese",
+            return_url=(
+                f"{reverse('chairman:dashboard')}#membership-applications"
+            ),
+        )
+
+    authorize_diocese_chairman(user=request.user)
+    return HttpResponseRedirect(
+        f"{reverse('chairman:dashboard')}#membership-applications"
+    )

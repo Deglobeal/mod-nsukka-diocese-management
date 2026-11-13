@@ -15,11 +15,19 @@ from apps.chairman.views.command_dashboard_view import (
     station_detail,
     station_directory,
 )
+from apps.verification.views.membership_application_detail_view import (
+    membership_application_detail,
+)
 
 app_name = "chairman"
 
 urlpatterns = [
     path("", command_dashboard, name="dashboard"),
+    path(
+        "applications/<int:application_id>/",
+        membership_application_detail,
+        name="membership-application-detail",
+    ),
     path("notifications/", chairman_notifications, name="notifications"),
     path(
         "notifications/<int:notification_id>/read/",

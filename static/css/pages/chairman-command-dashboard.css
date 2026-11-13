@@ -234,6 +234,20 @@
     margin-bottom: var(--space-6);
 }
 
+.chairman-overview-grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.chairman-overview-grid > .chairman-panel {
+    margin-top: 0;
+}
+
+.chairman-application-queue {
+    scroll-margin-top: var(--space-6);
+}
+
 .chairman-stat-card,
 .chairman-section {
     background: var(--color-surface);

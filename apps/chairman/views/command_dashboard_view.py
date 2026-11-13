@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import (
     require_GET,
@@ -33,6 +34,10 @@ from apps.chairman.selectors.command_dashboard import (
     get_parish_directory,
     get_station_detail,
     get_station_directory,
+)
+from apps.verification.models import MembershipApplication, MembershipReview
+from apps.verification.selectors.membership_review_queue import (
+    get_membership_review_queue,
 )
 from apps.verification.views.membership_review_dashboard_view import (
     membership_review_dashboard,
@@ -211,17 +216,36 @@ def create_organization(request, organization_type):
 
 
 @login_required
-@require_GET
+@require_http_methods(["GET", "POST"])
 def command_dashboard(request):
     diocese_ids = authorize_diocese_chairman(user=request.user)
+    if request.method == "POST":
+        return membership_review_dashboard(
+            request,
+            "diocese",
+            return_url=(
+                f"{reverse('chairman:dashboard')}#membership-applications"
+            ),
+        )
+
+    applications = (
+        get_membership_review_queue(user=request.user)
+        .filter(stage=MembershipApplication.Stage.DIOCESE_REVIEW)
+        .prefetch_related("reviews")
+        .order_by("-submitted_at")
+    )
     return _render_chairman_page(
         request,
         diocese_ids=diocese_ids,
         section="overview",
         template="chairman/command_dashboard.html",
-        data=get_overview_data(
-            diocese_ids=diocese_ids,
-        ),
+        data={
+            **get_overview_data(diocese_ids=diocese_ids),
+            "show_organization_creation_actions": True,
+            "applications": applications,
+            "pending_count": applications.count(),
+            "decision_choices": MembershipReview.Decision.choices,
+        },
     )
 
 
@@ -385,8 +409,20 @@ def station_detail(request, station_id):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def chairman_membership_applications(request):
-    return membership_review_dashboard(request, "diocese")
+    if request.method == "POST":
+        return membership_review_dashboard(
+            request,
+            "diocese",
+            return_url=(
+                f"{reverse('chairman:dashboard')}#membership-applications"
+            ),
+        )
+    authorize_diocese_chairman(user=request.user)
+    return redirect(
+        f"{reverse('chairman:dashboard')}#membership-applications"
+    )
 
 @login_required
 @require_GET

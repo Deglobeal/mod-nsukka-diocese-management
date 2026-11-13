@@ -38,7 +38,7 @@ STAGE_CONFIG = {
     },
     MembershipApplication.Stage.DIOCESE_REVIEW: {
         "level": MembershipReview.ReviewLevel.DIOCESE,
-        "dashboard": "chairman:membership-applications",
+        "dashboard": "chairman:dashboard",
         "label": "Diocese",
     },
 }

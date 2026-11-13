@@ -47,7 +47,7 @@
                href="{% url 'chairman:members' %}"
                {% if active_section == "members" %}aria-current="page"{% endif %}>Membership Directory</a>
             <a class="chairman-nav__link{% if active_section == 'applications' %} is-active{% endif %}"
-               href="{% url 'chairman:membership-applications' %}"
+               href="{% url 'chairman:dashboard' %}#membership-applications"
                {% if active_section == "applications" %}aria-current="page"{% endif %}>Membership Applications</a>
             <a class="chairman-nav__link{% if active_section == 'deaneries' %} is-active{% endif %}"
                href="{% url 'chairman:deaneries' %}"
@@ -142,19 +142,17 @@
                     </p>
                 {% endblock %}
             </header>
-            {% if not organization_type %}
-                <nav class="chairman-quick-actions" aria-label="Create organizational unit">
-                    <a class="chairman-primary-button" href="{% url 'chairman:deanery-create' %}">
-                        Create Deanery
-                    </a>
-                    <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}">
-                        Create Parish
-                    </a>
-                    <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}">
-                        Create Station
-                    </a>
-                </nav>
-            {% endif %}
+            <nav class="chairman-quick-actions" aria-label="Create organizational unit">
+                <a class="chairman-primary-button" href="{% url 'chairman:deanery-create' %}">
+                    Create Deanery
+                </a>
+                <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}">
+                    Create Parish
+                </a>
+                <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}">
+                    Create Station
+                </a>
+            </nav>
             {% block dashboard_content %}{% endblock %}
         </div>
     </div>
