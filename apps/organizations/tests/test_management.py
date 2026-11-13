@@ -137,6 +137,27 @@ class OrganizationManagementTests(TestCase):
         created = Deanery.objects.get(name="New Local Deanery")
         self.assertEqual(created.diocese, self.diocese)
 
+    def test_creation_links_open_the_matching_scoped_form(self):
+        self.client.force_login(self.diocese_admin)
+
+        for organization_type in ("deanery", "parish", "station"):
+            with self.subTest(organization_type=organization_type):
+                response = self.client.get(
+                    self.url,
+                    {"create": organization_type},
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.context["requested_type"],
+                    organization_type,
+                )
+                self.assertRegex(
+                    response.content.decode(),
+                    rf'<details\s+id="{organization_type}-form"\s+'
+                    rf'class="organization-form-section"\s+open\s*>',
+                )
+
     def test_diocese_admin_cannot_create_diocese(self):
         self.client.force_login(self.diocese_admin)
 

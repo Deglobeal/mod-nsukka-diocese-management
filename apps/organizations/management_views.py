@@ -236,6 +236,7 @@ def organization_management(request):
         stations=stations,
         deanery_scope=deanery_scope,
         parish_scope=parish_scope,
+        requested_type=request.GET.get("create", ""),
     )
     return render(request, "organizations/manage.html", context)
 
@@ -251,6 +252,7 @@ def _build_context(
     parish_scope,
     submitted_form=None,
     submitted_type="",
+    requested_type="",
 ):
     level = scope["level"]
     return {
@@ -279,4 +281,5 @@ def _build_context(
         ),
         "submitted_form": submitted_form,
         "submitted_type": submitted_type,
+        "requested_type": requested_type,
     }
