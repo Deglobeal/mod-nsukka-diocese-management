@@ -264,6 +264,18 @@ class ChairmanCommandDashboardTests(TestCase):
                     f'aria-current="page">{active_label}</a>',
                 )
                 self.assertContains(response, page_heading)
+                for label, route_name in (
+                    ("Create Deanery", "organizations:manage"),
+                    ("Create Parish", "organizations:manage"),
+                    ("Create Station", "organizations:manage"),
+                ):
+                    with self.subTest(action=label):
+                        self.assertContains(response, label)
+                        self.assertContains(
+                            response,
+                            f'{reverse(route_name)}?create='
+                            f'{label.removeprefix("Create ").lower()}',
+                        )
                 if route_name != "chairman:dashboard":
                     self.assertNotContains(response, "Member status summary")
 

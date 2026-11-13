@@ -4,7 +4,7 @@
 {% block title %}{{ page_title|default:"Chairman Command Dashboard" }} | M.O.D. Nsukka Diocese{% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/chairman-command-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/chairman-command-dashboard.css' %}?v=3">
 <link rel="stylesheet" href="{% static 'css/pages/diocese-dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/membership-review-dashboard.css' %}">
 {% endblock %}
@@ -133,6 +133,26 @@
                     {% endfor %}
                 </section>
             {% endif %}
+            <section class="chairman-organization-actions" aria-labelledby="chairman-organization-actions-title">
+                <div class="chairman-organization-actions__heading">
+                    <h2 id="chairman-organization-actions-title">Organization management</h2>
+                    <p>Create or extend the Diocese hierarchy.</p>
+                </div>
+                <nav class="chairman-quick-actions" aria-label="Create organizational unit">
+                    <a class="chairman-primary-button" href="{% url 'organizations:manage' %}?create=deanery#deanery-form">
+                        <span>Create Deanery</span>
+                        <small>Add a Deanery to your Diocese</small>
+                    </a>
+                    <a class="chairman-primary-button" href="{% url 'organizations:manage' %}?create=parish#parish-form">
+                        <span>Create Parish</span>
+                        <small>Add a Parish to a Deanery</small>
+                    </a>
+                    <a class="chairman-primary-button" href="{% url 'organizations:manage' %}?create=station#station-form">
+                        <span>Create Station</span>
+                        <small>Add a Station to a Parish</small>
+                    </a>
+                </nav>
+            </section>
             <header class="chairman-page-heading">
                 <p class="chairman-page-heading__eyebrow">DIOCESE OPERATIONS</p>
                 <h1>{% block page_heading %}{{ page_title|default:"Overview" }}{% endblock %}</h1>
