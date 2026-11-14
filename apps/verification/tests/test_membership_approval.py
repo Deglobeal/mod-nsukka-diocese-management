@@ -1,13 +1,15 @@
 from django.contrib.auth import get_user_model
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
+from apps.audit.models import AuditEvent
 from apps.members.models import Member
-from apps.notifications.models import SponsorVerification
+from apps.notifications.models import SponsorVerification, InAppNotification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.services.membership_approval import (
@@ -18,10 +20,7 @@ from apps.verification.services.membership_approval import (
 class MembershipApprovalServiceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        diocese = Diocese.objects.get(code="036")
         deanery = Deanery.objects.create(
             diocese=diocese,
             name="Test Deanery",
@@ -465,3 +464,171 @@ class MembershipApprovalServiceTests(TestCase):
         self.assertIsNone(application.member_id)
         self.assertEqual(application.reviews.count(), 0)
         self.assertEqual(Member.objects.count(), members_before)
+
+    def test_successful_reviews_create_scoped_audit_events(self):
+        self.review(
+            MembershipReview.ReviewLevel.PARISH,
+            MembershipReview.Decision.NEEDS_INFORMATION,
+        )
+        self.review(
+            MembershipReview.ReviewLevel.PARISH,
+            MembershipReview.Decision.APPROVED,
+        )
+        self.review(
+            MembershipReview.ReviewLevel.DEANERY,
+            MembershipReview.Decision.APPROVED,
+        )
+        self.review(
+            MembershipReview.ReviewLevel.DIOCESE,
+            MembershipReview.Decision.APPROVED,
+        )
+
+        events = list(
+            AuditEvent.objects.filter(
+                object_id=self.application.pk,
+                action=AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+            ).order_by("created_at", "pk")
+        )
+
+        self.assertEqual(len(events), 4)
+
+        expected = [
+            (
+                MembershipReview.ReviewLevel.PARISH,
+                MembershipReview.Decision.NEEDS_INFORMATION,
+            ),
+            (
+                MembershipReview.ReviewLevel.PARISH,
+                MembershipReview.Decision.APPROVED,
+            ),
+            (
+                MembershipReview.ReviewLevel.DEANERY,
+                MembershipReview.Decision.APPROVED,
+            ),
+            (
+                MembershipReview.ReviewLevel.DIOCESE,
+                MembershipReview.Decision.APPROVED,
+            ),
+        ]
+
+        for event, (level, decision) in zip(events, expected):
+            with self.subTest(level=level, decision=decision):
+                self.assertEqual(event.actor, self.reviewer)
+                self.assertEqual(
+                    event.actor_name_snapshot,
+                    self.reviewer.get_username(),
+                )
+                self.assertEqual(event.diocese, self.diocese)
+                self.assertEqual(event.deanery, self.deanery)
+                self.assertEqual(event.parish, self.parish)
+                self.assertEqual(
+                    event.action,
+                    AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+                )
+                self.assertEqual(
+                    event.metadata,
+                    {
+                        "review_level": level,
+                        "decision": decision,
+                    },
+                )
+
+        self.application.refresh_from_db()
+        self.member.refresh_from_db()
+        self.assertEqual(
+            self.application.stage,
+            MembershipApplication.Stage.APPROVED,
+        )
+        self.assertEqual(self.member.status, Member.Status.ACTIVE)
+
+    def test_rejection_creates_a_scoped_audit_event(self):
+        self.review(
+            MembershipReview.ReviewLevel.PARISH,
+            MembershipReview.Decision.REJECTED,
+            comments="Private review comment.",
+        )
+
+        event = AuditEvent.objects.get(
+            object_id=self.application.pk,
+            action=AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+        )
+
+        self.assertEqual(event.actor, self.reviewer)
+        self.assertEqual(event.diocese, self.diocese)
+        self.assertEqual(event.deanery, self.deanery)
+        self.assertEqual(event.parish, self.parish)
+        self.assertEqual(
+            event.metadata,
+            {
+                "review_level": MembershipReview.ReviewLevel.PARISH,
+                "decision": MembershipReview.Decision.REJECTED,
+            },
+        )
+        self.assertNotIn("Private review comment.", str(event.metadata))
+
+        self.application.refresh_from_db()
+        self.assertEqual(
+            self.application.stage,
+            MembershipApplication.Stage.REJECTED,
+        )
+
+    def test_audit_write_failure_rolls_back_membership_review(self):
+        with patch(
+            "apps.verification.services.membership_approval.AuditEvent.objects.create",
+            side_effect=RuntimeError("audit storage unavailable"),
+        ):
+            with self.assertRaisesMessage(
+                RuntimeError,
+                "audit storage unavailable",
+            ):
+                self.review(
+                    MembershipReview.ReviewLevel.PARISH,
+                    MembershipReview.Decision.APPROVED,
+                )
+
+        self.application.refresh_from_db()
+
+        self.assertEqual(
+            self.application.stage,
+            MembershipApplication.Stage.PARISH_REVIEW,
+        )
+        self.assertEqual(self.application.reviews.count(), 0)
+        self.assertFalse(
+            AuditEvent.objects.filter(
+                object_id=self.application.pk,
+            ).exists()
+        )
+
+
+    def test_notification_write_failure_rolls_back_membership_review(self):
+        with patch(
+            "apps.notifications.services.in_app_notifications."
+            "InAppNotification.objects.get_or_create",
+            side_effect=RuntimeError("inbox storage unavailable"),
+        ):
+            with self.assertRaisesMessage(
+                RuntimeError,
+                "inbox storage unavailable",
+            ):
+                self.review(
+                    MembershipReview.ReviewLevel.PARISH,
+                    MembershipReview.Decision.APPROVED,
+                )
+
+        self.application.refresh_from_db()
+
+        self.assertEqual(
+            self.application.stage,
+            MembershipApplication.Stage.PARISH_REVIEW,
+        )
+        self.assertEqual(self.application.reviews.count(), 0)
+        self.assertFalse(
+            AuditEvent.objects.filter(
+                object_id=self.application.pk,
+            ).exists()
+        )
+        self.assertFalse(
+            InAppNotification.objects.filter(
+                recipient=self.reviewer,
+            ).exists()
+        )

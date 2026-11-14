@@ -3,7 +3,7 @@
 
 {% block title %}Organization Management | M.O.D. Nsukka Diocese{% endblock %}
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/organization-management.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/organization-management.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -23,18 +23,6 @@
         {% for message in messages %}
             <div class="organization-message" role="status">{{ message }}</div>
         {% endfor %}
-    {% endif %}
-
-    {% if submitted_form and submitted_form.errors %}
-        <div class="organization-errors" role="alert">
-            <p>Please correct the following errors:</p>
-            {{ submitted_form.non_field_errors }}
-            {% for field in submitted_form %}
-                {% if field.errors %}
-                    <p><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</p>
-                {% endif %}
-            {% endfor %}
-        </div>
     {% endif %}
 
     <section class="organization-summary">
@@ -121,96 +109,5 @@
         {% endif %}
     </section>
 
-    {% if deanery_form or parish_form or station_form %}
-        <section class="organization-panel">
-            <h2>Add an organization unit</h2>
-            <p class="organization-muted">Choose the appropriate form below. Parent organizations are restricted to your permitted scope.</p>
-
-            {% if diocese_form %}
-                  <details class="organization-form-section" {% if submitted_type == "diocese" %}open{% endif %}>
-                      <summary>Create a diocese</summary>
-                      <form method="post" class="organization-form">
-                          {% csrf_token %}
-                          <input type="hidden" name="create_type" value="diocese">
-                          {% for field in diocese_form %}
-                              <div class="organization-field">
-                                  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                  {{ field }}
-                                  {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                                  {% if field.errors %}<small role="alert">{{ field.errors|join:", " }}</small>{% endif %}
-                              </div>
-                          {% endfor %}
-                          <button type="submit" class="organization-button">Create diocese</button>
-                      </form>
-                  </details>
-              {% endif %}
-
-              {% if deanery_form %}
-                <details
-                    id="deanery-form"
-                    class="organization-form-section"
-                    {% if submitted_type == "deanery" or requested_type == "deanery" %}open{% endif %}
-                >
-                    <summary>Create a deanery</summary>
-                    <form method="post" class="organization-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="create_type" value="deanery">
-                        {% for field in deanery_form %}
-                            <div class="organization-field">
-                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                            </div>
-                        {% endfor %}
-                        <button type="submit" class="organization-button">Create deanery</button>
-                    </form>
-                </details>
-            {% endif %}
-
-            {% if parish_form %}
-              <details
-                  id="parish-form"
-                  class="organization-form-section"
-                  {% if submitted_type == "parish" or requested_type == "parish" %}open{% endif %}
-              >
-                    <summary>Create a parish</summary>
-                    <form method="post" class="organization-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="create_type" value="parish">
-                        {% for field in parish_form %}
-                            <div class="organization-field">
-                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                            </div>
-                        {% endfor %}
-                        <button type="submit" class="organization-button">Create parish</button>
-                    </form>
-                </details>
-            {% endif %}
-
-            {% if station_form %}
-              <details
-                  id="station-form"
-                  class="organization-form-section"
-                  {% if submitted_type == "station" or requested_type == "station" %}open{% endif %}
-              >
-                    <summary>Create a station</summary>
-                    <form method="post" class="organization-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="create_type" value="station">
-                        {% for field in station_form %}
-                            <div class="organization-field">
-                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                            </div>
-                        {% endfor %}
-                        <button type="submit" class="organization-button">Create station</button>
-                    </form>
-                </details>
-            {% endif %}
-        </section>
-    {% endif %}
 </div>
 {% endblock %}

@@ -1,0 +1,126 @@
+{% extends "chairman/layout.html" %}
+
+{% block page_description %}
+    <p class="chairman-page-heading__description">
+        Diocese → Deanery → Parish → Station
+    </p>
+{% endblock %}
+
+{% block dashboard_content %}
+    <nav class="chairman-breadcrumbs" aria-label="Breadcrumb">
+        <a href="{% url 'chairman:dashboard' %}">Overview</a>
+        <span aria-hidden="true">/</span>
+        {% if organization_type == "deanery" %}
+            <a href="{% url 'chairman:deaneries' %}">Deaneries</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{{ organization.name }}</span>
+        {% elif organization_type == "parish" %}
+            <a href="{% url 'chairman:deaneries' %}">Deaneries</a>
+            <span aria-hidden="true">/</span>
+            <a href="{% url 'chairman:deanery-detail' organization.deanery_id %}">{{ organization.deanery.name }}</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{{ organization.name }}</span>
+        {% else %}
+            <a href="{% url 'chairman:deaneries' %}">Deaneries</a>
+            <span aria-hidden="true">/</span>
+            <a href="{% url 'chairman:deanery-detail' organization.parish.deanery_id %}">{{ organization.parish.deanery.name }}</a>
+            <span aria-hidden="true">/</span>
+            <a href="{% url 'chairman:parish-detail' organization.parish_id %}">{{ organization.parish.name }}</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{{ organization.name }}</span>
+        {% endif %}
+    </nav>
+
+    <section class="chairman-panel chairman-organization-summary" aria-labelledby="organization-summary-heading">
+        <div class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">ORGANIZATION DETAILS</p>
+                <h2 id="organization-summary-heading">{{ organization.name }}</h2>
+            </div>
+            {% if organization_type == "deanery" %}
+                <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}?deanery={{ organization.pk }}">Create Parish</a>
+            {% elif organization_type == "parish" %}
+                <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}?parish={{ organization.pk }}">Create Station</a>
+            {% endif %}
+            <span class="chairman-status-tag{% if not organization.is_active %} chairman-status-tag--inactive{% endif %}">
+                {% if organization.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+        </div>
+        <dl class="chairman-detail-grid">
+            {% if organization_type == "deanery" %}
+                <div><dt>Code</dt><dd>{{ organization.code }}</dd></div>
+                <div><dt>Diocese</dt><dd>{{ organization.diocese.name }}</dd></div>
+                <div><dt>Parishes</dt><dd>{{ organization.parish_count }}</dd></div>
+                <div><dt>Members</dt><dd>{{ organization.member_count }}</dd></div>
+            {% elif organization_type == "parish" %}
+                <div><dt>Code</dt><dd>{{ organization.code|default:"Not assigned" }}</dd></div>
+                <div><dt>Deanery</dt><dd><a href="{% url 'chairman:deanery-detail' organization.deanery_id %}">{{ organization.deanery.name }}</a></dd></div>
+                <div><dt>Stations</dt><dd>{{ organization.station_count }}</dd></div>
+                <div><dt>Members</dt><dd>{{ organization.member_count }}</dd></div>
+            {% else %}
+                <div><dt>Code</dt><dd>{{ organization.code|default:"Not assigned" }}</dd></div>
+                <div><dt>Parish</dt><dd><a href="{% url 'chairman:parish-detail' organization.parish_id %}">{{ organization.parish.name }}</a></dd></div>
+                <div><dt>Deanery</dt><dd><a href="{% url 'chairman:deanery-detail' organization.parish.deanery_id %}">{{ organization.parish.deanery.name }}</a></dd></div>
+                <div><dt>Members</dt><dd>{{ organization.member_count }}</dd></div>
+            {% endif %}
+        </dl>
+    </section>
+
+    {% if organization_type == "deanery" %}
+        <section class="chairman-panel" aria-labelledby="deanery-parishes-heading">
+            <header class="chairman-panel__heading">
+                <div>
+                    <p class="chairman-panel__eyebrow">DEANERY STRUCTURE</p>
+                    <h2 id="deanery-parishes-heading">Parishes in {{ organization.name }}</h2>
+                </div>
+            </header>
+            <div class="chairman-table-wrap">
+                <table>
+                    <thead><tr><th scope="col">Parish</th><th scope="col">Code</th><th scope="col">Stations</th><th scope="col">Members</th><th scope="col">Status</th></tr></thead>
+                    <tbody>
+                        {% for parish in parishes %}
+                            <tr>
+                                <th scope="row"><a href="{% url 'chairman:parish-detail' parish.pk %}">{{ parish.name }}</a></th>
+                                <td>{{ parish.code|default:"Not assigned" }}</td>
+                                <td>{{ parish.station_count }}</td>
+                                <td>{{ parish.member_count }}</td>
+                                <td>{% if parish.is_active %}Active{% else %}Inactive{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5">No parishes are recorded for this deanery.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% elif organization_type == "parish" %}
+        <section class="chairman-panel" aria-labelledby="parish-stations-heading">
+            <header class="chairman-panel__heading">
+                <div>
+                    <p class="chairman-panel__eyebrow">PARISH STRUCTURE</p>
+                    <h2 id="parish-stations-heading">Stations</h2>
+                </div>
+            </header>
+            <div class="chairman-table-wrap">
+                <table>
+                    <thead><tr><th scope="col">Station</th><th scope="col">Code</th><th scope="col">Members</th><th scope="col">Status</th></tr></thead>
+                    <tbody>
+                        {% for station in stations %}
+                            <tr>
+                                <th scope="row"><a href="{% url 'chairman:station-detail' station.pk %}">{{ station.name }}</a></th>
+                                <td>{{ station.code|default:"Not assigned" }}</td>
+                                <td>{{ station.member_count }}</td>
+                                <td>{% if station.is_active %}Active{% else %}Inactive{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4">No stations are recorded for this parish.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% include "chairman/components/member_table.html" with member_page=member_page search_query=search_query current_path=current_path %}
+    {% else %}
+        {% include "chairman/components/member_table.html" with member_page=member_page search_query=search_query current_path=current_path %}
+    {% endif %}
+{% endblock %}

@@ -8,10 +8,7 @@ from apps.verification.models import MembershipApplication
 class MembershipApplicationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        diocese = Diocese.objects.get(code="036")
         deanery = Deanery.objects.create(
             diocese=diocese,
             name="Test Deanery",

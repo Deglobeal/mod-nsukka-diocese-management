@@ -1,0 +1,109 @@
+{% extends "chairman/layout.html" %}
+
+{% block page_description %}
+{% endblock %}
+
+{% block dashboard_content %}
+    <section class="chairman-panel" aria-labelledby="organization-directory-heading">
+        <header class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">ORGANIZATIONAL OVERSIGHT</p>
+                <h2 id="organization-directory-heading">
+                    {% if organization_type == "deanery" %}Deanery directory{% elif organization_type == "parish" %}Parish directory{% else %}Station directory{% endif %}
+                </h2>
+                <p>
+                    {% if organization_type == "deanery" %}Select a deanery to inspect its parishes and membership totals.{% elif organization_type == "parish" %}Select a parish to inspect its stations and members.{% else %}Select a station to inspect its associated members.{% endif %}
+                </p>
+            </div>
+        </header>
+
+        <form class="chairman-search" method="get" action="{{ current_path }}">
+            <label for="organization-search">Search this directory</label>
+            <div>
+                <input
+                    id="organization-search"
+                    name="q"
+                    type="search"
+                    value="{{ search_query }}"
+                    maxlength="100"
+                    placeholder="Search by name, code, or parent organization"
+                >
+                <button type="submit">Search</button>
+                {% if search_query %}
+                    <a class="chairman-secondary-button" href="{{ current_path }}">Clear search</a>
+                {% endif %}
+            </div>
+        </form>
+
+        <p class="chairman-result-count">
+            {{ organization_page.paginator.count }} record{{ organization_page.paginator.count|pluralize }}
+        </p>
+        <div class="chairman-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        {% if organization_type == "deanery" %}
+                            <th scope="col">Deanery</th>
+                            <th scope="col">Code</th>
+                            <th scope="col">Diocese</th>
+                            <th scope="col">Active parishes</th>
+                            <th scope="col">Members</th>
+                            <th scope="col">Status</th>
+                        {% elif organization_type == "parish" %}
+                            <th scope="col">Parish</th>
+                            <th scope="col">Code</th>
+                            <th scope="col">Deanery</th>
+                            <th scope="col">Stations</th>
+                            <th scope="col">Members</th>
+                            <th scope="col">Status</th>
+                        {% else %}
+                            <th scope="col">Station</th>
+                            <th scope="col">Code</th>
+                            <th scope="col">Parish</th>
+                            <th scope="col">Deanery</th>
+                            <th scope="col">Members</th>
+                            <th scope="col">Status</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for organization in organization_page %}
+                        <tr>
+                            {% if organization_type == "deanery" %}
+                                <th scope="row"><a href="{% url 'chairman:deanery-detail' organization.pk %}">{{ organization.name }}</a></th>
+                                <td>{{ organization.code }}</td>
+                                <td>{{ organization.diocese.name }}</td>
+                                <td>{{ organization.parish_count }}</td>
+                                <td>{{ organization.member_count }}</td>
+                            {% elif organization_type == "parish" %}
+                                <th scope="row"><a href="{% url 'chairman:parish-detail' organization.pk %}">{{ organization.name }}</a></th>
+                                <td>{{ organization.code|default:"Not assigned" }}</td>
+                                <td><a href="{% url 'chairman:deanery-detail' organization.deanery_id %}">{{ organization.deanery.name }}</a></td>
+                                <td>{{ organization.station_count }}</td>
+                                <td>{{ organization.member_count }}</td>
+                            {% else %}
+                                <th scope="row"><a href="{% url 'chairman:station-detail' organization.pk %}">{{ organization.name }}</a></th>
+                                <td>{{ organization.code|default:"Not assigned" }}</td>
+                                <td><a href="{% url 'chairman:parish-detail' organization.parish_id %}">{{ organization.parish.name }}</a></td>
+                                <td>{{ organization.parish.deanery.name }}</td>
+                                <td>{{ organization.member_count }}</td>
+                            {% endif %}
+                            <td><span class="chairman-status-tag{% if not organization.is_active %} chairman-status-tag--inactive{% endif %}">{% if organization.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6">
+                                {% if search_query %}
+                                    No records match “{{ search_query }}”.
+                                {% else %}
+                                    No records are available in this Diocese.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "chairman/components/pagination.html" with page=organization_page %}
+    </section>
+{% endblock %}

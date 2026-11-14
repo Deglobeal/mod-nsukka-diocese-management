@@ -1,0 +1,13 @@
+{% extends "chairman/layout.html" %}
+
+{% block page_heading %}Membership Application{% endblock %}
+
+{% block page_description %}
+    <p class="chairman-page-heading__description">
+        Review application details and recorded approval progress.
+    </p>
+{% endblock %}
+
+{% block dashboard_content %}
+    {% include "verification/_membership_application_detail_content.html" %}
+{% endblock %}

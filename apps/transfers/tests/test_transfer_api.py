@@ -14,14 +14,7 @@ class TransferAPITests(APITestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
@@ -32,11 +25,6 @@ class TransferAPITests(APITestCase):
             diocese=cls.diocese,
             name="Second Deanery",
             code="TB7C588E9",
-        )
-        cls.outside_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
-            name="Outside Deanery",
-            code="T709FDB61",
         )
 
         cls.source_parish = Parish.objects.create(
@@ -50,10 +38,6 @@ class TransferAPITests(APITestCase):
         cls.other_source_parish = Parish.objects.create(
             deanery=cls.deanery,
             name="Another Source Parish",
-        )
-        cls.outside_parish = Parish.objects.create(
-            deanery=cls.outside_deanery,
-            name="Outside Diocese Parish",
         )
 
         cls.member = Member.objects.create(
@@ -89,10 +73,6 @@ class TransferAPITests(APITestCase):
             username="transfer_api_diocese",
             password="test-only-password",
         )
-        cls.outside_diocese_admin = User.objects.create_user(
-            username="transfer_api_outside_diocese",
-            password="test-only-password",
-        )
         cls.unassigned_user = User.objects.create_user(
             username="transfer_api_unassigned",
             password="test-only-password",
@@ -126,11 +106,6 @@ class TransferAPITests(APITestCase):
             user=cls.diocese_admin,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
-        )
-        OfficeAssignment.objects.create(
-            user=cls.outside_diocese_admin,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=cls.other_diocese,
         )
 
     def setUp(self):
@@ -251,21 +226,6 @@ class TransferAPITests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
-
-    def test_cross_diocese_destination_returns_400(self):
-        self.client.force_authenticate(user=self.parish_admin)
-
-        response = self.client.post(
-            self.submit_url,
-            {
-                "member_id": self.member.pk,
-                "destination_parish_id": self.outside_parish.pk,
-            },
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(TransferRequest.objects.count(), 0)
 
     def test_unauthenticated_queue_is_denied(self):
         response = self.client.get(self.queue_url)

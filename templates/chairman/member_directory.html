@@ -1,0 +1,76 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+    <section class="chairman-panel" aria-labelledby="member-directory-heading">
+        <header class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">DIOCESE MEMBERSHIP</p>
+                <h2 id="member-directory-heading">Member directory</h2>
+                <p>Search uses member names and allocated official membership IDs.</p>
+            </div>
+        </header>
+
+        <form class="chairman-search" method="get" action="{{ current_path }}">
+            <label for="member-search">Search members</label>
+            <div>
+                <input
+                    id="member-search"
+                    name="q"
+                    type="search"
+                    value="{{ search_query }}"
+                    maxlength="100"
+                    placeholder="Name or membership ID"
+                >
+                <button type="submit">Search</button>
+                {% if search_query %}
+                    <a class="chairman-secondary-button" href="{{ current_path }}">Clear search</a>
+                {% endif %}
+            </div>
+        </form>
+
+        <p class="chairman-result-count">
+            {{ member_page.paginator.count }} member{{ member_page.paginator.count|pluralize }} found
+        </p>
+        <div class="chairman-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Member</th>
+                        <th scope="col">Membership ID</th>
+                        <th scope="col">Parish</th>
+                        <th scope="col">Station</th>
+                        <th scope="col">Membership status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in member_page %}
+                        <tr>
+                            <th scope="row">{{ member.full_name }}</th>
+                            <td>
+                                {% if member.membership_identity %}
+                                    {{ member.membership_identity.official_membership_id }}
+                                {% else %}
+                                    <span class="chairman-muted">Not allocated</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ member.parish.name }}</td>
+                            <td>{% if member.station %}{{ member.station.name }}{% else %}Not assigned{% endif %}</td>
+                            <td><span class="chairman-status-tag chairman-status-tag--{{ member.status }}">{{ member.get_status_display }}</span></td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5">
+                                {% if search_query %}
+                                    No members match “{{ search_query }}”.
+                                {% else %}
+                                    No member records are available in this Diocese.
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "chairman/components/pagination.html" with page=member_page %}
+    </section>
+{% endblock %}

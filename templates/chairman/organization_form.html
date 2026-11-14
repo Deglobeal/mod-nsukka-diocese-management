@@ -1,0 +1,61 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+    <section class="chairman-panel" aria-labelledby="organization-form-heading">
+        <header class="chairman-panel__heading">
+            <div>
+                <p class="chairman-panel__eyebrow">ORGANIZATION MANAGEMENT</p>
+                <h2 id="organization-form-heading">{{ page_title }}</h2>
+                <p>{{ page_description }}</p>
+            </div>
+        </header>
+
+        <form class="chairman-organization-form" method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="chairman-form-errors" role="alert">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% for field in form %}
+                {% if field.name == "is_active" %}
+                    <div class="chairman-form-field chairman-form-field--checkbox">
+                        {{ field }}
+                        {{ field.label_tag }}
+                    </div>
+                {% else %}
+                    <div class="chairman-form-field{% if field.errors %} has-errors{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                    </div>
+                {% endif %}
+                {% if field.help_text %}
+                    <p class="chairman-form-help" id="{{ field.auto_id }}_help">{{ field.help_text }}</p>
+                {% endif %}
+                {% if field.errors %}
+                    <ul class="chairman-form-errors" role="alert" id="{{ field.auto_id }}_errors">
+                        {% for error in field.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endfor %}
+
+            <div class="chairman-form-actions">
+                <button class="chairman-primary-button" type="submit">
+                    Create {{ organization_label }}
+                </button>
+                {% if organization_type == "deanery" %}
+                    <a class="chairman-secondary-button" href="{% url 'chairman:deaneries' %}">Cancel</a>
+                {% elif organization_type == "parish" %}
+                    <a class="chairman-secondary-button" href="{% url 'chairman:parishes' %}">Cancel</a>
+                {% else %}
+                    <a class="chairman-secondary-button" href="{% url 'chairman:stations' %}">Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+{% endblock %}

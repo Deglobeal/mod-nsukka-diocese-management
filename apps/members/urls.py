@@ -8,6 +8,7 @@ from apps.members.views.registration_view import (
     membership_registration,
     process_passport_photo_preview,
     registration_received,
+    verify_registration_sponsor,
 )
 
 app_name = "members"
@@ -17,6 +18,11 @@ urlpatterns = [
     path("communication-settings/", communication_settings, name="communication_settings"),
     path("register/", membership_registration, name="register"),
     path("register/photo/process/", process_passport_photo_preview, name="passport_photo_process"),
+    path(
+        "register/sponsor/verify/",
+        verify_registration_sponsor,
+        name="sponsor_verify",
+    ),
     path(
         "register/received/<int:application_id>/pdf/",
         membership_registration_pdf,

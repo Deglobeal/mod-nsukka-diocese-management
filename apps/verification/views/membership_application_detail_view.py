@@ -10,7 +10,11 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET
 
 from apps.accounts.services.office_authorization import (
+    authorize_diocese_chairman,
     authorize_membership_reviewer,
+)
+from apps.chairman.selectors.command_dashboard import (
+    get_chairman_shell_data,
 )
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.members.views.registration_pdf_view import (
@@ -34,7 +38,7 @@ STAGE_CONFIG = {
     },
     MembershipApplication.Stage.DIOCESE_REVIEW: {
         "level": MembershipReview.ReviewLevel.DIOCESE,
-        "dashboard": "membership_review_dashboard:diocese",
+        "dashboard": "chairman:dashboard",
         "label": "Diocese",
     },
 }
@@ -330,10 +334,38 @@ def membership_application_detail(request, application_id):
             "comments": review.comments if review else "",
         })
 
+    application_parish = application.parish
+    if application_parish is None and application.member_id:
+        application_parish = application.member.parish
+
+    chairman_shell_data = {}
+    if config["level"] == MembershipReview.ReviewLevel.DIOCESE:
+        chairman_shell_data = get_chairman_shell_data(
+            diocese_ids=authorize_diocese_chairman(user=request.user)
+        )
+
     return render(
         request,
-        "verification/membership_application_detail.html",
+        (
+            "chairman/membership_application_detail.html"
+            if config["level"] == MembershipReview.ReviewLevel.DIOCESE
+            else "verification/membership_application_detail.html"
+        ),
         {
+            **chairman_shell_data,
+            "active_section": (
+                "applications"
+                if config["level"] == MembershipReview.ReviewLevel.DIOCESE
+                else ""
+            ),
+            "dashboard_scopes": (
+                [application_parish.deanery.diocese.name]
+                if (
+                    config["level"] == MembershipReview.ReviewLevel.DIOCESE
+                    and application_parish
+                )
+                else []
+            ),
             "application": application,
             "membership_card": (
                 getattr(application.member, "membership_card", None)

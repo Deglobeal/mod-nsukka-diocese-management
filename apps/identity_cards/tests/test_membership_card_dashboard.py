@@ -18,14 +18,7 @@ class MembershipCardDashboardTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="999",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery = Deanery.objects.create(
             name="Nsukka Test Deanery",
@@ -39,7 +32,7 @@ class MembershipCardDashboardTests(TestCase):
 
         cls.other_deanery = Deanery.objects.create(
             name="Other Test Deanery",
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             code="T4DF6ED24",
         )
         cls.other_parish = Parish.objects.create(
@@ -51,10 +44,6 @@ class MembershipCardDashboardTests(TestCase):
             username="dashboard-diocese-admin",
             password="test-password",
         )
-        cls.other_diocese_admin = User.objects.create_user(
-            username="dashboard-other-diocese-admin",
-            password="test-password",
-        )
         cls.parish_admin = User.objects.create_user(
             username="dashboard-parish-admin",
             password="test-password",
@@ -64,11 +53,6 @@ class MembershipCardDashboardTests(TestCase):
             user=cls.diocese_admin,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
-        )
-        OfficeAssignment.objects.create(
-            user=cls.other_diocese_admin,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=cls.other_diocese,
         )
         OfficeAssignment.objects.create(
             user=cls.parish_admin,
@@ -104,7 +88,7 @@ class MembershipCardDashboardTests(TestCase):
 
         issue_membership_card(
             member_id=cls.foreign_member.pk,
-            issuer=cls.other_diocese_admin,
+            issuer=cls.diocese_admin,
             official_membership_id="MOD-OTHER-0001",
         )
 
@@ -140,22 +124,22 @@ class MembershipCardDashboardTests(TestCase):
         self.assertContains(response, "Nsukka Diocese")
         self.assertContains(response, "Ada Okafor")
 
-    def test_dashboard_only_lists_members_and_cards_in_admin_diocese(self):
+    def test_dashboard_lists_members_and_cards_across_diocese_deaneries(self):
         self.client.force_login(self.diocese_admin)
 
         response = self.client.get(self.dashboard_url)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["eligible_member_count"], 1)
-        self.assertEqual(response.context["issued_card_count"], 0)
+        self.assertEqual(response.context["issued_card_count"], 1)
         self.assertContains(response, "Ada Okafor")
-        self.assertNotContains(response, "Chika Foreign")
-        self.assertNotContains(response, "MOD-OTHER-0001")
+        self.assertContains(response, "Chika Foreign")
+        self.assertContains(response, "MOD-OTHER-0001")
 
         foreign_card = MembershipCard.objects.get(
             official_membership_id="MOD-OTHER-0001"
         )
-        self.assertNotEqual(
+        self.assertEqual(
             foreign_card.member.parish.deanery.diocese_id,
             self.diocese.pk,
         )

@@ -15,10 +15,7 @@ class MembershipCardIssueAPITests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             name="Test Deanery",
             diocese=cls.diocese,

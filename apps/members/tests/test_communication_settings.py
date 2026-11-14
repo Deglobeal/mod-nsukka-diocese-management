@@ -12,10 +12,7 @@ class MemberCommunicationSettingsTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Communication Test Diocese",
-            code="038",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             name="Communication Test Deanery",
             code="T8CA111A6",

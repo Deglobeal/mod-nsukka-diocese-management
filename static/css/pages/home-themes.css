@@ -141,15 +141,15 @@ body[data-mod-theme="command"] .home-theme-toggle-indicator {
 /* Site-wide icon-only theme switcher */
 .home-theme-toggle-compact {
     position: fixed;
-    right: 12px;
-    bottom: 12px;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
     z-index: 1000;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    min-height: 20px;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
     padding: 0;
     gap: 0;
     border-radius: 50%;
@@ -165,7 +165,7 @@ body[data-mod-theme="command"] .home-theme-toggle-indicator {
 }
 
 .home-theme-toggle-compact .home-theme-toggle-indicator {
-    font-size: 10px;
+    font-size: 15px;
 }
 
 .home-theme-toggle-compact:focus-visible {

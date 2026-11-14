@@ -26,7 +26,7 @@ class RoleAwareLoginView(auth_views.LoginView):
         destinations = (
             (
                 OfficeAssignment.Role.DIOCESE_ADMIN,
-                "membership_review_dashboard:diocese",
+                "chairman:dashboard",
             ),
             (
                 OfficeAssignment.Role.DEANERY_ADMIN,

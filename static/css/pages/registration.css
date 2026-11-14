@@ -133,6 +133,40 @@
     background: var(--color-primary-hover);
 }
 
+.registration-sponsor-field {
+    grid-column: 1 / -1;
+}
+
+.registration-sponsor-verify {
+    width: auto;
+    margin-top: 0;
+}
+
+.registration-sponsor-verify:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.registration-sponsor-result {
+    min-height: 0;
+    margin: 0;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+    overflow-wrap: anywhere;
+}
+
+.registration-sponsor-result:empty {
+    display: none;
+}
+
+.registration-sponsor-result.is-success {
+    color: var(--color-success-text);
+}
+
+.registration-sponsor-result.is-error {
+    color: var(--color-danger-text);
+}
+
 .registration-footer {
     margin: var(--space-5) 0 0;
     color: var(--color-text-muted);

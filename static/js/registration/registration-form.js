@@ -53,8 +53,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const localGovernmentArea = document.getElementById("id_local_government_area");
 
     if (stateOfOrigin && localGovernmentArea) {
-        const dataUrl = stateOfOrigin.dataset.lgaDataUrl;
+        const dataUrl = form.dataset.lgaDataUrl;
         let lgaData = null;
+        let lgaDataLoaded = false;
 
         function populateLgas(preserveSelection) {
             const previous = preserveSelection ? localGovernmentArea.value : "";
@@ -66,7 +67,9 @@ document.addEventListener("DOMContentLoaded", function () {
             localGovernmentArea.replaceChildren();
             const placeholder = document.createElement("option");
             placeholder.value = "";
-            placeholder.textContent = "Select LGA (optional)";
+            placeholder.textContent = state
+                ? "Select a local government area"
+                : "Select a state first";
             localGovernmentArea.appendChild(placeholder);
 
             lgas.forEach(function (lga) {
@@ -76,11 +79,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 localGovernmentArea.appendChild(option);
             });
 
+            localGovernmentArea.disabled = !state || !lgaDataLoaded;
             localGovernmentArea.value = lgas.includes(previous) ? previous : "";
         }
 
         stateOfOrigin.addEventListener("change", function () {
-            if (lgaData) populateLgas(false);
+            if (lgaDataLoaded) {
+                populateLgas(false);
+            } else {
+                localGovernmentArea.disabled = true;
+                localGovernmentArea.value = "";
+            }
         });
 
         if (dataUrl) {
@@ -90,11 +99,24 @@ document.addEventListener("DOMContentLoaded", function () {
                     return response.json();
                 })
                 .then(function (data) {
+                    if (
+                        !data ||
+                        typeof data !== "object" ||
+                        Array.isArray(data)
+                    ) {
+                        throw new Error("LGA data response was invalid");
+                    }
                     lgaData = data;
+                    lgaDataLoaded = true;
                     populateLgas(true);
                 })
                 .catch(function (error) {
-                    // Server-rendered options remain available if loading fails.
+                    localGovernmentArea.disabled = true;
+                    const unavailable = document.createElement("option");
+                    unavailable.value = "";
+                    unavailable.textContent =
+                        "Local government areas could not be loaded";
+                    localGovernmentArea.replaceChildren(unavailable);
                     console.error("Could not load state/LGA data.", error);
                 });
         }
@@ -337,6 +359,112 @@ document.addEventListener("DOMContentLoaded", function () {
         return true;
     }
 
+    const sponsorIdField = document.getElementById("id_sponsor_membership_id");
+    const sponsorVerifyButton = document.getElementById("sponsor-verify-button");
+    const sponsorVerifyResult = document.getElementById("sponsor-verify-result");
+    let verifiedSponsorId = "";
+    let sponsorLookupRequest = 0;
+
+    function clearSponsorVerification() {
+        verifiedSponsorId = "";
+        if (sponsorVerifyResult) {
+            sponsorVerifyResult.textContent = "";
+            sponsorVerifyResult.classList.remove("is-error", "is-success");
+        }
+    }
+
+    if (sponsorIdField && sponsorVerifyButton && sponsorVerifyResult) {
+        sponsorVerifyButton.disabled = !sponsorIdField.value.trim();
+
+        function sponsorIdChanged() {
+            sponsorLookupRequest += 1;
+            clearSponsorVerification();
+            sponsorVerifyButton.disabled = !sponsorIdField.value.trim();
+        }
+
+        sponsorIdField.addEventListener("input", sponsorIdChanged);
+        sponsorIdField.addEventListener("change", sponsorIdChanged);
+
+        sponsorVerifyButton.addEventListener("click", async function () {
+            const sponsorId = sponsorIdField.value.trim();
+            if (!sponsorId) {
+                sponsorIdField.reportValidity();
+                sponsorIdField.focus();
+                return;
+            }
+
+            const requestNumber = ++sponsorLookupRequest;
+            sponsorVerifyButton.disabled = true;
+            sponsorVerifyResult.textContent = "Checking sponsor details…";
+            sponsorVerifyResult.classList.remove("is-error", "is-success");
+
+            try {
+                const csrfInput = form.querySelector(
+                    'input[name="csrfmiddlewaretoken"]'
+                );
+                const response = await fetch(
+                    sponsorVerifyButton.dataset.lookupUrl,
+                    {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                            "X-CSRFToken": csrfInput ? csrfInput.value : ""
+                        },
+                        body: new URLSearchParams({
+                            sponsor_membership_id: sponsorId
+                        })
+                    }
+                );
+                let result;
+                try {
+                    result = await response.json();
+                } catch (_error) {
+                    throw new Error(
+                        "We couldn't read the sponsor verification response. Try again."
+                    );
+                }
+
+                if (requestNumber !== sponsorLookupRequest ||
+                    sponsorId !== sponsorIdField.value.trim()) {
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.error || "We couldn't verify this sponsor."
+                    );
+                }
+                if (
+                    typeof result.name !== "string" ||
+                    !result.name ||
+                    typeof result.registered_phone !== "string" ||
+                    !result.registered_phone
+                ) {
+                    throw new Error(
+                        "The sponsor verification response was incomplete. Try again."
+                    );
+                }
+
+                verifiedSponsorId = sponsorId;
+                sponsorVerifyResult.textContent =
+                    "Verified sponsor: " + result.name +
+                    " · Registered phone: " + result.registered_phone;
+                sponsorVerifyResult.classList.add("is-success");
+            } catch (error) {
+                if (requestNumber !== sponsorLookupRequest) return;
+                sponsorVerifyResult.textContent =
+                    error.message || "We couldn't verify this sponsor. Try again.";
+                sponsorVerifyResult.classList.add("is-error");
+            } finally {
+                if (requestNumber === sponsorLookupRequest) {
+                    sponsorVerifyButton.disabled =
+                        !sponsorIdField.value.trim();
+                }
+            }
+        });
+    }
+
     phoneFieldIds.concat(nameFieldIds).forEach(function (id) {
         const field = document.getElementById(id);
         if (!field) return;
@@ -378,6 +506,25 @@ document.addEventListener("DOMContentLoaded", function () {
         next.hidden = index === sections.length - 1;
         next.addEventListener("click", function () {
             if (!validateSection(sections[index])) return;
+            if (
+                sponsorIdField &&
+                sections[index].contains(sponsorIdField) &&
+                verifiedSponsorId !== sponsorIdField.value.trim()
+            ) {
+                if (sponsorVerifyResult) {
+                    sponsorVerifyResult.textContent =
+                        "Verify the sponsor's official M.O.D. ID before continuing.";
+                    sponsorVerifyResult.classList.add("is-error");
+                }
+                if (sponsorVerifyButton) {
+                    sponsorVerifyButton.focus();
+                    sponsorVerifyButton.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center"
+                    });
+                }
+                return;
+            }
             showSection(index + 1, true);
         });
 

@@ -11,10 +11,7 @@ class RoleAwareLoginRedirectTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Login Redirect Test Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Login Redirect Test Deanery",
@@ -88,10 +85,10 @@ class RoleAwareLoginRedirectTests(TestCase):
             "membership_review_dashboard:deanery",
         )
 
-    def test_diocese_admin_redirects_to_diocese_dashboard(self):
+    def test_diocese_admin_redirects_to_chairman_dashboard(self):
         self.login_and_check_redirect(
             "redirect_diocese_admin",
-            "membership_review_dashboard:diocese",
+            "chairman:dashboard",
         )
 
     def test_unassigned_user_redirects_to_public_home(self):

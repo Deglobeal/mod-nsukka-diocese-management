@@ -9,6 +9,7 @@ from io import BytesIO
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 from PIL import Image, UnidentifiedImageError
@@ -133,6 +134,23 @@ def process_passport_photo_preview(request):
             {"error": "The processed photo is invalid. Please retake it."},
             status=400,
         )
+
+
+@require_POST
+def verify_registration_sponsor(request):
+    """Return the trusted sponsor name and a masked saved phone number."""
+    sponsor_membership_id = request.POST.get("sponsor_membership_id", "")
+    try:
+        sponsor_contact = find_active_sponsor(sponsor_membership_id)
+    except SponsorLookupError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+
+    phone = sponsor_contact.recipient_phone
+    masked_phone = f"{phone[:4]}{'*' * max(0, len(phone) - 8)}{phone[-4:]}"
+    return JsonResponse({
+        "name": sponsor_contact.member.full_name,
+        "registered_phone": masked_phone,
+    })
 
 
 @require_http_methods(["GET", "POST"])
@@ -287,6 +305,11 @@ def membership_registration(request):
 
 
 def registration_received(request, application_id):
+    allowed_ids = request.session.get("registration_application_ids", [])
+
+    if application_id not in allowed_ids:
+        raise Http404("Registration not found.")
+
     application = get_object_or_404(
         MembershipApplication,
         pk=application_id,
