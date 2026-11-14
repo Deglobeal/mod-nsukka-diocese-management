@@ -59,6 +59,12 @@ class RoleAwareLoginRedirectTests(TestCase):
             password="test-only-password",
         )
 
+        cls.superuser = User.objects.create_superuser(
+            username="redirect_superuser",
+            email="superuser@example.com",
+            password="test-only-password",
+        )
+
     def login_and_check_redirect(self, username, destination):
         response = self.client.post(
             reverse("accounts:login"),
@@ -89,6 +95,22 @@ class RoleAwareLoginRedirectTests(TestCase):
         self.login_and_check_redirect(
             "redirect_diocese_admin",
             "chairman:dashboard",
+        )
+
+    def test_superuser_redirects_to_django_admin(self):
+        self.login_and_check_redirect(
+            "redirect_superuser",
+            "admin:index",
+        )
+
+    def test_authenticated_superuser_visiting_login_redirects_to_admin(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("accounts:login"))
+
+        self.assertRedirects(
+            response,
+            reverse("admin:index"),
+            fetch_redirect_response=False,
         )
 
     def test_unassigned_user_redirects_to_public_home(self):
