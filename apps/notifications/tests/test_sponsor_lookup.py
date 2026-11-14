@@ -16,10 +16,7 @@ from apps.organizations.models import Diocese, Deanery, Parish
 class SponsorLookupTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        diocese = Diocese.objects.create(
-            name="Sponsor Lookup Diocese",
-            code="036",
-        )
+        diocese = Diocese.objects.get(code="036")
         deanery = Deanery.objects.create(
             name="Sponsor Lookup Deanery",
             diocese=diocese,

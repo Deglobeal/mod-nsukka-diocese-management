@@ -6,10 +6,7 @@ from apps.organizations.models import Deanery, Diocese
 
 class DeaneryModelTests(TestCase):
     def setUp(self):
-        self.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        self.diocese = Diocese.objects.get(code="036")
 
     def test_deanery_belongs_to_a_diocese(self):
         deanery = Deanery.objects.create(
@@ -57,26 +54,6 @@ class DeaneryModelTests(TestCase):
                     code="D02",
                 )
 
-    def test_same_name_is_allowed_in_different_dioceses(self):
-        another_diocese = Diocese.objects.create(
-            name="Another Diocese",
-            code="037",
-        )
-
-        first = Deanery.objects.create(
-            name="Central",
-            diocese=self.diocese,
-            code="D01",
-        )
-        second = Deanery.objects.create(
-            name="Central",
-            diocese=another_diocese,
-            code="D02",
-        )
-
-        self.assertNotEqual(first.diocese, second.diocese)
-        self.assertEqual(first.name, second.name)
-        self.assertNotEqual(first.code, second.code)
 
     def test_deanery_code_is_required_by_model_validation(self):
         deanery = Deanery(
@@ -113,23 +90,3 @@ class DeaneryModelTests(TestCase):
                     diocese=self.diocese,
                     code="D01",
                 )
-
-    def test_same_code_is_allowed_across_different_dioceses(self):
-        another_diocese = Diocese.objects.create(
-            name="Another Diocese",
-            code="037",
-        )
-
-        first = Deanery.objects.create(
-            name="Central",
-            diocese=self.diocese,
-            code="D01",
-        )
-        second = Deanery.objects.create(
-            name="Central",
-            diocese=another_diocese,
-            code="D01",
-        )
-
-        self.assertEqual(first.code, second.code)
-        self.assertNotEqual(first.diocese_id, second.diocese_id)

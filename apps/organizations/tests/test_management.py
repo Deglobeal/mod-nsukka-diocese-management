@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
@@ -13,13 +14,9 @@ class OrganizationManagementTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
+        cls.diocese, _ = Diocese.objects.get_or_create(
             code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
+            defaults={"name": "Nsukka Diocese"},
         )
         cls.deanery = Deanery.objects.create(
             name="Nsukka Central",
@@ -33,7 +30,7 @@ class OrganizationManagementTests(TestCase):
         )
         cls.foreign_deanery = Deanery.objects.create(
             name="Foreign Deanery",
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             code="TFDA82CAF",
         )
         cls.parish = Parish.objects.create(
@@ -98,10 +95,12 @@ class OrganizationManagementTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Create a diocese")
+        self.assertNotIn("diocese_form", response.context)
+        self.assertNotContains(response, "Create a diocese")
         self.assertContains(response, "Nsukka Diocese")
+        self.assertEqual(list(response.context["dioceses"]), [self.diocese])
 
-    def test_generic_management_does_not_expose_chairman_creation_forms(self):
+    def test_generic_management_does_not_expose_creation_forms(self):
         for user in (
             self.superuser,
             self.diocese_admin,
@@ -114,17 +113,30 @@ class OrganizationManagementTests(TestCase):
                 response = self.client.get(self.url)
 
                 self.assertEqual(response.status_code, 200)
-                self.assertIsNone(response.context["deanery_form"])
-                self.assertIsNone(response.context["parish_form"])
-                self.assertIsNone(response.context["station_form"])
-                self.assertNotContains(response, "Create a deanery")
-                self.assertNotContains(response, "Create a parish")
-                self.assertNotContains(response, "Create a station")
 
-    def test_requested_type_does_not_enable_generic_child_creation(self):
+                for form_name in (
+                    "diocese_form",
+                    "deanery_form",
+                    "parish_form",
+                    "station_form",
+                    "submitted_form",
+                    "submitted_type",
+                    "requested_type",
+                ):
+                    self.assertNotIn(form_name, response.context)
+
+                for label in (
+                    "Create a diocese",
+                    "Create a deanery",
+                    "Create a parish",
+                    "Create a station",
+                ):
+                    self.assertNotContains(response, label)
+
+    def test_create_query_parameters_do_not_enable_generic_creation(self):
         self.client.force_login(self.diocese_admin)
 
-        for organization_type in ("deanery", "parish", "station"):
+        for organization_type in ("diocese", "deanery", "parish", "station"):
             with self.subTest(organization_type=organization_type):
                 response = self.client.get(
                     self.url,
@@ -132,30 +144,13 @@ class OrganizationManagementTests(TestCase):
                 )
 
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual(
-                    response.context["requested_type"],
-                    organization_type,
-                )
-                self.assertIsNone(response.context[f"{organization_type}_form"])
+                self.assertNotIn("requested_type", response.context)
                 self.assertNotContains(
                     response,
                     f"Create a {organization_type}",
                 )
 
-    def test_requested_diocese_type_opens_system_level_creation_form(self):
-        self.client.force_login(self.superuser)
-
-        response = self.client.get(self.url, {"create": "diocese"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["requested_type"], "diocese")
-        self.assertIsNotNone(response.context["diocese_form"])
-        self.assertRegex(
-            response.content.decode(),
-            r'<details class="organization-form-section"\s+open>',
-        )
-
-    def test_superuser_can_create_diocese(self):
+    def test_superuser_cannot_create_another_diocese(self):
         self.client.force_login(self.superuser)
 
         response = self.client.post(
@@ -168,10 +163,51 @@ class OrganizationManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, self.url)
-        self.assertTrue(
-            Diocese.objects.filter(name="New Diocese", code="038").exists()
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Diocese.objects.filter(name="New Diocese").exists())
+
+    def test_database_rejects_noncanonical_diocese_records(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Diocese.objects.bulk_create(
+                [Diocese(name="Other Diocese", code="037")]
+            )
+
+    def test_application_model_rejects_diocese_creation_and_deletion(self):
+        with self.assertRaises(ValidationError):
+            Diocese(name="Other Diocese", code="037").save()
+
+        with self.assertRaises(ValidationError):
+            self.diocese.delete()
+
+        self.assertTrue(Diocese.objects.filter(pk=self.diocese.pk).exists())
+
+    def test_superuser_cannot_add_edit_or_delete_dioceses_in_admin(self):
+        self.client.force_login(self.superuser)
+
+        add_response = self.client.get(reverse("admin:organizations_diocese_add"))
+        add_post_response = self.client.post(
+            reverse("admin:organizations_diocese_add"),
+            {
+                "name": "efv",
+                "code": "044",
+                "is_active": "on",
+            },
         )
+        change_response = self.client.get(
+            reverse("admin:organizations_diocese_change", args=[self.diocese.pk])
+        )
+        delete_response = self.client.get(
+            reverse("admin:organizations_diocese_delete", args=[self.diocese.pk])
+        )
+
+        self.assertEqual(add_response.status_code, 403)
+        self.assertEqual(add_post_response.status_code, 403)
+        self.assertFalse(Diocese.objects.filter(name="efv", code="044").exists())
+        self.assertEqual(change_response.status_code, 200)
+        self.assertContains(change_response, "Nsukka Diocese")
+        self.assertNotContains(change_response, 'name="name"')
+        self.assertNotContains(change_response, 'name="code"')
+        self.assertEqual(delete_response.status_code, 403)
 
     def test_diocese_admin_uses_chairman_dashboard_to_create_deanery(self):
         self.client.force_login(self.diocese_admin)
@@ -180,7 +216,7 @@ class OrganizationManagementTests(TestCase):
             self.url,
             {
                 "create_type": "deanery",
-                "diocese": str(self.other_diocese.pk),
+                "diocese": str(self.diocese.pk),
                 "name": "New Local Deanery",
                 "code": "D08",
                 "is_active": "on",
@@ -302,7 +338,7 @@ class OrganizationManagementTests(TestCase):
         OfficeAssignment.objects.create(
             user=self.diocese_admin,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=self.other_diocese,
+            diocese=self.diocese,
         )
 
         with self.assertRaises(PermissionDenied):

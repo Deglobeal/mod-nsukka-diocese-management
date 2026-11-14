@@ -11,10 +11,7 @@ class RoleAwareLoginRedirectTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Login Redirect Test Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Login Redirect Test Deanery",

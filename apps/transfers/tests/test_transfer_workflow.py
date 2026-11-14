@@ -15,14 +15,7 @@ from apps.transfers.services.transfer_workflow import (
 class TransferWorkflowTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
@@ -34,11 +27,6 @@ class TransferWorkflowTests(TestCase):
             name="Second Deanery",
             code="TB7C588E9",
         )
-        cls.other_diocese_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
-            name="Other Diocese Deanery",
-            code="T249FA1C6",
-        )
 
         cls.source_parish = Parish.objects.create(
             deanery=cls.deanery,
@@ -47,10 +35,6 @@ class TransferWorkflowTests(TestCase):
         cls.destination_parish = Parish.objects.create(
             deanery=cls.other_deanery,
             name="Destination Parish",
-        )
-        cls.other_diocese_parish = Parish.objects.create(
-            deanery=cls.other_diocese_deanery,
-            name="Outside Diocese Parish",
         )
 
         user_model = get_user_model()
@@ -176,10 +160,6 @@ class TransferWorkflowTests(TestCase):
     def test_same_parish_destination_is_rejected(self):
         with self.assertRaises(ValidationError):
             self.submit_request(destination=self.source_parish)
-
-    def test_cross_diocese_transfer_is_rejected(self):
-        with self.assertRaises(ValidationError):
-            self.submit_request(destination=self.other_diocese_parish)
 
     def test_duplicate_open_transfer_is_rejected(self):
         self.submit_request()

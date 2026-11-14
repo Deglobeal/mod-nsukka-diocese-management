@@ -143,17 +143,19 @@
                     </p>
                 {% endblock %}
             </header>
-            <nav class="chairman-quick-actions" aria-label="Create organizational unit">
-                <a class="chairman-primary-button" href="{% url 'chairman:deanery-create' %}">
-                    Create Deanery
-                </a>
-                <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}">
-                    Create Parish
-                </a>
-                <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}">
-                    Create Station
-                </a>
-            </nav>
+            {% if active_section == "overview" %}
+                <nav class="chairman-quick-actions" aria-label="Create organizational unit">
+                    <a class="chairman-primary-button" href="{% url 'chairman:deanery-create' %}">
+                        Create Deanery
+                    </a>
+                    <a class="chairman-primary-button" href="{% url 'chairman:parish-create' %}">
+                        Create Parish
+                    </a>
+                    <a class="chairman-primary-button" href="{% url 'chairman:station-create' %}">
+                        Create Station
+                    </a>
+                </nav>
+            {% endif %}
             {% block dashboard_content %}{% endblock %}
         </div>
     </div>

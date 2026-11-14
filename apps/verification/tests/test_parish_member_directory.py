@@ -17,10 +17,7 @@ class ParishMemberDirectoryTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Directory Test Diocese",
-            code="036",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Directory Test Deanery",

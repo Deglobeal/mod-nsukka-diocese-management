@@ -1,10 +1,8 @@
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 
 from apps.accounts.models import OfficeAssignment
-from apps.organizations.management_forms import DioceseForm
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 
 
@@ -149,32 +147,11 @@ def organization_management(request):
             parish=parish
         ).select_related("parish").order_by("name")
     if request.method == "POST":
-        create_type = request.POST.get("create_type")
-
-        if create_type == "diocese" and level == "superuser":
-            form = DioceseForm(request.POST)
-            if form.is_valid():
-                form.save()
-                messages.success(request, "Diocese created successfully.")
-                return redirect("organizations:manage")
-        else:
-            raise PermissionDenied(
-                "Deaneries, Parishes, and Stations must be created from "
-                "the authorized Diocesan Chairman Command Dashboard."
-            )
-
-        context = _build_context(
-            scope=scope,
-            dioceses=dioceses,
-            deaneries=deaneries,
-            parishes=parishes,
-            stations=stations,
-            submitted_form=form,
-            submitted_type=create_type,
-            requested_type=request.GET.get("create", ""),
+        raise PermissionDenied(
+            "Diocese creation is not available. Deaneries, Parishes, and "
+            "Stations must be created from the authorized Diocesan Chairman "
+            "Command Dashboard."
         )
-        context[f"{create_type}_form"] = form
-        return render(request, "organizations/manage.html", context)
 
     context = _build_context(
         scope=scope,
@@ -182,7 +159,6 @@ def organization_management(request):
         deaneries=deaneries,
         parishes=parishes,
         stations=stations,
-        requested_type=request.GET.get("create", ""),
     )
     return render(request, "organizations/manage.html", context)
 
@@ -194,22 +170,11 @@ def _build_context(
     deaneries,
     parishes,
     stations,
-    submitted_form=None,
-    submitted_type="",
-    requested_type="",
 ):
-    level = scope["level"]
     return {
         "scope": scope,
         "dioceses": dioceses,
         "deaneries": deaneries,
         "parishes": parishes,
         "stations": stations,
-        "diocese_form": DioceseForm() if level == "superuser" else None,
-        "deanery_form": None,
-        "parish_form": None,
-        "station_form": None,
-        "submitted_form": submitted_form,
-        "submitted_type": submitted_type,
-        "requested_type": requested_type,
     }

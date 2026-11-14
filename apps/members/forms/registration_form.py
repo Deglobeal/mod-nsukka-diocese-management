@@ -1,8 +1,26 @@
+import json
 import unicodedata
+from pathlib import Path
+
 from django import forms
+from django.conf import settings
 
 from apps.organizations.models import Deanery, Parish, Station
 from apps.verification.models import MembershipApplication
+
+
+NIGERIA_LGAS = json.loads(
+    (
+        Path(settings.BASE_DIR)
+        / "static"
+        / "data"
+        / "nigeria-lgas.json"
+    ).read_text(encoding="utf-8")
+)
+NIGERIA_STATE_CHOICES = [
+    ("", "Select state (optional)"),
+    *((state, state) for state in sorted(NIGERIA_LGAS)),
+]
 
 
 class ParishSelect(forms.Select):
@@ -40,6 +58,17 @@ class StationSelect(forms.Select):
 
 
 class MembershipRegistrationForm(forms.ModelForm):
+    state_of_origin = forms.ChoiceField(
+        choices=NIGERIA_STATE_CHOICES,
+        label="State of origin",
+        required=False,
+    )
+    local_government_area = forms.ChoiceField(
+        choices=[("", "Select a state first")],
+        label="Local government area",
+        required=False,
+    )
+
     deanery = forms.ModelChoiceField(
         queryset=Deanery.objects.none(),
         label="Deanery",
@@ -189,6 +218,24 @@ class MembershipRegistrationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        selected_state = (
+            self.data.get("state_of_origin", "")
+            if self.is_bound
+            else self.instance.state_of_origin
+        )
+        state_lgas = NIGERIA_LGAS.get(selected_state, [])
+        self.fields["local_government_area"].choices = [
+            (
+                "",
+                "Select a local government area"
+                if state_lgas
+                else "Select a state first",
+            ),
+            *((lga, lga) for lga in state_lgas),
+        ]
+        if not state_lgas:
+            self.fields["local_government_area"].widget.attrs["disabled"] = True
+
         # Temporary form-only fields. Database persistence and sponsor
         # verification will be implemented and tested in a later step.
         self.fields["baptized_catholic"] = forms.ChoiceField(
