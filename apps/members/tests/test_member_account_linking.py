@@ -13,14 +13,7 @@ class MemberAccountLinkingTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
@@ -32,11 +25,6 @@ class MemberAccountLinkingTests(TestCase):
             name="Other Deanery",
             code="T2D1B022D",
         )
-        cls.other_diocese_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
-            name="Other Diocese Deanery",
-            code="T249FA1C6",
-        )
 
         cls.parish = Parish.objects.create(
             deanery=cls.deanery,
@@ -45,10 +33,6 @@ class MemberAccountLinkingTests(TestCase):
         cls.other_parish = Parish.objects.create(
             deanery=cls.other_deanery,
             name="Other Parish",
-        )
-        cls.other_diocese_parish = Parish.objects.create(
-            deanery=cls.other_diocese_deanery,
-            name="Other Diocese Parish",
         )
 
         cls.member = Member.objects.create(
@@ -61,12 +45,6 @@ class MemberAccountLinkingTests(TestCase):
             first_name="Chika",
             last_name="Nwosu",
             parish=cls.other_parish,
-            status=Member.Status.ACTIVE,
-        )
-        cls.other_diocese_member = Member.objects.create(
-            first_name="Ngozi",
-            last_name="Eze",
-            parish=cls.other_diocese_parish,
             status=Member.Status.ACTIVE,
         )
 
@@ -84,10 +62,6 @@ class MemberAccountLinkingTests(TestCase):
         )
         cls.diocese_admin = User.objects.create_user(
             username="link-diocese-admin",
-            password="test-only-password",
-        )
-        cls.other_diocese_admin = User.objects.create_user(
-            username="link-other-diocese-admin",
             password="test-only-password",
         )
         cls.target_user = User.objects.create_user(
@@ -117,11 +91,6 @@ class MemberAccountLinkingTests(TestCase):
             user=cls.diocese_admin,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
-        )
-        OfficeAssignment.objects.create(
-            user=cls.other_diocese_admin,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=cls.other_diocese,
         )
 
     def link(self, *, actor=None, user=None, member=None):
@@ -160,16 +129,12 @@ class MemberAccountLinkingTests(TestCase):
         link = self.link(actor=self.diocese_admin)
         self.assertEqual(link.member, self.member)
 
-    def test_diocese_admin_cannot_link_member_in_another_diocese(self):
-        with self.assertRaises(PermissionDenied):
-            self.link(
-                actor=self.diocese_admin,
-                member=self.other_diocese_member,
-            )
-
-    def test_admin_from_another_diocese_cannot_link_member(self):
-        with self.assertRaises(PermissionDenied):
-            self.link(actor=self.other_diocese_admin)
+    def test_diocese_admin_can_link_member_in_another_deanery(self):
+        link = self.link(
+            actor=self.diocese_admin,
+            member=self.other_parish_member,
+        )
+        self.assertEqual(link.member, self.other_parish_member)
 
     def test_inactive_assignment_cannot_link(self):
         assignment = OfficeAssignment.objects.get(user=self.parish_admin)

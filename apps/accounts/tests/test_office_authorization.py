@@ -14,14 +14,7 @@ from apps.verification.models import MembershipApplication
 class OfficeAuthorizationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
@@ -33,12 +26,6 @@ class OfficeAuthorizationTests(TestCase):
             name="Other Deanery",
             code="T2D1B022D",
         )
-        cls.other_diocese_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
-            name="Other Diocese Deanery",
-            code="T249FA1C6",
-        )
-
         cls.parish = Parish.objects.create(
             deanery=cls.deanery,
             name="Test Parish",
@@ -149,26 +136,24 @@ class OfficeAuthorizationTests(TestCase):
                 review_level="deanery",
             )
 
-    def test_diocese_admin_cannot_review_another_diocese(self):
-        other_diocese_parish = Parish.objects.create(
-            deanery=self.other_diocese_deanery,
-            name="Other Diocese Parish",
-        )
-        other_diocese_member = Member.objects.create(
+    def test_diocese_admin_can_review_application_in_another_deanery(self):
+        other_deanery_member = Member.objects.create(
             first_name="Ngozi",
             last_name="Eze",
-            parish=other_diocese_parish,
+            parish=self.other_parish,
         )
-        other_diocese_application = MembershipApplication.objects.create(
-            member=other_diocese_member,
+        other_deanery_application = MembershipApplication.objects.create(
+            member=other_deanery_member,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
         )
 
-        with self.assertRaises(PermissionDenied):
+        self.assertTrue(
             authorize_membership_reviewer(
                 user=self.diocese_admin,
-                application=other_diocese_application,
+                application=other_deanery_application,
                 review_level="diocese",
             )
+        )
 
     def test_inactive_assignment_is_not_authorized(self):
         assignment = OfficeAssignment.objects.get(user=self.parish_admin)

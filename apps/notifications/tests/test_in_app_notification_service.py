@@ -18,7 +18,7 @@ class InAppNotificationServiceTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(name="Service Diocese", code="S01")
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Service Deanery",
@@ -29,12 +29,8 @@ class InAppNotificationServiceTests(TestCase):
             name="Service Parish",
         )
 
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Service Diocese",
-            code="S02",
-        )
         cls.other_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Other Service Deanery",
             code="SVC002",
         )
@@ -66,9 +62,6 @@ class InAppNotificationServiceTests(TestCase):
         cls.other_deanery_user = User.objects.create_user(
             username="service-other-deanery"
         )
-        cls.other_diocese_user = User.objects.create_user(
-            username="service-other-diocese"
-        )
 
         OfficeAssignment.objects.create(
             user=cls.deanery_reviewer,
@@ -92,18 +85,13 @@ class InAppNotificationServiceTests(TestCase):
         OfficeAssignment.objects.create(
             user=cls.other_deanery_user,
             role=OfficeAssignment.Role.DEANERY_ADMIN,
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             deanery=cls.other_deanery,
         )
         OfficeAssignment.objects.create(
             user=cls.diocese_reviewer,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
-        )
-        OfficeAssignment.objects.create(
-            user=cls.other_diocese_user,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=cls.other_diocese,
         )
 
     def create_event(self, review_level="parish", decision="approved"):

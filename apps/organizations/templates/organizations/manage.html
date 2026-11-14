@@ -25,18 +25,6 @@
         {% endfor %}
     {% endif %}
 
-    {% if submitted_form and submitted_form.errors %}
-        <div class="organization-errors" role="alert">
-            <p>Please correct the following errors:</p>
-            {{ submitted_form.non_field_errors }}
-            {% for field in submitted_form %}
-                {% if field.errors %}
-                    <p><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</p>
-                {% endif %}
-            {% endfor %}
-        </div>
-    {% endif %}
-
     <section class="organization-summary">
         {% if scope.level == "superuser" %}
         <div class="organization-stat">
@@ -121,28 +109,5 @@
         {% endif %}
     </section>
 
-    {% if diocese_form %}
-        <section class="organization-panel">
-            <h2>Add an organization unit</h2>
-            <p class="organization-muted">Diocese creation is restricted to system administrators.</p>
-
-            <details class="organization-form-section" {% if submitted_type == "diocese" or requested_type == "diocese" %}open{% endif %}>
-                <summary>Create a diocese</summary>
-                <form method="post" class="organization-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="create_type" value="diocese">
-                    {% for field in diocese_form %}
-                        <div class="organization-field{% if field.field.widget.input_type == 'checkbox' %} organization-field--checkbox{% endif %}">
-                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                            {% if field.errors %}<small role="alert">{{ field.errors|join:", " }}</small>{% endif %}
-                        </div>
-                    {% endfor %}
-                    <button type="submit" class="organization-button">Create diocese</button>
-                </form>
-            </details>
-        </section>
-    {% endif %}
 </div>
 {% endblock %}

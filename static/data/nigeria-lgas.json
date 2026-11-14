@@ -574,7 +574,7 @@
     "Shomolu",
     "Surulere"
   ],
-  "Nassarawa": [
+  "Nasarawa": [
     "Akwanga",
     "Awe",
     "Doma",
@@ -584,7 +584,7 @@
     "Kokona",
     "Lafia",
     "Nasarawa",
-    "Nassarawa Egon",
+    "Nasarawa Eggon",
     "Obi",
     "Toto",
     "Wamba"
@@ -600,7 +600,7 @@
     "Gbako",
     "Gurara",
     "Katcha",
-    "Kontogur",
+    "Kontagora",
     "Lapai",
     "Lavun",
     "Magama",
@@ -636,13 +636,13 @@
     "Odogbolu",
     "Ogun Waterside",
     "Remo North",
-    "Shagamu"
+    "Sagamu"
   ],
   "Ondo": [
     "Akoko North-East",
     "Akoko South-East",
     "Akoko South-West",
-    "AkokoNorthWest",
+    "Akoko North-West",
     "Akure North",
     "Akure South",
     "Ese-Odo",
@@ -672,7 +672,7 @@
     "Ife East",
     "Ife North",
     "Ife South",
-    "IfeCentral",
+    "Ife Central",
     "Ifedayo",
     "Ifelodun",
     "Ila",
@@ -745,11 +745,11 @@
     "Wase"
   ],
   "Rivers": [
-    "Abua/Odu",
+    "Abua/Odual",
     "Ahoada East",
     "Ahoada West",
-    "Akukutor",
-    "Andoni/Odual",
+    "Akuku-Toru",
+    "Andoni",
     "Asari-Toru",
     "Bonny",
     "Degema",
@@ -760,10 +760,10 @@
     "Ikwerre",
     "Khana",
     "Obio/Akpor",
-    "Ogba/Egbema/Andoni",
+    "Ogba/Egbema/Ndoni",
     "Ogu/Bolo",
     "Okrika",
-    "Omumma",
+    "Omuma",
     "Opobo/Nkoro",
     "Oyigbo",
     "Port Harcourt",

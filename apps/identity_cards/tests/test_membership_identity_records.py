@@ -13,14 +13,7 @@ class MembershipIdentityRecordsTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Records Test Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Records Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery = Deanery.objects.create(
             name="Records Test Deanery",
@@ -36,7 +29,7 @@ class MembershipIdentityRecordsTests(TestCase):
         cls.other_deanery = Deanery.objects.create(
             name="Other Records Deanery",
             code="003",
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
         )
         cls.other_parish = Parish.objects.create(
             name="Other Records Parish",
@@ -83,15 +76,15 @@ class MembershipIdentityRecordsTests(TestCase):
             uniform_id="AB234567",
         )
 
-        cls.foreign_member = Member.objects.create(
+        cls.other_deanery_member = Member.objects.create(
             first_name="Chika",
-            last_name="Foreign",
+            last_name="Nwosu",
             parish=cls.other_parish,
             status=Member.Status.ACTIVE,
         )
-        cls.foreign_identity = MembershipIdentity.objects.create(
-            member=cls.foreign_member,
-            official_membership_id="MOD037/003/044/000001",
+        cls.other_deanery_identity = MembershipIdentity.objects.create(
+            member=cls.other_deanery_member,
+            official_membership_id="MOD036/003/044/000001",
             uniform_id="CD345678",
         )
 
@@ -123,7 +116,7 @@ class MembershipIdentityRecordsTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_diocese_admin_sees_only_records_in_assigned_diocese(self):
+    def test_diocese_admin_sees_records_across_all_diocese_deaneries(self):
         self.client.force_login(self.diocese_admin)
 
         response = self.client.get(self.records_url)
@@ -133,16 +126,18 @@ class MembershipIdentityRecordsTests(TestCase):
             response,
             "identity_cards/membership_identity_records.html",
         )
-        self.assertEqual(response.context["identity_count"], 1)
-        self.assertContains(response, "Records Test Diocese")
+        self.assertEqual(response.context["identity_count"], 2)
+        self.assertContains(response, "Nsukka Diocese")
         self.assertContains(response, "Ada Okafor")
         self.assertContains(response, "MOD036/002/043/000001")
         self.assertContains(response, "AB234567")
         self.assertContains(response, "Records Test Deanery")
+        self.assertContains(response, "Other Records Deanery")
         self.assertContains(response, "Records Test Parish")
-        self.assertNotContains(response, "Chika Foreign")
-        self.assertNotContains(response, "MOD037/003/044/000001")
-        self.assertNotContains(response, "CD345678")
+        self.assertContains(response, "Other Records Parish")
+        self.assertContains(response, "Chika Nwosu")
+        self.assertContains(response, "MOD036/003/044/000001")
+        self.assertContains(response, "CD345678")
 
     def test_page_links_back_to_diocese_chairman_dashboard(self):
         self.client.force_login(self.diocese_admin)

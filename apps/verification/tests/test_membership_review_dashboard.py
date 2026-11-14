@@ -18,10 +18,7 @@ class MembershipReviewDashboardTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Dashboard Test Diocese",
-            code="036",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Dashboard Test Deanery",
@@ -228,13 +225,9 @@ class MembershipReviewDashboardTests(TestCase):
             f'value="{other_application.pk}"',
         )
 
-    def test_diocese_dashboard_hides_applications_from_other_dioceses(self):
-        other_diocese = Diocese.objects.create(
-            name="Another Dashboard Diocese",
-            code="037",
-        )
+    def test_diocese_dashboard_shows_applications_across_all_deaneries(self):
         other_deanery = Deanery.objects.create(
-            diocese=other_diocese,
+            diocese=self.diocese,
             name="Another Dashboard Deanery",
             code="T-DASH-OTHER-001",
         )
@@ -260,7 +253,7 @@ class MembershipReviewDashboardTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Emeka Ibe")
+        self.assertContains(response, "Emeka Ibe")
 
     def test_parish_admin_can_view_saved_application_details_without_medical_data(self):
         self.application.first_name = "Ada"

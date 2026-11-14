@@ -15,10 +15,7 @@ class MembershipQRDownloadAPITests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             name="QR Deanery",
             diocese=cls.diocese,
@@ -29,19 +26,6 @@ class MembershipQRDownloadAPITests(TestCase):
             deanery=cls.deanery,
         )
 
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="999",
-        )
-        cls.other_deanery = Deanery.objects.create(
-            name="Other QR Deanery",
-            diocese=cls.other_diocese,
-            code="T71715459",
-        )
-        cls.other_parish = Parish.objects.create(
-            name="Other QR Parish",
-            deanery=cls.other_deanery,
-        )
 
         cls.admin = User.objects.create_user(
             username="qr-diocese-admin",
@@ -53,14 +37,9 @@ class MembershipQRDownloadAPITests(TestCase):
             diocese=cls.diocese,
         )
 
-        cls.other_admin = User.objects.create_user(
-            username="qr-other-diocese-admin",
+        cls.unassigned_user = User.objects.create_user(
+            username="qr-unassigned-user",
             password="test-password",
-        )
-        OfficeAssignment.objects.create(
-            user=cls.other_admin,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=cls.other_diocese,
         )
 
         cls.parish_admin = User.objects.create_user(
@@ -117,8 +96,8 @@ class MembershipQRDownloadAPITests(TestCase):
         self.assertEqual(response["Cache-Control"], "private, no-store")
         self.assertTrue(response.content.startswith(b"\x89PNG\r\n\x1a\n"))
 
-    def test_other_diocese_admin_cannot_download_card(self):
-        self.client.force_authenticate(user=self.other_admin)
+    def test_unassigned_user_cannot_download_card(self):
+        self.client.force_authenticate(user=self.unassigned_user)
 
         response = self.client.get(self.url)
 

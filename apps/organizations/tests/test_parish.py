@@ -6,10 +6,7 @@ from apps.organizations.models import Deanery, Diocese, Parish
 
 class ParishModelTests(TestCase):
     def setUp(self):
-        self.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        self.diocese = Diocese.objects.get(code="036")
         self.deanery = Deanery.objects.create(
             name="Nsukka Central",
             diocese=self.diocese,

@@ -9,21 +9,14 @@ from apps.organizations.models import Diocese, Deanery, Parish
 class OfficeAssignmentTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Test Deanery",
             code="TD2663FC6",
         )
         cls.other_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Other Deanery",
             code="T2D1B022D",
         )
@@ -44,27 +37,23 @@ class OfficeAssignmentTests(TestCase):
         )
         assignment.full_clean()
 
-    def test_deanery_must_belong_to_selected_diocese(self):
+    def test_deanery_assignment_accepts_another_deanery_in_same_diocese(self):
         assignment = OfficeAssignment(
             user=self.user,
             role=OfficeAssignment.Role.DEANERY_ADMIN,
             diocese=self.diocese,
             deanery=self.other_deanery,
         )
+        assignment.full_clean()
 
-        with self.assertRaises(ValidationError):
-            assignment.full_clean()
-
-    def test_parish_must_belong_to_selected_diocese(self):
+    def test_parish_assignment_accepts_parish_in_same_diocese(self):
         assignment = OfficeAssignment(
             user=self.user,
             role=OfficeAssignment.Role.PARISH_ADMIN,
-            diocese=self.other_diocese,
+            diocese=self.diocese,
             parish=self.parish,
         )
-
-        with self.assertRaises(ValidationError):
-            assignment.full_clean()
+        assignment.full_clean()
 
     def test_parish_assignment_derives_its_deanery(self):
         assignment = OfficeAssignment(
@@ -96,21 +85,15 @@ class OfficeAssignmentTests(TestCase):
 
         self.assertTrue(assignment.is_active)
 
-    def test_save_rejects_deanery_from_another_diocese(self):
-        with self.assertRaises(ValidationError):
-            OfficeAssignment.objects.create(
-                user=self.user,
-                role=OfficeAssignment.Role.DEANERY_ADMIN,
-                diocese=self.diocese,
-                deanery=self.other_deanery,
-            )
-
-        self.assertFalse(
-            OfficeAssignment.objects.filter(
-                user=self.user,
-                role=OfficeAssignment.Role.DEANERY_ADMIN,
-            ).exists()
+    def test_save_accepts_deanery_within_the_diocese(self):
+        assignment = OfficeAssignment.objects.create(
+            user=self.user,
+            role=OfficeAssignment.Role.DEANERY_ADMIN,
+            diocese=self.diocese,
+            deanery=self.other_deanery,
         )
+
+        self.assertEqual(assignment.deanery, self.other_deanery)
 
     def test_save_rejects_parish_admin_without_parish(self):
         with self.assertRaises(ValidationError):

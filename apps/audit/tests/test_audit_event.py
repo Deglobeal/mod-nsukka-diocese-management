@@ -11,10 +11,7 @@ from apps.verification.models import MembershipApplication
 class AuditEventModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Audit Test Diocese",
-            code="901",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Audit Test Deanery",
@@ -24,12 +21,8 @@ class AuditEventModelTests(TestCase):
             deanery=cls.deanery,
             name="Audit Test Parish",
         )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Audit Diocese",
-            code="902",
-        )
         cls.other_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Other Audit Deanery",
             code="OTHER-AUDIT",
         )
@@ -85,9 +78,20 @@ class AuditEventModelTests(TestCase):
         with self.assertRaises(ValidationError):
             self.create_event(parish=other_parish)
 
-    def test_rejects_deanery_from_another_diocese(self):
-        with self.assertRaises(ValidationError):
-            self.create_event(deanery=self.other_deanery)
+    def test_accepts_another_deanery_within_the_diocese(self):
+        other_parish = Parish.objects.create(
+            deanery=self.other_deanery,
+            name="Other Audit Deanery Parish",
+        )
+
+        event = self.create_event(
+            deanery=self.other_deanery,
+            parish=other_parish,
+        )
+
+        self.assertEqual(event.diocese, self.diocese)
+        self.assertEqual(event.deanery, self.other_deanery)
+        self.assertEqual(event.parish, other_parish)
 
     def test_rejects_instance_update(self):
         event = self.create_event()

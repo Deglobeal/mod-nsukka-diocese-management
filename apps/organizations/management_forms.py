@@ -35,12 +35,6 @@ class OrganizationForm(forms.ModelForm):
                 )
 
 
-class DioceseForm(OrganizationForm):
-    class Meta:
-        model = Diocese
-        fields = ("name", "code", "is_active")
-
-
 class DeaneryForm(OrganizationForm):
     diocese = forms.ModelChoiceField(
         queryset=Diocese.objects.none(),

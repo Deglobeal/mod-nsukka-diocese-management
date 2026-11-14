@@ -13,9 +13,7 @@ from apps.verification.models import MembershipApplication, MembershipReview
 class MembershipReviewAPITests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese", code="036"
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese, name="Test Deanery",
             code="TD2663FC6",
@@ -53,11 +51,8 @@ class MembershipReviewAPITests(TestCase):
             diocese=cls.diocese,
         )
 
-        other_diocese = Diocese.objects.create(
-            name="Other Diocese", code="037"
-        )
         other_deanery = Deanery.objects.create(
-            diocese=other_diocese, name="Other Deanery",
+            diocese=cls.diocese, name="Other Deanery",
             code="T2D1B022D",
         )
         other_parish = Parish.objects.create(
@@ -101,7 +96,7 @@ class MembershipReviewAPITests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.application.reviews.count(), 0)
 
-    def test_parish_admin_cannot_review_other_diocese(self):
+    def test_parish_admin_cannot_review_another_parish(self):
         self.client.force_authenticate(user=self.parish_admin)
         url = reverse(
             "api:verification:membership-review",
