@@ -6,13 +6,16 @@ from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from PIL import Image
 from django.utils import timezone
 
 from apps.identity_cards.models import MembershipIdentity
-from apps.members.forms.registration_form import MembershipRegistrationForm
+from apps.members.forms.registration_form import (
+    NIGERIA_LGAS,
+    MembershipRegistrationForm,
+)
 from apps.members.models import Member, MemberProfile
 from apps.notifications.models import SMSNotification, SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
@@ -73,9 +76,9 @@ class MembershipRegistrationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
+        cls.diocese, _created = Diocese.objects.get_or_create(
             code="036",
+            defaults={"name": "Nsukka Diocese"},
         )
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
@@ -179,14 +182,101 @@ class MembershipRegistrationTests(TestCase):
         self.assertContains(response, "Patron")
         self.assertContains(response, "Chaplain")
         self.assertContains(response, "Select your deanery")
-
-    def test_registration_uses_active_organizations_across_dioceses(self):
-        other_diocese = Diocese.objects.create(
-            name="Awgu Diocese",
-            code="038",
+        self.assertContains(response, "Verify sponsor")
+        self.assertContains(
+            response,
+            reverse("members:sponsor_verify"),
         )
+        self.assertContains(
+            response,
+            'data-lga-data-url="/static/data/nigeria-lgas.json"',
+        )
+
+    def test_state_and_local_government_area_fields_use_nigeria_lists(self):
+        form = MembershipRegistrationForm()
+
+        self.assertEqual(len(NIGERIA_LGAS), 37)
+        self.assertEqual(sum(map(len, NIGERIA_LGAS.values())), 774)
+        self.assertIn("Nasarawa", NIGERIA_LGAS)
+        self.assertNotIn("Nassarawa", NIGERIA_LGAS)
+        self.assertEqual(len(form.fields["state_of_origin"].choices), 38)
+        self.assertIn(
+            ("Federal Capital Territory", "Federal Capital Territory"),
+            form.fields["state_of_origin"].choices,
+        )
+        self.assertEqual(
+            list(form.fields["local_government_area"].choices),
+            [("", "Select a state first")],
+        )
+
+        enugu_form = MembershipRegistrationForm(
+            data={"state_of_origin": "Enugu"}
+        )
+        self.assertIn(
+            ("Nsukka", "Nsukka"),
+            enugu_form.fields["local_government_area"].choices,
+        )
+        self.assertNotIn(
+            ("Aba North", "Aba North"),
+            enugu_form.fields["local_government_area"].choices,
+        )
+
+    def test_local_government_area_must_belong_to_selected_state(self):
+        form = MembershipRegistrationForm(
+            data={
+                "state_of_origin": "Enugu",
+                "local_government_area": "Aba North",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("local_government_area", form.errors)
+
+        valid_form = MembershipRegistrationForm(
+            data={
+                "state_of_origin": "Enugu",
+                "local_government_area": "Nsukka",
+            }
+        )
+        valid_form.is_valid()
+        self.assertNotIn("state_of_origin", valid_form.errors)
+        self.assertNotIn("local_government_area", valid_form.errors)
+
+    def test_sponsor_lookup_returns_name_and_masked_registered_phone(self):
+        response = self.client.post(
+            reverse("members:sponsor_verify"),
+            {"sponsor_membership_id": "MOD-TEST-0001"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "name": "John Sponsor",
+                "registered_phone": "+234******5678",
+            },
+        )
+
+    def test_sponsor_lookup_rejects_unknown_membership_id(self):
+        response = self.client.post(
+            reverse("members:sponsor_verify"),
+            {"sponsor_membership_id": "MOD-UNKNOWN-9999"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["error"],
+            "No member matches the supplied official membership ID.",
+        )
+
+    def test_sponsor_lookup_only_accepts_post(self):
+        response = self.client.get(reverse("members:sponsor_verify"))
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_registration_uses_active_organizations_within_nsukka_diocese(self):
         other_deanery = Deanery.objects.create(
-            diocese=other_diocese,
+            diocese=self.diocese,
             name="Awgu Deanery",
             code="AWG001",
         )
@@ -201,16 +291,6 @@ class MembershipRegistrationTests(TestCase):
             code="AWS001",
         )
 
-        inactive_diocese = Diocese.objects.create(
-            name="Inactive Diocese",
-            code="039",
-            is_active=False,
-        )
-        inactive_diocese_deanery = Deanery.objects.create(
-            diocese=inactive_diocese,
-            name="Inactive Diocese Deanery",
-            code="IDD001",
-        )
         inactive_deanery = Deanery.objects.create(
             diocese=self.diocese,
             name="Inactive Deanery",
@@ -240,10 +320,6 @@ class MembershipRegistrationTests(TestCase):
         self.assertIn(other_deanery, form.fields["deanery"].queryset)
         self.assertIn(other_parish, form.fields["parish"].queryset)
         self.assertIn(other_station, form.fields["station"].queryset)
-        self.assertNotIn(
-            inactive_diocese_deanery,
-            form.fields["deanery"].queryset,
-        )
         self.assertNotIn(
             inactive_deanery_parish,
             form.fields["parish"].queryset,
@@ -554,7 +630,32 @@ class MembershipRegistrationTests(TestCase):
         )
         self.assertIsNone(application.member_id)
 
-    def test_confirmation_page_displays_reference(self):
+    def test_confirmation_page_displays_reference_for_authorized_session(self):
+        application = MembershipApplication.objects.create(
+            first_name="Ada",
+            last_name="Okafor",
+            email="ada@example.com",
+            phone_number="+2348012345678",
+            category=MembershipApplication.Category.CHAPLAIN,
+            parish=self.parish,
+        )
+
+        session = self.client.session
+        session["registration_application_ids"] = [application.pk]
+        session.save()
+
+        response = self.client.get(
+            reverse(
+                "members:registration_received",
+                kwargs={"application_id": application.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, str(application.pk))
+        self.assertContains(response, "not an approval")
+
+    def test_confirmation_page_rejects_session_without_authorized_ids(self):
         application = MembershipApplication.objects.create(
             first_name="Ada",
             last_name="Okafor",
@@ -571,9 +672,53 @@ class MembershipRegistrationTests(TestCase):
             )
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, str(application.pk))
-        self.assertContains(response, "not an approval")
+        self.assertEqual(response.status_code, 404)
+
+    def test_confirmation_page_rejects_a_different_browser_session(self):
+        application = MembershipApplication.objects.create(
+            first_name="Ada",
+            last_name="Okafor",
+            email="ada@example.com",
+            phone_number="+2348012345678",
+            category=MembershipApplication.Category.CHAPLAIN,
+            parish=self.parish,
+        )
+
+        session = self.client.session
+        session["registration_application_ids"] = [application.pk]
+        session.save()
+
+        another_client = Client()
+        response = another_client.get(
+            reverse(
+                "members:registration_received",
+                kwargs={"application_id": application.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_confirmation_page_returns_404_for_authorized_nonexistent_id(self):
+        last_id = (
+            MembershipApplication.objects.order_by("-pk")
+            .values_list("pk", flat=True)
+            .first()
+            or 0
+        )
+        missing_id = last_id + 1000
+
+        session = self.client.session
+        session["registration_application_ids"] = [missing_id]
+        session.save()
+
+        response = self.client.get(
+            reverse(
+                "members:registration_received",
+                kwargs={"application_id": missing_id},
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
 
 
     def test_accuracy_declaration_is_required(self):

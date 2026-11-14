@@ -21,9 +21,9 @@ class ChairmanCommandDashboardTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         user_model = get_user_model()
-        cls.diocese = Diocese.objects.create(
-            name="Command Test Diocese",
+        cls.diocese, _ = Diocese.objects.get_or_create(
             code="036",
+            defaults={"name": "Nsukka Diocese"},
         )
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
@@ -66,12 +66,8 @@ class ChairmanCommandDashboardTests(TestCase):
             stage=MembershipApplication.Stage.DIOCESE_REVIEW,
         )
 
-        cls.other_diocese = Diocese.objects.create(
-            name="Outside Scope Diocese",
-            code="037",
-        )
         cls.other_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Outside Scope Deanery",
             code="OSD001",
         )
@@ -164,11 +160,11 @@ class ChairmanCommandDashboardTests(TestCase):
         response = self.client.get(reverse("chairman:dashboard"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["member_count"], 2)
+        self.assertEqual(response.context["member_count"], 3)
         self.assertEqual(response.context["active_member_count"], 1)
-        self.assertEqual(response.context["active_deanery_count"], 1)
-        self.assertEqual(response.context["active_parish_count"], 1)
-        self.assertEqual(response.context["active_station_count"], 1)
+        self.assertEqual(response.context["active_deanery_count"], 2)
+        self.assertEqual(response.context["active_parish_count"], 2)
+        self.assertEqual(response.context["active_station_count"], 2)
         self.assertEqual(response.context["pending_count"], 1)
         self.assertEqual(response.context["identity_record_count"], 1)
         self.assertEqual(response.context["issued_card_count"], 0)
@@ -178,7 +174,7 @@ class ChairmanCommandDashboardTests(TestCase):
             for item in response.context["member_status_counts"]
         }
         self.assertEqual(status_counts[Member.Status.ACTIVE], 1)
-        self.assertEqual(status_counts[Member.Status.PENDING_REVIEW], 1)
+        self.assertEqual(status_counts[Member.Status.PENDING_REVIEW], 2)
         self.assertContains(response, "Member status summary")
         self.assertContains(response, "Active membership categories")
         self.assertContains(response, "Membership identity records")
@@ -195,7 +191,9 @@ class ChairmanCommandDashboardTests(TestCase):
             ),
         )
         self.assertNotContains(response, "Ada Okafor")
-        self.assertNotContains(response, "Outside Scope")
+        self.assertContains(response, "Outside Scope Deanery")
+        self.assertContains(response, "Outside Scope Parish")
+        self.assertContains(response, "Outside Scope Station")
         self.assertNotContains(response, "Ngozi Eze")
 
     def test_dashboard_shows_all_organization_creation_actions(self):
@@ -323,26 +321,22 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertIn(parish, registration_form.fields["parish"].queryset)
         self.assertIn(station, registration_form.fields["station"].queryset)
 
-    def test_codes_remain_unique_within_parents_not_globally(self):
-        OfficeAssignment.objects.create(
-            user=self.chairman,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=self.other_diocese,
-        )
+    def test_deanery_codes_are_unique_within_nsukka_diocese(self):
         self.client.force_login(self.chairman)
 
         response = self.client.post(
             reverse("chairman:deanery-create"),
             {
-                "diocese": self.other_diocese.pk,
+                "diocese": self.diocese.pk,
                 "name": "Other Diocese Deanery",
                 "code": self.deanery.code,
             },
         )
-        self.assertEqual(response.status_code, 302)
-        other_deanery = Deanery.objects.get(name="Other Diocese Deanery")
-        self.assertEqual(other_deanery.diocese, self.other_diocese)
-        self.assertEqual(other_deanery.code, self.deanery.code)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("code", response.context["form"].errors)
+        self.assertFalse(
+            Deanery.objects.filter(name="Other Diocese Deanery").exists()
+        )
 
         second_deanery = Deanery.objects.create(
             diocese=self.diocese,
@@ -427,13 +421,19 @@ class ChairmanCommandDashboardTests(TestCase):
                         403,
                     )
 
-    def test_creation_forms_reject_parents_outside_authorized_diocese(self):
+    def test_creation_forms_reject_unknown_parent_ids(self):
         self.client.force_login(self.chairman)
+        deanery_response = self.client.get(reverse("chairman:deanery-create"))
+        self.assertEqual(
+            list(deanery_response.context["form"].fields["diocese"].queryset),
+            [self.diocese],
+        )
+
         cases = (
             (
                 "chairman:deanery-create",
                 "diocese",
-                self.other_diocese.pk,
+                self.diocese.pk + 100000,
                 Deanery,
                 "Unauthorized Diocese Deanery",
                 "UOD001",
@@ -441,7 +441,7 @@ class ChairmanCommandDashboardTests(TestCase):
             (
                 "chairman:parish-create",
                 "deanery",
-                self.other_deanery.pk,
+                self.other_deanery.pk + 100000,
                 Parish,
                 "Unauthorized Diocese Parish",
                 "UDP001",
@@ -449,7 +449,7 @@ class ChairmanCommandDashboardTests(TestCase):
             (
                 "chairman:station-create",
                 "parish",
-                self.other_parish.pk,
+                self.other_parish.pk + 100000,
                 Station,
                 "Unauthorized Diocese Station",
                 "UDS001",
@@ -554,27 +554,35 @@ class ChairmanCommandDashboardTests(TestCase):
                         1 if field == "name" else 0,
                     )
 
-    def test_creation_links_are_available_in_directories_and_details(self):
+    def test_creation_links_are_not_repeated_in_directories(self):
         self.client.force_login(self.chairman)
         all_creation_actions = (
             ("Create Deanery", "chairman:deanery-create"),
             ("Create Parish", "chairman:parish-create"),
             ("Create Station", "chairman:station-create"),
         )
-        for route_name, label in (
-            ("chairman:deaneries", "Create Deanery"),
-            ("chairman:parishes", "Create Parish"),
-            ("chairman:stations", "Create Station"),
+        for route_name in (
+            "chairman:deaneries",
+            "chairman:parishes",
+            "chairman:stations",
         ):
             with self.subTest(route=route_name):
                 response = self.client.get(reverse(route_name))
-                self.assertContains(response, label)
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(
+                    response,
+                    'aria-label="Create organizational unit"',
+                )
                 for action_label, action_route in all_creation_actions:
-                    self.assertContains(response, action_label)
-                    self.assertContains(
+                    self.assertNotContains(response, action_label)
+                    self.assertNotContains(
                         response,
                         reverse(action_route),
                     )
+                self.assertNotContains(
+                    response,
+                    "Review deaneries and their parish and member coverage.",
+                )
 
         response = self.client.get(
             reverse("chairman:deanery-detail", args=[self.deanery.pk])
@@ -639,9 +647,9 @@ class ChairmanCommandDashboardTests(TestCase):
             {"page": "2"},
         )
 
-        self.assertEqual(first_page.context["member_page"].paginator.count, 27)
+        self.assertEqual(first_page.context["member_page"].paginator.count, 28)
         self.assertEqual(len(first_page.context["member_page"].object_list), 25)
-        self.assertEqual(len(second_page.context["member_page"].object_list), 2)
+        self.assertEqual(len(second_page.context["member_page"].object_list), 3)
 
     def test_mobile_and_desktop_navigation_are_present_and_accessible(self):
         self.client.force_login(self.chairman)
@@ -716,7 +724,16 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertContains(response, "Command Test Parish")
         self.assertContains(response, "Second Command Parish")
         self.assertContains(response, "Command Test Deanery")
-        self.assertNotContains(response, "Outside Scope Parish")
+
+        detail_section = response.content.decode().split(
+            'aria-labelledby="deanery-parishes-heading"',
+            1,
+        )[1].split("</section>", 1)[0]
+
+        self.assertIn("Command Test Parish", detail_section)
+        self.assertIn("Second Command Parish", detail_section)
+        self.assertNotIn("Outside Scope Parish", detail_section)
+
         self.assertContains(
             response,
             f'href="{reverse("chairman:parish-detail", args=[another_parish.pk])}"',
@@ -793,7 +810,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertNotContains(response, other_station_member.full_name)
         self.assertContains(response, "Command Test Parish")
 
-    def test_organization_detail_urls_hide_records_outside_assigned_diocese(self):
+    def test_organization_detail_urls_include_all_nsukka_diocese_records(self):
         self.client.force_login(self.chairman)
 
         for route_name, record in (
@@ -805,7 +822,8 @@ class ChairmanCommandDashboardTests(TestCase):
                 response = self.client.get(
                     reverse(route_name, args=[record.pk])
                 )
-                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, record.name)
 
     def test_membership_applications_render_inside_chairman_shell(self):
         self.client.force_login(self.chairman)
@@ -1029,8 +1047,8 @@ class ChairmanCommandDashboardTests(TestCase):
         own_event = self._create_audit_event(
             self.diocese, self.deanery, self.parish
         )
-        self._create_audit_event(
-            self.other_diocese, self.other_deanery, self.other_parish
+        other_event = self._create_audit_event(
+            self.diocese, self.other_deanery, self.other_parish
         )
         self.client.force_login(self.chairman)
 
@@ -1038,15 +1056,17 @@ class ChairmanCommandDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.diocese.name)
-        self.assertNotContains(response, self.other_diocese.name)
-        self.assertEqual(list(response.context["audit_events"]), [own_event])
+        self.assertEqual(
+            {event.pk for event in response.context["audit_events"]},
+            {own_event.pk, other_event.pk},
+        )
 
     def test_overview_recent_audit_activity_is_scoped(self):
         own_event = self._create_audit_event(
             self.diocese, self.deanery, self.parish
         )
-        self._create_audit_event(
-            self.other_diocese, self.other_deanery, self.other_parish
+        other_event = self._create_audit_event(
+            self.diocese, self.other_deanery, self.other_parish
         )
         self.client.force_login(self.chairman)
 
@@ -1054,9 +1074,9 @@ class ChairmanCommandDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            list(response.context["recent_audit_activity"]), [own_event]
+            {event.pk for event in response.context["recent_audit_activity"]},
+            {own_event.pk, other_event.pk},
         )
-        self.assertNotContains(response, self.other_diocese.name)
 
     def test_inbox_is_limited_to_recipient_and_authorized_diocese(self):
         own = InAppNotification.objects.create(
@@ -1067,12 +1087,12 @@ class ChairmanCommandDashboardTests(TestCase):
             diocese=self.diocese,
             deanery=self.deanery,
         )
-        InAppNotification.objects.create(
+        other_deanery = InAppNotification.objects.create(
             recipient=self.chairman,
             notification_type=InAppNotification.Type.REVIEW_REQUIRED,
-            title="Outside Diocese notification",
-            message="Must remain hidden.",
-            diocese=self.other_diocese,
+            title="Other Deanery notification",
+            message="Must remain visible within Nsukka Diocese.",
+            diocese=self.diocese,
             deanery=self.other_deanery,
         )
         InAppNotification.objects.create(
@@ -1089,10 +1109,13 @@ class ChairmanCommandDashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, own.title)
-        self.assertNotContains(response, "Outside Diocese notification")
+        self.assertContains(response, "Other Deanery notification")
         self.assertNotContains(response, "Another recipient notification")
-        self.assertEqual(response.context["unread_notification_count"], 1)
-        self.assertEqual(list(response.context["notifications"]), [own])
+        self.assertEqual(response.context["unread_notification_count"], 2)
+        self.assertEqual(
+            {notification.pk for notification in response.context["notifications"]},
+            {own.pk, other_deanery.pk},
+        )
 
     def test_chairman_can_mark_only_own_notification_read(self):
         own = InAppNotification.objects.create(
@@ -1111,12 +1134,12 @@ class ChairmanCommandDashboardTests(TestCase):
             diocese=self.diocese,
             deanery=self.deanery,
         )
-        outside_scope = InAppNotification.objects.create(
+        other_deanery_notification = InAppNotification.objects.create(
             recipient=self.chairman,
             notification_type=InAppNotification.Type.REVIEW_REQUIRED,
-            title="Outside notification",
-            message="Outside authorized scope.",
-            diocese=self.other_diocese,
+            title="Other deanery notification",
+            message="Still within the authorized Diocese.",
+            diocese=self.diocese,
             deanery=self.other_deanery,
         )
         self.client.force_login(self.chairman)
@@ -1132,17 +1155,26 @@ class ChairmanCommandDashboardTests(TestCase):
         own.refresh_from_db()
         self.assertIsNotNone(own.read_at)
 
-        for notification in (other_recipient, outside_scope):
-            with self.subTest(notification=notification.title):
-                response = self.client.post(
-                    reverse(
-                        "chairman:notification-read",
-                        args=[notification.pk],
-                    )
-                )
-                self.assertEqual(response.status_code, 404)
-                notification.refresh_from_db()
-                self.assertIsNone(notification.read_at)
+        response = self.client.post(
+            reverse(
+                "chairman:notification-read",
+                args=[other_deanery_notification.pk],
+            )
+        )
+        self.assertRedirects(
+            response,
+            reverse("chairman:notifications"),
+            fetch_redirect_response=False,
+        )
+        other_deanery_notification.refresh_from_db()
+        self.assertIsNotNone(other_deanery_notification.read_at)
+
+        response = self.client.post(
+            reverse("chairman:notification-read", args=[other_recipient.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+        other_recipient.refresh_from_db()
+        self.assertIsNone(other_recipient.read_at)
 
     def test_mark_notification_read_requires_post(self):
         notification = InAppNotification.objects.create(

@@ -13,10 +13,7 @@ from apps.verification.models import MembershipApplication
 class NotificationModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        diocese = Diocese.objects.create(
-            name="Notification Test Diocese",
-            code="N01",
-        )
+        diocese = Diocese.objects.get(code="036")
         deanery = Deanery.objects.create(
             diocese=diocese,
             name="Notification Test Deanery",

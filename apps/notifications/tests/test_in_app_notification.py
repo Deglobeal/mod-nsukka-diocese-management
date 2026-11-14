@@ -23,10 +23,7 @@ class InAppNotificationTests(TestCase):
             password="test-password",
         )
 
-        cls.diocese = Diocese.objects.create(
-            name="Inbox Test Diocese",
-            code="I01",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Inbox Test Deanery",
@@ -37,12 +34,8 @@ class InAppNotificationTests(TestCase):
             name="Inbox Test Parish",
         )
 
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Inbox Diocese",
-            code="I02",
-        )
         cls.other_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Other Inbox Deanery",
             code="INB002",
         )
@@ -128,13 +121,6 @@ class InAppNotificationTests(TestCase):
         self.assertIsNone(notification.deanery)
         self.assertIsNone(notification.parish)
 
-    def test_rejects_deanery_from_another_diocese(self):
-        with self.assertRaises(ValidationError):
-            self.create_notification(
-                deanery=self.other_deanery,
-                parish=None,
-            )
-
     def test_rejects_parish_without_matching_deanery(self):
         with self.assertRaises(ValidationError):
             self.create_notification(
@@ -169,8 +155,7 @@ class InAppNotificationTests(TestCase):
         with self.assertRaises(ValidationError):
             self.create_notification(
                 source_audit_event=event,
-                diocese=self.other_diocese,
-                deanery=None,
+                deanery=self.other_deanery,
                 parish=None,
             )
 

@@ -10,10 +10,7 @@ from apps.verification.models import MembershipApplication, MembershipReview
 class MembershipSubmissionAPITests(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Submission Test Deanery",

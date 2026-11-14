@@ -15,14 +15,7 @@ class MembershipReviewQueueSelectorTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
 
         cls.deanery_a = Deanery.objects.create(
             diocese=cls.diocese,
@@ -35,7 +28,7 @@ class MembershipReviewQueueSelectorTests(TestCase):
             code="T15D390BC",
         )
         cls.other_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Other Deanery",
             code="T2D1B022D",
         )
@@ -175,10 +168,13 @@ class MembershipReviewQueueSelectorTests(TestCase):
             {self.deanery_application.pk},
         )
 
-    def test_diocese_admin_sees_only_diocese_stage_in_own_diocese(self):
+    def test_diocese_admin_sees_diocese_stage_across_all_deaneries(self):
         self.assertEqual(
             self.application_ids(self.diocese_admin),
-            {self.diocese_application.pk},
+            {
+                self.diocese_application.pk,
+                self.other_diocese_application.pk,
+            },
         )
 
     def test_inactive_assignment_receives_no_applications(self):

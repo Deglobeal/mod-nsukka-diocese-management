@@ -17,10 +17,7 @@ from apps.verification.models import MembershipApplication
 class SponsorResponseViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        diocese = Diocese.objects.create(
-            name="Response Test Diocese",
-            code="RT1",
-        )
+        diocese = Diocese.objects.get(code="036")
         deanery = Deanery.objects.create(
             diocese=diocese,
             name="Response Test Deanery",

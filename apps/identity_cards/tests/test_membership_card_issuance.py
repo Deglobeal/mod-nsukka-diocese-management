@@ -19,14 +19,7 @@ class MembershipCardIssuanceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         User = get_user_model()
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="999",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             name="Test Deanery",
             diocese=cls.diocese,
@@ -36,22 +29,13 @@ class MembershipCardIssuanceTests(TestCase):
             name="Test Parish",
             deanery=cls.deanery,
         )
-        cls.other_deanery = Deanery.objects.create(
-            name="Other Deanery",
-            diocese=cls.other_diocese,
-            code="T2D1B022D",
-        )
-        cls.other_parish = Parish.objects.create(
-            name="Other Parish",
-            deanery=cls.other_deanery,
-        )
 
         cls.diocese_admin = User.objects.create_user(
             username="diocese-admin",
             password="test-password",
         )
-        cls.wrong_diocese_admin = User.objects.create_user(
-            username="wrong-diocese-admin",
+        cls.unassigned_user = User.objects.create_user(
+            username="unassigned-user",
             password="test-password",
         )
         cls.parish_admin = User.objects.create_user(
@@ -63,11 +47,6 @@ class MembershipCardIssuanceTests(TestCase):
             user=cls.diocese_admin,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
-        )
-        OfficeAssignment.objects.create(
-            user=cls.wrong_diocese_admin,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            diocese=cls.other_diocese,
         )
         OfficeAssignment.objects.create(
             user=cls.parish_admin,
@@ -156,12 +135,12 @@ class MembershipCardIssuanceTests(TestCase):
 
         self.assertFalse(MembershipCard.objects.exists())
 
-    def test_admin_from_another_diocese_cannot_issue_identifiers(self):
+    def test_unassigned_user_cannot_issue_identifiers(self):
         member = self.create_member()
         self.approve_member(member)
 
         with self.assertRaises(PermissionDenied):
-            self.issue(member, issuer=self.wrong_diocese_admin)
+            self.issue(member, issuer=self.unassigned_user)
 
         self.assertFalse(MembershipCard.objects.exists())
 

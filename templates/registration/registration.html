@@ -40,7 +40,10 @@
             login account or mean your membership has been approved.
         </p>
 
-        <form method="post" enctype="multipart/form-data" novalidate>
+        <form method="post"
+              enctype="multipart/form-data"
+              novalidate
+              data-lga-data-url="{% static 'data/nigeria-lgas.json' %}">
             {% csrf_token %}
             {% if form.non_field_errors %}
                 <div class="registration-error" role="alert">
@@ -158,11 +161,28 @@
                 <h3 class="registration-section-title">Sponsor / Referee Verification</h3>
                 <p>The system will look up the sponsor's official name and registered phone number. Those details cannot be edited by the applicant.</p>
                 <div class="registration-grid">
-                    {% include "registration/partials/registration_field.html" with field=form.sponsor_membership_id %}
+                    <div class="registration-field registration-sponsor-field">
+                        {% include "registration/partials/registration_field.html" with field=form.sponsor_membership_id %}
+                        <button
+                            class="registration-button registration-sponsor-verify"
+                            id="sponsor-verify-button"
+                            type="button"
+                            data-lookup-url="{% url 'members:sponsor_verify' %}"
+                        >
+                            Verify sponsor
+                        </button>
+                        <p
+                            class="registration-sponsor-result"
+                            id="sponsor-verify-result"
+                            role="status"
+                            aria-live="polite"
+                            aria-atomic="true"
+                        ></p>
+                    </div>
                     {% include "registration/partials/registration_field.html" with field=form.sponsor_additional_phone %}
                     {% include "registration/partials/registration_field.html" with field=form.sponsor_rank %}
                 </div>
-                <p class="registration-notice">The ID match confirms identity only; it does not prove that the sponsor authorized the sponsorship. Sponsor lookup is not connected yet. Preview status after submission: pending sponsor response for up to 48 hours (2 days).</p>
+                <p class="registration-notice">A successful match confirms the sponsor's identity and saved phone number, but does not confirm sponsorship authorization. A separate authorization request is sent after you submit your application.</p>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-c">
@@ -417,5 +437,5 @@
 <script src="{% static 'js/registration/passport-camera.js' %}"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
-<script src="{% static 'js/registration/registration-form.js' %}"></script>
+<script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>
 {% endblock %}

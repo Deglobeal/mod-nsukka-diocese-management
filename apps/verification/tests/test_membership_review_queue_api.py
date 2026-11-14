@@ -15,14 +15,7 @@ class MembershipReviewQueueAPITests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Nsukka Diocese",
-            code="036",
-        )
-        cls.other_diocese = Diocese.objects.create(
-            name="Other Diocese",
-            code="037",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             diocese=cls.diocese,
             name="Test Deanery",
@@ -34,7 +27,7 @@ class MembershipReviewQueueAPITests(TestCase):
             code="T2D1B022D",
         )
         cls.other_diocese_deanery = Deanery.objects.create(
-            diocese=cls.other_diocese,
+            diocese=cls.diocese,
             name="Outside Deanery",
             code="T709FDB61",
         )
@@ -176,16 +169,22 @@ class MembershipReviewQueueAPITests(TestCase):
             self.deanery_application.pk,
         )
 
-    def test_diocese_admin_sees_only_applications_at_diocese_stage(self):
+    def test_diocese_admin_sees_all_applications_at_diocese_stage(self):
         self.client.force_authenticate(user=self.diocese_admin)
 
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["count"], 2)
         self.assertEqual(
-            response.data["results"][0]["application_id"],
-            self.diocese_application.pk,
+            {
+                item["application_id"]
+                for item in response.data["results"]
+            },
+            {
+                self.diocese_application.pk,
+                self.outside_application.pk,
+            },
         )
 
     def test_user_without_assignment_receives_empty_queue(self):

@@ -12,10 +12,7 @@ class MemberPortalLookupTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
 
-        cls.diocese = Diocese.objects.create(
-            name="Portal Test Diocese",
-            code="PTD",
-        )
+        cls.diocese = Diocese.objects.get(code="036")
         cls.deanery = Deanery.objects.create(
             name="Portal Test Deanery",
             diocese=cls.diocese,
