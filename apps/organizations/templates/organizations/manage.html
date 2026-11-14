@@ -146,7 +146,11 @@
               {% endif %}
 
               {% if deanery_form %}
-                <details class="organization-form-section" {% if submitted_type == "deanery" %}open{% endif %}>
+                <details
+                    id="deanery-form"
+                    class="organization-form-section"
+                    {% if submitted_type == "deanery" or requested_type == "deanery" %}open{% endif %}
+                >
                     <summary>Create a deanery</summary>
                     <form method="post" class="organization-form">
                         {% csrf_token %}
@@ -164,7 +168,11 @@
             {% endif %}
 
             {% if parish_form %}
-                <details class="organization-form-section" {% if submitted_type == "parish" %}open{% endif %}>
+              <details
+                  id="parish-form"
+                  class="organization-form-section"
+                  {% if submitted_type == "parish" or requested_type == "parish" %}open{% endif %}
+              >
                     <summary>Create a parish</summary>
                     <form method="post" class="organization-form">
                         {% csrf_token %}
@@ -182,7 +190,11 @@
             {% endif %}
 
             {% if station_form %}
-                <details class="organization-form-section" {% if submitted_type == "station" %}open{% endif %}>
+              <details
+                  id="station-form"
+                  class="organization-form-section"
+                  {% if submitted_type == "station" or requested_type == "station" %}open{% endif %}
+              >
                     <summary>Create a station</summary>
                     <form method="post" class="organization-form">
                         {% csrf_token %}

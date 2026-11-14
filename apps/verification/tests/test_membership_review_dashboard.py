@@ -4,10 +4,11 @@ import tempfile
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from django.urls import reverse
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipIdentity
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication, MembershipReview
@@ -586,3 +587,146 @@ class MembershipReviewDashboardTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+    def test_diocese_dashboard_links_directly_to_organization_creation_forms(self):
+        self.client.force_login(self.diocese_admin)
+        dashboard = self.client.get(
+            reverse("membership_review_dashboard:diocese")
+        )
+
+        self.assertEqual(dashboard.status_code, 200)
+        for organization_type, label in (
+            ("deanery", "Create Deanery"),
+            ("parish", "Create Parish"),
+            ("station", "Create Station"),
+        ):
+            with self.subTest(organization_type=organization_type):
+                target = (
+                    f'{reverse("organizations:manage")}?create='
+                    f'{organization_type}#{organization_type}-form'
+                )
+                self.assertContains(dashboard, label)
+                self.assertContains(dashboard, target)
+
+                form_page = self.client.get(
+                    reverse("organizations:manage"),
+                    {"create": organization_type},
+                )
+                self.assertEqual(form_page.status_code, 200)
+                self.assertContains(
+                    form_page,
+                    f'id="{organization_type}-form"',
+                )
+                self.assertContains(
+                    form_page,
+                    f'id="{organization_type}-form"',
+                )
+                self.assertRegex(
+                    form_page.content.decode(),
+                    rf'<details\s+id="{organization_type}-form"\s+'
+                    rf'class="organization-form-section"\s+open\s*>',
+                )
+
+    def test_diocese_dashboard_overview_counts_scoped_members_and_records(self):
+        from datetime import timedelta
+
+        now = timezone.now()
+
+        self.member.status = Member.Status.ACTIVE
+        self.member.save(update_fields=["status"])
+
+        older_approved = MembershipApplication.objects.create(
+            member=self.member,
+            parish=self.parish,
+            category=MembershipApplication.Category.PATRON,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now - timedelta(days=2),
+        )
+        latest_approved = MembershipApplication.objects.create(
+            member=self.member,
+            parish=self.parish,
+            category=MembershipApplication.Category.REGULAR_MEMBER,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now - timedelta(days=1),
+        )
+
+        chaplain = Member.objects.create(
+            first_name="Chinwe",
+            last_name="Okoro",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=chaplain,
+            parish=self.parish,
+            category=MembershipApplication.Category.CHAPLAIN,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now,
+        )
+
+        card_holder = Member.objects.create(
+            first_name="Emeka",
+            last_name="Nwosu",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=card_holder,
+            parish=self.parish,
+            category=MembershipApplication.Category.PATRON,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now,
+        )
+        MembershipCard.objects.create(
+            member=card_holder,
+            official_membership_id="MOD036/002/043/000099",
+            uniform_id="A9999999",
+            issued_by=self.diocese_admin,
+        )
+
+        awaiting_final_decision = Member.objects.create(
+            first_name="Ifeoma",
+            last_name="Eze",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=awaiting_final_decision,
+            parish=self.parish,
+            category=MembershipApplication.Category.REGULAR_MEMBER,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+
+        MembershipIdentity.objects.create(
+            member=self.member,
+            official_membership_id="MOD036/002/043/000001",
+            uniform_id="A2345678",
+        )
+
+        self.client.force_login(self.diocese_admin)
+        response = self.client.get(
+            reverse("membership_review_dashboard:diocese")
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        overview = response.context["dashboard_overview"]
+        self.assertEqual(overview["total_active_members"], 4)
+        self.assertEqual(overview["active_deaneries"], 1)
+        self.assertEqual(overview["active_parishes"], 1)
+        self.assertEqual(overview["identity_record_count"], 1)
+        self.assertEqual(overview["issued_card_count"], 1)
+        self.assertEqual(overview["eligible_card_count"], 2)
+
+        category_totals = {
+            item["key"]: item["count"]
+            for item in overview["membership_categories"]
+        }
+        self.assertEqual(
+            category_totals,
+            {
+                MembershipApplication.Category.REGULAR_MEMBER: 1,
+                MembershipApplication.Category.PATRON: 1,
+                MembershipApplication.Category.CHAPLAIN: 1,
+            },
+        )

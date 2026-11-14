@@ -1,12 +1,18 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import OuterRef, Q, Subquery
+from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from apps.accounts.models import OfficeAssignment
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.identity_cards.selectors.membership_card_dashboard import (
+    eligible_members_for_card_issuance,
+)
+from apps.members.models import Member
+from apps.organizations.models import Deanery, Diocese, Parish
 from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
@@ -47,6 +53,90 @@ def _assignment_scope_label(assignment, level):
     if level == "deanery":
         return assignment.deanery.name
     return assignment.diocese.name
+
+
+def _diocese_dashboard_overview(assignments):
+    diocese_ids = {
+        assignment.diocese_id
+        for assignment in assignments
+        if assignment.diocese_id
+    }
+
+    active_members = Member.objects.filter(
+        status=Member.Status.ACTIVE,
+        parish__deanery__diocese_id__in=diocese_ids,
+    )
+
+    latest_approved_category = (
+        MembershipApplication.objects
+        .filter(
+            member_id=OuterRef("pk"),
+            stage=MembershipApplication.Stage.APPROVED,
+        )
+        .order_by("-final_decision_at", "-submitted_at", "-pk")
+        .values("category")[:1]
+    )
+
+    categorized_members = active_members.annotate(
+        approved_category=Subquery(latest_approved_category)
+    )
+
+    category_totals = {
+        row["approved_category"]: row["total"]
+        for row in (
+            categorized_members
+            .values("approved_category")
+            .annotate(total=Count("pk"))
+        )
+    }
+
+    dioceses = Diocese.objects.filter(pk__in=diocese_ids)
+
+    return {
+        "total_active_members": active_members.count(),
+        "active_deaneries": Deanery.objects.filter(
+            diocese_id__in=diocese_ids,
+            is_active=True,
+        ).count(),
+        "active_parishes": Parish.objects.filter(
+            deanery__diocese_id__in=diocese_ids,
+            is_active=True,
+        ).count(),
+        "membership_categories": [
+            {
+                "key": MembershipApplication.Category.REGULAR_MEMBER,
+                "label": "Regular Member",
+                "count": category_totals.get(
+                    MembershipApplication.Category.REGULAR_MEMBER, 0
+                ),
+            },
+            {
+                "key": MembershipApplication.Category.PATRON,
+                "label": "Patron",
+                "count": category_totals.get(
+                    MembershipApplication.Category.PATRON, 0
+                ),
+            },
+            {
+                "key": MembershipApplication.Category.CHAPLAIN,
+                "label": "Chaplain",
+                "count": category_totals.get(
+                    MembershipApplication.Category.CHAPLAIN, 0
+                ),
+            },
+        ],
+        "identity_record_count": MembershipIdentity.objects.filter(
+            member__parish__deanery__diocese_id__in=diocese_ids
+        ).count(),
+        "issued_card_count": MembershipCard.objects.filter(
+            member__parish__deanery__diocese_id__in=diocese_ids
+        ).count(),
+        "eligible_card_count": sum(
+            eligible_members_for_card_issuance(diocese=diocese).count()
+            for diocese in dioceses
+        ),
+        "has_single_diocese_assignment": len(diocese_ids) == 1,
+    }
 
 
 @login_required
@@ -194,6 +284,12 @@ def membership_review_dashboard(request, dashboard_level):
                 ),
             })
 
+    dashboard_overview = (
+        _diocese_dashboard_overview(assignments)
+        if dashboard_level == "diocese"
+        else {}
+    )
+
     return render(
         request,
         f"verification/dashboards/{dashboard_level}.html",
@@ -206,6 +302,7 @@ def membership_review_dashboard(request, dashboard_level):
             "pending_count": applications.count(),
             "decision_choices": MembershipReview.Decision.choices,
             "parish_decision_groups": parish_decision_groups,
+            "dashboard_overview": dashboard_overview,
         },
     )
 

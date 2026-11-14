@@ -2294,3 +2294,633 @@
         padding: 0 var(--space-3) var(--space-3);
     }
 }
+
+/* =========================================================
+   DIOCESE CHAIRMAN DASHBOARD
+   Mobile-first command layout
+   ========================================================= */
+
+.diocese-dashboard {
+    width: min(100% - (var(--page-gutter) * 2), var(--content-width-wide));
+    margin-inline: auto;
+    padding-block: var(--space-4) var(--space-10);
+    color: var(--color-page-text);
+}
+
+.diocese-hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    gap: var(--space-6);
+    padding: var(--space-5);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-hero-background);
+    color: var(--color-hero-text);
+    box-shadow: var(--shadow-lg);
+}
+
+.diocese-hero__top,
+.diocese-hero__identity,
+.diocese-hero__actions,
+.diocese-hero__scope-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.diocese-hero__top {
+    justify-content: space-between;
+}
+
+.diocese-hero__identity {
+    min-width: 0;
+}
+
+.diocese-hero__mark {
+    display: grid;
+    width: var(--space-12);
+    aspect-ratio: 1;
+    place-items: center;
+    border: var(--border-width-medium) solid var(--color-hero-ring);
+    border-radius: var(--radius-lg);
+    background: var(--color-hero-card-background);
+    color: var(--color-gold-300);
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+}
+
+.diocese-hero__eyebrow,
+.diocese-hero__organization,
+.diocese-hero__overline,
+.diocese-hero__scope-label {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--letter-spacing-label);
+}
+
+.diocese-hero__eyebrow {
+    color: var(--color-hero-text-65);
+}
+
+.diocese-hero__organization {
+    margin-top: var(--space-1);
+    color: var(--color-hero-text);
+}
+
+.diocese-hero__logout button {
+    min-height: var(--space-10);
+    padding: var(--space-2) var(--space-4);
+    border: var(--border-width-thin) solid var(--color-hero-button-border);
+    border-radius: var(--radius-control);
+    background: var(--color-hero-card-background);
+    color: var(--color-hero-text);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+}
+
+.diocese-hero__content {
+    max-width: var(--content-width-narrow);
+}
+
+.diocese-hero__overline {
+    margin-bottom: var(--space-2);
+    color: var(--color-gold-300);
+}
+
+.diocese-hero h1 {
+    margin: 0;
+    color: var(--color-hero-text);
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-h1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+.diocese-hero__description {
+    max-width: var(--content-width-narrow);
+    margin: var(--space-3) 0 0;
+    color: var(--color-hero-text-78);
+    line-height: var(--line-height-relaxed);
+}
+
+.diocese-hero__scope {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: var(--border-width-thin) solid var(--color-hero-decoration-border);
+    border-radius: var(--radius-card);
+    background: var(--color-hero-card-background);
+}
+
+.diocese-hero__scope-label {
+    color: var(--color-gold-300);
+}
+
+.diocese-hero__scope-list span {
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-width-thin) solid var(--color-hero-card-border);
+    border-radius: var(--radius-pill);
+    color: var(--color-hero-text);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+}
+
+.diocese-hero__actions {
+    align-items: stretch;
+}
+
+.diocese-button {
+    display: inline-flex;
+    min-height: var(--space-12);
+    flex: 1 1 100%;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-4);
+    border: var(--border-width-thin) solid transparent;
+    border-radius: var(--radius-control);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-base);
+    text-align: center;
+    text-decoration: none;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.diocese-button--gold {
+    background: var(--color-gold-300);
+    color: var(--color-brand-950);
+}
+
+.diocese-button--outline {
+    border-color: var(--color-hero-button-border);
+    background: var(--color-hero-card-background);
+    color: var(--color-hero-text);
+}
+
+.diocese-button:hover {
+    text-decoration: none;
+}
+
+.diocese-button--gold:hover {
+    background: var(--color-gold-500);
+    color: var(--color-brand-950);
+}
+
+.diocese-button--outline:hover {
+    background: var(--color-hero-card-background-hover);
+}
+
+.diocese-messages {
+    margin-top: var(--space-4);
+}
+
+.diocese-messages .review-message {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-card);
+}
+
+.diocese-section {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+}
+
+.diocese-section__heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.diocese-section__eyebrow {
+    margin: 0 0 var(--space-1);
+    color: var(--color-accent-text);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--letter-spacing-label);
+}
+
+.diocese-section__heading h2 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-h2);
+    line-height: var(--line-height-tight);
+}
+
+.diocese-section__caption {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.diocese-section__description {
+    max-width: var(--content-width-narrow);
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+
+.diocese-metrics,
+.diocese-categories,
+.diocese-records {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+}
+
+.diocese-metric,
+.diocese-category,
+.diocese-record {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: var(--space-2);
+    padding: var(--card-padding);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.diocese-metric--featured {
+    border-color: var(--color-primary);
+    background: var(--color-surface-brand);
+    color: var(--color-on-primary);
+}
+
+.diocese-metric--attention {
+    border-color: var(--color-gold-500);
+    background: var(--color-surface-accent);
+}
+
+.diocese-metric__label,
+.diocese-category__label,
+.diocese-record__label {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-base);
+}
+
+.diocese-metric--featured .diocese-metric__label,
+.diocese-metric--featured .diocese-metric__note {
+    color: var(--color-on-primary);
+}
+
+.diocese-metric__value,
+.diocese-category__count,
+.diocese-record strong {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    font-variant-numeric: tabular-nums;
+}
+
+.diocese-metric--featured .diocese-metric__value {
+    color: var(--color-gold-300);
+}
+
+.diocese-metric__note,
+.diocese-category__note,
+.diocese-record__note {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-base);
+}
+
+.diocese-category {
+    border-top: var(--border-width-medium) solid var(--color-gold-500);
+}
+
+.diocese-category__count {
+    color: var(--color-primary);
+}
+
+.diocese-record a {
+    width: fit-content;
+    color: var(--color-link);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+}
+
+.diocese-record a:hover {
+    color: var(--color-link-hover);
+    text-decoration: underline;
+}
+
+.diocese-record--eligible {
+    background: var(--color-surface-accent);
+}
+
+.diocese-review-section {
+    padding: var(--card-padding);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+}
+
+.diocese-review-count {
+    display: inline-flex;
+    min-height: var(--space-8);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-width-thin) solid var(--color-gold-500);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-accent);
+    color: var(--color-accent-text);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+}
+
+.diocese-review-list {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.diocese-application {
+    min-width: 0;
+    margin: 0;
+    padding: var(--card-padding);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-raised);
+}
+
+.diocese-application__identity {
+    min-width: 0;
+}
+
+.diocese-application__reference {
+    display: inline-block;
+    margin-bottom: var(--space-2);
+    color: var(--color-accent-text);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.diocese-application .review-application__header h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-lg);
+    overflow-wrap: anywhere;
+}
+
+.diocese-application .review-application__view-link {
+    display: inline-flex;
+    min-height: var(--space-10);
+    align-items: center;
+    margin-top: var(--space-2);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.diocese-application .review-stage {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+}
+
+.diocese-application .review-application__details {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.diocese-application .review-application__details > div {
+    min-width: 0;
+    padding: var(--space-3);
+    border: var(--border-width-thin) solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-surface-muted);
+}
+
+.diocese-application .review-application__details dt {
+    margin-bottom: var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.diocese-application .review-application__details dd {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    overflow-wrap: anywhere;
+}
+
+.diocese-review-form {
+    display: grid;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: var(--border-width-thin) solid var(--color-border);
+}
+
+.diocese-review-form .review-form__field {
+    display: grid;
+    gap: var(--space-2);
+}
+
+.diocese-review-form label {
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.diocese-review-form select,
+.diocese-review-form textarea {
+    width: 100%;
+    min-height: var(--space-12);
+    padding: var(--space-3);
+    border: var(--border-width-thin) solid var(--color-input-border);
+    border-radius: var(--radius-control);
+    background: var(--color-input-background);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.diocese-review-form textarea {
+    min-height: var(--space-20);
+    resize: vertical;
+}
+
+.diocese-review-form button {
+    width: 100%;
+    min-height: var(--space-12);
+    padding: var(--space-3) var(--space-4);
+    border: var(--border-width-thin) solid var(--color-primary);
+    border-radius: var(--radius-control);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+}
+
+.diocese-review-form button:hover {
+    background: var(--color-primary-hover);
+}
+
+.diocese-review-empty {
+    padding: var(--space-8) var(--space-4);
+    border: var(--border-width-thin) dashed var(--color-border-strong);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-muted);
+    text-align: center;
+}
+
+.diocese-review-empty__mark {
+    display: grid;
+    width: var(--space-12);
+    aspect-ratio: 1;
+    place-items: center;
+    margin-inline: auto;
+    border-radius: var(--radius-pill);
+    background: var(--color-success-background);
+    color: var(--color-success-text);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.diocese-review-empty h3 {
+    margin: var(--space-3) 0 var(--space-2);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-lg);
+}
+
+.diocese-review-empty p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+
+.diocese-footer {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-8);
+    padding-top: var(--space-4);
+    border-top: var(--border-width-thin) solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.diocese-footer a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.diocese-footer a:hover {
+    text-decoration: underline;
+}
+
+.diocese-dashboard :is(a, button, select, textarea):focus-visible {
+    outline: var(--border-width-medium) solid var(--color-focus-ring);
+    outline-offset: var(--space-1);
+}
+
+/* Tablet */
+@media (min-width: 600px) {
+    .diocese-hero {
+        padding: var(--space-8);
+    }
+
+    .diocese-hero__actions {
+        align-items: center;
+    }
+
+    .diocese-button {
+        flex: 0 1 auto;
+    }
+
+    .diocese-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .diocese-categories {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .diocese-records {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .diocese-application .review-application__details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .diocese-review-form button {
+        width: fit-content;
+        max-width: 100%;
+    }
+}
+
+/* Desktop */
+@media (min-width: 900px) {
+    .diocese-dashboard {
+        padding-top: var(--space-8);
+    }
+
+    .diocese-hero {
+        gap: var(--space-8);
+        padding: var(--space-10);
+    }
+
+    .diocese-hero__content {
+        padding-block: var(--space-3);
+    }
+
+    .diocese-metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .diocese-records {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .diocese-review-section {
+        padding: var(--space-8);
+    }
+
+    .diocese-application .review-application__details {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .diocese-review-form {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        align-items: end;
+    }
+
+    .diocese-review-form button {
+        grid-column: 1 / -1;
+        width: fit-content;
+        max-width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .diocese-button {
+        transition: none;
+    }
+}

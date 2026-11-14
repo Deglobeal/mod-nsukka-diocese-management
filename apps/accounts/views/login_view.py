@@ -9,6 +9,12 @@ from apps.accounts.models import OfficeAssignment
 class RoleAwareLoginView(auth_views.LoginView):
     """Redirect authenticated users according to active office assignments."""
 
+    def get_success_url(self):
+        redirect_url = self.get_redirect_url()
+        if redirect_url:
+            return redirect_url
+        return self.get_default_redirect_url()
+
     def get_default_redirect_url(self):
         active_roles = set(
             OfficeAssignment.objects.filter(
