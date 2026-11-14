@@ -16,6 +16,9 @@ class RoleAwareLoginView(auth_views.LoginView):
         return self.get_default_redirect_url()
 
     def get_default_redirect_url(self):
+        if self.request.user.is_superuser:
+            return reverse("admin:index")
+
         active_roles = set(
             OfficeAssignment.objects.filter(
                 user=self.request.user,
