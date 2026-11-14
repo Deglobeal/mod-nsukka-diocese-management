@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from apps.accounts.models import OfficeAssignment
 from apps.audit.models import AuditEvent
-from apps.identity_cards.models import MembershipIdentity
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.members.forms.registration_form import MembershipRegistrationForm
 from apps.members.models import Member
 from apps.notifications.models import InAppNotification
@@ -1207,3 +1207,94 @@ class ChairmanCommandDashboardTests(TestCase):
                     self.client.force_login(user)
                     response = self.client.get(reverse(route))
                     self.assertEqual(response.status_code, 403)
+
+    def test_dashboard_overview_counts_scoped_members_and_records(self):
+        now = timezone.now()
+
+        # The existing self.member is active and already has an identity.
+        MembershipApplication.objects.create(
+            member=self.member,
+            parish=self.parish,
+            category=MembershipApplication.Category.PATRON,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now - timedelta(days=2),
+        )
+        MembershipApplication.objects.create(
+            member=self.member,
+            parish=self.parish,
+            category=MembershipApplication.Category.REGULAR_MEMBER,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now - timedelta(days=1),
+        )
+
+        chaplain = Member.objects.create(
+            first_name="Chinwe",
+            last_name="Okoro",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=chaplain,
+            parish=self.parish,
+            category=MembershipApplication.Category.CHAPLAIN,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now,
+        )
+
+        card_holder = Member.objects.create(
+            first_name="Emeka",
+            last_name="Nwosu",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=card_holder,
+            parish=self.parish,
+            category=MembershipApplication.Category.PATRON,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=now,
+        )
+        MembershipCard.objects.create(
+            member=card_holder,
+            official_membership_id="MOD036/CTD001/CTP001/000099",
+            uniform_id="CTST0099",
+            issued_by=self.chairman,
+        )
+
+        awaiting_final_decision = Member.objects.create(
+            first_name="Ifeoma",
+            last_name="Eze",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=awaiting_final_decision,
+            parish=self.parish,
+            category=MembershipApplication.Category.REGULAR_MEMBER,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+
+        self.client.force_login(self.chairman)
+        response = self.client.get(reverse("chairman:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.context["active_member_count"], 4)
+        self.assertEqual(response.context["active_deanery_count"], 2)
+        self.assertEqual(response.context["active_parish_count"], 2)
+        self.assertEqual(response.context["identity_record_count"], 1)
+        self.assertEqual(response.context["issued_card_count"], 1)
+        self.assertEqual(response.context["eligible_card_count"], 2)
+
+        category_totals = {
+            item["key"]: item["count"]
+            for item in response.context["membership_categories"]
+        }
+        self.assertEqual(
+            category_totals,
+            {
+                MembershipApplication.Category.REGULAR_MEMBER: 1,
+                MembershipApplication.Category.PATRON: 1,
+                MembershipApplication.Category.CHAPLAIN: 1,
+            },
+        )
