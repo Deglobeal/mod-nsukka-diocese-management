@@ -36,6 +36,8 @@ from apps.chairman.selectors.command_dashboard import (
     get_station_directory,
 )
 from apps.verification.models import MembershipApplication, MembershipReview
+from apps.members.models import Rank
+from django.core.exceptions import ValidationError
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
 )
@@ -245,8 +247,34 @@ def command_dashboard(request):
             "applications": applications,
             "pending_count": applications.count(),
             "decision_choices": MembershipReview.Decision.choices,
+            "ranks": Rank.objects.all(),
         },
     )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def manage_ranks(request):
+    authorize_diocese_chairman(user=request.user)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create":
+            try:
+                rank = Rank(name=request.POST.get("name", ""))
+                rank.save()
+                messages.success(request, f"Rank ‘{rank.name}’ created.")
+            except ValidationError as exc:
+                messages.error(request, "; ".join(exc.messages))
+        elif action == "delete":
+            rank = get_object_or_404(Rank, pk=request.POST.get("rank_id"))
+            rank.delete()
+            messages.success(request, f"Rank ‘{rank.name}’ deleted.")
+        return redirect("chairman:manage-ranks")
+    return render(request, "chairman/ranks.html", {
+        "page_title": "Manage Ranks",
+        "active_section": "overview",
+        "ranks": Rank.objects.all(),
+    })
 
 
 @login_required

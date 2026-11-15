@@ -29,6 +29,10 @@
     </section>
 
     <div class="chairman-overview-grid">
+        <section class="chairman-panel" aria-labelledby="ranks-heading">
+            <header class="chairman-panel__heading"><div><p class="chairman-panel__eyebrow">MEMBERSHIP</p><h2 id="ranks-heading">Ranks</h2></div><a class="chairman-primary-button" href="{% url 'chairman:manage-ranks' %}">Manage ranks</a></header>
+            <ul class="chairman-status-list">{% for rank in ranks %}<li>{{ rank.name }}</li>{% empty %}<li>No ranks have been created.</li>{% endfor %}</ul>
+        </section>
         <section class="chairman-panel" aria-labelledby="membership-categories-heading">
             <header class="chairman-panel__heading">
                 <div>

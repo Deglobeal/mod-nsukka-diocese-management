@@ -6,6 +6,7 @@ from django import forms
 from django.conf import settings
 
 from apps.organizations.models import Deanery, Parish, Station
+from apps.members.models import Rank
 from apps.verification.models import MembershipApplication
 
 
@@ -280,12 +281,7 @@ class MembershipRegistrationForm(forms.ModelForm):
         )
         self.fields["sponsor_rank"] = forms.ChoiceField(
             label="Sponsor's rank",
-            choices=[
-                ("", "Select rank (optional)"),
-                ("Major", "Major"),
-                ("Major General", "Major General"),
-                ("Supreme General", "Supreme General"),
-            ],
+            choices=[("", "Select rank (optional)"), *[(rank.name, rank.name) for rank in Rank.objects.all()]],
             required=False,
         )
         self.fields["marital_status"] = forms.ChoiceField(
@@ -334,7 +330,7 @@ class MembershipRegistrationForm(forms.ModelForm):
             (value, category_labels.get(str(value).strip().lower(), label))
             for value, label in self.fields["category"].choices
         ]
-        rank_choices = [("", "Select rank"), ("Major", "Major"), ("Major General", "Major General"), ("Supreme General", "Supreme General")]
+        rank_choices = [("", "Select rank"), *[(rank.name, rank.name) for rank in Rank.objects.all()]]
         for rank_field in ("first_rank", "current_rank"):
             self.fields[rank_field] = forms.ChoiceField(
                 label="First rank" if rank_field == "first_rank" else "Current rank",
