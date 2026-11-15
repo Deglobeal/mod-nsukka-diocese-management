@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.urls import reverse
 from django.views import View
+from apps.members.models import Rank
 
 from frontend.cards.models.types import CardVariant
 from frontend.cards.pages.home.models import (
@@ -102,6 +103,7 @@ class HomeView(View):
             "principles": principles,
             "hierarchy": hierarchy,
             "membership_categories": membership_categories,
+            "ranks": Rank.objects.all(),
         }
 
         return render(request, self.template_name, context)

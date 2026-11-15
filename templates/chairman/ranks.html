@@ -1,0 +1,20 @@
+{% extends "chairman/layout.html" %}
+
+{% block content %}
+<section class="chairman-panel" aria-labelledby="ranks-heading">
+    <header class="chairman-panel__heading">
+        <div><p class="chairman-panel__eyebrow">MEMBERSHIP</p><h1 id="ranks-heading">Manage ranks</h1></div>
+    </header>
+    <form method="post" class="chairman-search">
+        {% csrf_token %}<input type="hidden" name="action" value="create">
+        <label for="rank-name">New rank</label>
+        <input id="rank-name" name="name" maxlength="100" required>
+        <button class="chairman-primary-button" type="submit">Create rank</button>
+    </form>
+    <ul class="chairman-status-list">
+        {% for rank in ranks %}
+        <li><span>{{ rank.name }}</span><form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="rank_id" value="{{ rank.pk }}"><button class="chairman-secondary-button" type="submit">Delete</button></form></li>
+        {% empty %}<li>No ranks have been created.</li>{% endfor %}
+    </ul>
+</section>
+{% endblock %}

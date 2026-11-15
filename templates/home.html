@@ -118,9 +118,7 @@
             <h3>Recognizing stages of service</h3>
         </div>
         <div class="home-rank-list">
-            <span>Major</span>
-            <span>Major General</span>
-            <span>Supreme General</span>
+            {% for rank in ranks %}<span>{{ rank.name }}</span>{% empty %}<span>No ranks have been added yet.</span>{% endfor %}
         </div>
         <p>Ranks are distinct from office assignments and leadership positions.</p>
     </div>
