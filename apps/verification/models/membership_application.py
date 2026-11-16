@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.verification.storage import private_evidence_storage
@@ -8,9 +9,25 @@ from apps.verification.validators import (
     validate_signature_image,
     validate_membership_evidence,
 )
+from apps.verification.contact_validation import (
+    contact_validation_errors,
+    normalize_contact_relationship,
+)
 
 
 class MembershipApplication(models.Model):
+    CONTACT_FIELDS = frozenset({
+        "next_of_kin_name",
+        "next_of_kin_phone",
+        "next_of_kin_relationship",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "emergency_contact_relationship",
+        "emergency_contact_2_name",
+        "emergency_contact_2_phone",
+        "emergency_contact_2_relationship",
+    })
+
     class Category(models.TextChoices):
         REGULAR_MEMBER = "regular_member", "Regular Member"
         PATRON = "patron", "Patron"
@@ -215,6 +232,30 @@ class MembershipApplication(models.Model):
         ordering = ["-submitted_at"]
         verbose_name = "Membership Application"
         verbose_name_plural = "Membership Applications"
+
+    def _validate_contact_details(self):
+        errors = contact_validation_errors(self.__dict__)
+        if errors:
+            raise ValidationError(errors)
+        for field_name in (
+            "next_of_kin_relationship",
+            "emergency_contact_relationship",
+            "emergency_contact_2_relationship",
+        ):
+            value = getattr(self, field_name)
+            normalized = normalize_contact_relationship(value)
+            if normalized is not None:
+                setattr(self, field_name, normalized)
+
+    def clean(self):
+        super().clean()
+        self._validate_contact_details()
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or self.CONTACT_FIELDS.intersection(update_fields):
+            self._validate_contact_details()
+        return super().save(*args, **kwargs)
 
     @property
     def applicant_name(self):
