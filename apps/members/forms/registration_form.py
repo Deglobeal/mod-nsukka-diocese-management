@@ -303,21 +303,21 @@ class MembershipRegistrationForm(forms.ModelForm):
 
         # Additional approved form fields. These new values are not persisted yet.
         relationship_choices = [
-            ("", "Select relationship"),
+            ("", "Select relationship (optional)"),
             *((value, value) for value in CONTACT_RELATIONSHIPS),
         ]
         self.fields["next_of_kin_relationship"] = forms.ChoiceField(
             label="Next of Kin — Relationship",
             choices=relationship_choices,
-            required=True,
+            required=False,
         )
         self.fields["emergency_contact_relationship"] = forms.ChoiceField(
             label="Emergency Contact 1 — Relationship",
             choices=relationship_choices,
             required=False,
         )
-        self.fields["emergency_contact_2_name"] = forms.CharField(label="Emergency Contact 2 — Full name", max_length=200, required=False)
-        self.fields["emergency_contact_2_phone"] = forms.CharField(label="Emergency Contact 2 — Phone number", max_length=30, required=False, widget=forms.TelInput())
+        self.fields["emergency_contact_2_name"] = forms.CharField(label="Emergency Contact 2 — Full name", max_length=200, required=True)
+        self.fields["emergency_contact_2_phone"] = forms.CharField(label="Emergency Contact 2 — Phone number", max_length=30, required=True, widget=forms.TelInput())
         self.fields["emergency_contact_2_relationship"] = forms.ChoiceField(
             label="Emergency Contact 2 — Relationship",
             choices=relationship_choices,
@@ -473,6 +473,8 @@ class MembershipRegistrationForm(forms.ModelForm):
             "next_of_kin_phone",
             "emergency_contact_name",
             "emergency_contact_phone",
+            "emergency_contact_2_name",
+            "emergency_contact_2_phone",
         ):
             self.fields[name].required = True
 
@@ -546,7 +548,6 @@ class MembershipRegistrationForm(forms.ModelForm):
 
         for field_name, messages in contact_validation_errors(
             contact_values,
-            require_next_of_kin=True,
             require_emergency_contact_1=True,
         ).items():
             if not self._errors.get(field_name):

@@ -86,10 +86,6 @@ def contact_validation_errors(
         for field, label in (
             (next_contact["name"], "Next of Kin name is required."),
             (next_contact["phone"], "Next of Kin phone number is required."),
-            (
-                next_contact["relationship"],
-                "Select the Next of Kin relationship.",
-            ),
         ):
             if not (values.get(field) or "").strip():
                 add_error(field, label)
