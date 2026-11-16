@@ -17,6 +17,13 @@ from apps.members.forms.registration_form import (
     MembershipRegistrationForm,
 )
 from apps.members.models import Member, MemberProfile, Rank
+from apps.members.services.first_member_registration import (
+    find_available_registration_id,
+    hash_registration_id,
+    issue_registration_id,
+    revoke_registration_id,
+)
+from apps.members.models import FirstMemberRegistrationToken
 from apps.notifications.models import SMSNotification, SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication
@@ -172,7 +179,18 @@ class MembershipRegistrationTests(TestCase):
             "medical_confidentiality_acknowledged": "on",
         }
         data.update(overrides)
+        verification = self.client.post(
+            reverse("members:sponsor_verify"),
+            {"sponsor_membership_id": data["sponsor_membership_id"]},
+        )
+        if verification.status_code == 200:
+            data["registration_id_confirmation"] = verification.json()["confirmation"]
         return data
+
+    def remove_fixture_sponsor(self):
+        MembershipIdentity.objects.filter(member=self.sponsor).delete()
+        MemberProfile.objects.filter(member=self.sponsor).delete()
+        Member.objects.filter(pk=self.sponsor.pk).delete()
 
     def test_registration_page_loads(self):
         response = self.client.get(reverse("members:register"))
@@ -183,7 +201,8 @@ class MembershipRegistrationTests(TestCase):
         self.assertContains(response, "Patron")
         self.assertContains(response, "Chaplain")
         self.assertContains(response, "Select your deanery")
-        self.assertContains(response, "Verify sponsor")
+        self.assertContains(response, "Verify ID")
+        self.assertNotContains(response, "First Member Registration ID")
         self.assertContains(
             response,
             reverse("members:sponsor_verify"),
@@ -250,13 +269,143 @@ class MembershipRegistrationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {
-                "name": "John Sponsor",
-                "registered_phone": "+234******5678",
-            },
+        self.assertEqual(response.json()["kind"], "ordinary_sponsor")
+        self.assertEqual(response.json()["name"], "John Sponsor")
+        self.assertEqual(response.json()["registered_phone"], "+234******5678")
+        self.assertTrue(response.json()["confirmation"])
+
+    def test_first_member_id_uses_same_verification_endpoint(self):
+        self.remove_fixture_sponsor()
+        token, raw_id = issue_registration_id(actor=get_user_model().objects.create_superuser(
+            username="first-member-admin", email="first-member-admin@example.com", password="pass"
+        ))
+        response = self.client.post(
+            reverse("members:sponsor_verify"),
+            {"sponsor_membership_id": raw_id},
         )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["kind"], "first_member_bootstrap")
+        self.assertIn("Diocese-issued first-member", response.json()["message"])
+        self.assertNotIn(raw_id, response.json()["confirmation"])
+        self.assertNotIn(token.token_hash, response.content.decode())
+
+    def test_expired_revoked_and_redeemed_bootstrap_ids_are_rejected_generically(self):
+        self.remove_fixture_sponsor()
+        admin = get_user_model().objects.create_superuser(
+            username="state-admin", email="state-admin@example.com", password="pass"
+        )
+        for state in ("expired", "revoked", "redeemed"):
+            with self.subTest(state=state):
+                token, raw_id = issue_registration_id(actor=admin)
+                if state == "expired":
+                    token.expires_at = timezone.now() - timedelta(minutes=1)
+                    token.save(update_fields=["expires_at"])
+                elif state == "revoked":
+                    token.status = FirstMemberRegistrationToken.Status.REVOKED
+                    token.revoked_at = timezone.now()
+                    token.revoked_by = admin
+                    token.save(update_fields=["status", "revoked_at", "revoked_by"])
+                else:
+                    application = MembershipApplication.objects.create(
+                        first_name="Pending", parish=self.parish
+                    )
+                    token.status = FirstMemberRegistrationToken.Status.REDEEMED
+                    token.redeemed_application = application
+                    token.redeemed_at = timezone.now()
+                    token.save(update_fields=["status", "redeemed_application", "redeemed_at"])
+                response = self.client.post(
+                    reverse("members:sponsor_verify"),
+                    {"sponsor_membership_id": raw_id},
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(
+                    response.json()["error"],
+                    "This ID is invalid, inactive, expired, revoked, or not authorized for registration. Please check the ID and try again.",
+                )
+
+    def test_registration_rejects_direct_post_without_signed_confirmation(self):
+        data = self.valid_data()
+        data.pop("registration_id_confirmation")
+        response = self.client.post(reverse("members:register"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "sponsor_membership_id",
+            "Verify the ID before submitting your registration.",
+        )
+        self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_registration_confirmation_is_bound_to_submitted_id(self):
+        data = self.valid_data()
+        data["sponsor_membership_id"] = "MOD-UNKNOWN-0001"
+        response = self.client.post(reverse("members:register"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "sponsor_membership_id",
+            "The verified ID changed. Verify the ID again before submitting.",
+        )
+        self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_bootstrap_registration_redeems_only_after_application_creation(self):
+        self.remove_fixture_sponsor()
+        admin = get_user_model().objects.create_superuser(
+            username="bootstrap-registration-admin",
+            email="bootstrap-registration-admin@example.com",
+            password="pass",
+        )
+        _token, raw_id = issue_registration_id(actor=admin)
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(sponsor_membership_id=raw_id),
+        )
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(email="ada@example.com")
+        token = FirstMemberRegistrationToken.objects.get(
+            token_hash=hash_registration_id(raw_id)
+        )
+        self.assertEqual(token.status, FirstMemberRegistrationToken.Status.REDEEMED)
+        self.assertEqual(token.redeemed_application_id, application.pk)
+        self.assertIsNone(token.redeemed_by_id)
+        self.assertEqual(application.sponsor_membership_id, "")
+        self.assertFalse(SponsorVerification.objects.filter(application=application).exists())
+
+    def test_bootstrap_id_remains_available_when_application_save_fails(self):
+        self.remove_fixture_sponsor()
+        admin = get_user_model().objects.create_superuser(
+            username="bootstrap-save-failure-admin",
+            email="bootstrap-save-failure-admin@example.com",
+            password="pass",
+        )
+        _token, raw_id = issue_registration_id(actor=admin)
+        data = self.valid_data(sponsor_membership_id=raw_id)
+        with patch(
+            "apps.members.views.registration_view.MembershipApplication.save",
+            side_effect=RuntimeError("simulated database failure"),
+        ):
+            response = self.client.post(reverse("members:register"), data)
+        self.assertEqual(response.status_code, 500)
+        self.assertIsNotNone(find_available_registration_id(raw_id))
+        self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_revoked_id_after_verification_is_rejected_at_submission(self):
+        self.remove_fixture_sponsor()
+        admin = get_user_model().objects.create_superuser(
+            username="bootstrap-revoke-admin",
+            email="bootstrap-revoke-admin@example.com",
+            password="pass",
+        )
+        token, raw_id = issue_registration_id(actor=admin)
+        data = self.valid_data(sponsor_membership_id=raw_id)
+        revoke_registration_id(token_id=token.pk, actor=admin, reason="Compromised")
+        response = self.client.post(reverse("members:register"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "sponsor_membership_id",
+            "This ID is invalid, inactive, expired, revoked, or not authorized for registration. Please verify it again.",
+        )
+        self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
 
     def test_sponsor_lookup_rejects_unknown_membership_id(self):
         response = self.client.post(
@@ -267,13 +416,21 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.json()["error"],
-            "No member matches the supplied official membership ID.",
+            "This ID is invalid, inactive, expired, revoked, or not authorized for registration. Please check the ID and try again.",
         )
 
     def test_sponsor_lookup_only_accepts_post(self):
         response = self.client.get(reverse("members:sponsor_verify"))
 
         self.assertEqual(response.status_code, 405)
+
+    def test_registration_id_verification_endpoint_requires_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        response = client.post(
+            reverse("members:sponsor_verify"),
+            {"sponsor_membership_id": "MOD-TEST-0001"},
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_registration_uses_active_organizations_within_nsukka_diocese(self):
         other_deanery = Deanery.objects.create(
@@ -412,7 +569,7 @@ class MembershipRegistrationTests(TestCase):
         self.assertFormError(
             response.context["form"],
             "sponsor_membership_id",
-            "No member matches the supplied official membership ID.",
+            "Verify the ID before submitting your registration.",
         )
         self.assertFalse(
             MembershipApplication.objects.filter(

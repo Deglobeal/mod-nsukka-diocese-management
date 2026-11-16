@@ -45,6 +45,7 @@
               novalidate
               data-lga-data-url="{% static 'data/nigeria-lgas.json' %}">
             {% csrf_token %}
+            {{ form.registration_id_confirmation }}
             {% if form.non_field_errors %}
                 <div class="registration-error" role="alert">
                     {{ form.non_field_errors }}
@@ -159,9 +160,8 @@
                     {% include "registration/partials/registration_field.html" with field=form.previous_diocese %}
                 </div>
                 <h3 class="registration-section-title">Sponsor / Referee Verification</h3>
-                <p>Ordinary applicants enter an active sponsor. The authorized first-member candidate may use the one-time ID supplied by the Diocese instead.</p>
+                <p>Enter the official M.O.D. Membership ID supplied by your active sponsor. An authorized first-member candidate should enter the one-time registration ID supplied by the Diocese.</p>
                 <div class="registration-grid">
-                    {% include "registration/partials/registration_field.html" with field=form.first_member_registration_id %}
                     <div class="registration-field registration-sponsor-field">
                         {% include "registration/partials/registration_field.html" with field=form.sponsor_membership_id %}
                         <button
@@ -170,7 +170,7 @@
                             type="button"
                             data-lookup-url="{% url 'members:sponsor_verify' %}"
                         >
-                            Verify sponsor
+                            Verify ID
                         </button>
                         <p
                             class="registration-sponsor-result"

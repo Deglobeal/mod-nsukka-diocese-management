@@ -362,11 +362,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const sponsorIdField = document.getElementById("id_sponsor_membership_id");
     const sponsorVerifyButton = document.getElementById("sponsor-verify-button");
     const sponsorVerifyResult = document.getElementById("sponsor-verify-result");
-    let verifiedSponsorId = "";
+    const confirmationField = document.getElementById("id_registration_id_confirmation");
+    let verifiedRegistrationId = "";
     let sponsorLookupRequest = 0;
 
     function clearSponsorVerification() {
-        verifiedSponsorId = "";
+        verifiedRegistrationId = "";
+        if (confirmationField) confirmationField.value = "";
         if (sponsorVerifyResult) {
             sponsorVerifyResult.textContent = "";
             sponsorVerifyResult.classList.remove("is-error", "is-success");
@@ -395,7 +397,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const requestNumber = ++sponsorLookupRequest;
             sponsorVerifyButton.disabled = true;
-            sponsorVerifyResult.textContent = "Checking sponsor details…";
+            sponsorVerifyResult.textContent = "Checking ID…";
             sponsorVerifyResult.classList.remove("is-error", "is-success");
 
             try {
@@ -432,29 +434,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 if (!response.ok) {
                     throw new Error(
-                        result.error || "We couldn't verify this sponsor."
+                            result.error || "We couldn't verify this ID."
                     );
                 }
-                if (
-                    typeof result.name !== "string" ||
-                    !result.name ||
-                    typeof result.registered_phone !== "string" ||
-                    !result.registered_phone
-                ) {
+                if (typeof result.confirmation !== "string" || !result.confirmation) {
                     throw new Error(
-                        "The sponsor verification response was incomplete. Try again."
+                        "The ID verification response was incomplete. Try again."
                     );
                 }
 
-                verifiedSponsorId = sponsorId;
-                sponsorVerifyResult.textContent =
-                    "Verified sponsor: " + result.name +
-                    " · Registered phone: " + result.registered_phone;
+                if (result.kind === "ordinary_sponsor" &&
+                    typeof result.name === "string" && result.name &&
+                    typeof result.registered_phone === "string" && result.registered_phone) {
+                    sponsorVerifyResult.textContent =
+                        "Verified sponsor: " + result.name +
+                        " · Registered phone: " + result.registered_phone;
+                } else if (result.kind === "first_member_bootstrap") {
+                    sponsorVerifyResult.textContent =
+                        result.message || "Valid Diocese-issued first-member registration ID.";
+                } else {
+                    throw new Error("The ID verification response was incomplete. Try again.");
+                }
+
+                verifiedRegistrationId = sponsorId;
+                if (confirmationField) confirmationField.value = result.confirmation;
                 sponsorVerifyResult.classList.add("is-success");
             } catch (error) {
                 if (requestNumber !== sponsorLookupRequest) return;
                 sponsorVerifyResult.textContent =
-                    error.message || "We couldn't verify this sponsor. Try again.";
+                    error.message || "We couldn't verify this ID. Try again.";
                 sponsorVerifyResult.classList.add("is-error");
             } finally {
                 if (requestNumber === sponsorLookupRequest) {
@@ -509,11 +517,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (
                 sponsorIdField &&
                 sections[index].contains(sponsorIdField) &&
-                verifiedSponsorId !== sponsorIdField.value.trim()
+                verifiedRegistrationId !== sponsorIdField.value.trim()
             ) {
                 if (sponsorVerifyResult) {
                     sponsorVerifyResult.textContent =
-                        "Verify the sponsor's official M.O.D. ID before continuing.";
+                        "Verify this official M.O.D. ID before continuing.";
                     sponsorVerifyResult.classList.add("is-error");
                 }
                 if (sponsorVerifyButton) {
@@ -549,6 +557,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 validateSection(sections[index], true);
                 return;
             }
+        }
+        if (
+            sponsorIdField &&
+            (verifiedRegistrationId !== sponsorIdField.value.trim() ||
+                !confirmationField || !confirmationField.value)
+        ) {
+            event.preventDefault();
+            if (sponsorVerifyResult) {
+                sponsorVerifyResult.textContent = "Verify this official M.O.D. ID before submitting.";
+                sponsorVerifyResult.classList.add("is-error");
+            }
+            if (sponsorVerifyButton) sponsorVerifyButton.focus();
         }
     });
 

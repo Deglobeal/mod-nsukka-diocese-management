@@ -21,9 +21,12 @@ from apps.members.services.first_member_registration import (
     record_registration_attempt,
     redeem_registration_id,
 )
-from apps.notifications.services.sponsor_lookup import (
-    SponsorLookupError,
-    find_active_sponsor,
+from apps.members.services.registration_id_verification import (
+    RegistrationIDVerificationError,
+    read_registration_confirmation,
+    revalidate_bootstrap_confirmation,
+    revalidate_ordinary_sponsor,
+    verify_registration_id,
 )
 from apps.notifications.services.sponsor_verification import (
     create_sponsor_verification_and_sms,
@@ -143,17 +146,34 @@ def process_passport_photo_preview(request):
 
 @require_POST
 def verify_registration_sponsor(request):
-    """Return the trusted sponsor name and a masked saved phone number."""
+    """Verify either an active sponsor ID or an authorized bootstrap ID."""
     sponsor_membership_id = request.POST.get("sponsor_membership_id", "")
     try:
-        sponsor_contact = find_active_sponsor(sponsor_membership_id)
-    except SponsorLookupError as error:
-        return JsonResponse({"error": str(error)}, status=400)
-
-    phone = sponsor_contact.recipient_phone
+        verified = verify_registration_id(
+            sponsor_membership_id,
+            session=request.session,
+        )
+    except RegistrationIDVerificationError as error:
+        if sponsor_membership_id.strip().startswith("MOD036-"):
+            record_registration_attempt(
+                raw_id=sponsor_membership_id,
+                outcome=FirstMemberRegistrationAttempt.Outcome.INVALID_ID,
+                error_code="invalid_or_unavailable_id",
+            )
+        message = error.messages[0] if error.messages else str(error)
+        return JsonResponse({"error": message}, status=400)
+    if verified.kind == "first_member_bootstrap":
+        return JsonResponse({
+            "kind": verified.kind,
+            "confirmation": verified.confirmation,
+            "message": "Valid Diocese-issued first-member registration ID.",
+        })
+    phone = verified.sponsor_contact.recipient_phone
     masked_phone = f"{phone[:4]}{'*' * max(0, len(phone) - 8)}{phone[-4:]}"
     return JsonResponse({
-        "name": sponsor_contact.member.full_name,
+        "kind": verified.kind,
+        "confirmation": verified.confirmation,
+        "name": verified.sponsor_contact.member.full_name,
         "registered_phone": masked_phone,
     })
 
@@ -217,7 +237,7 @@ def membership_registration(request):
 
         form = MembershipRegistrationForm(request.POST, uploaded_files)
         form_is_valid = form.is_valid()
-        bootstrap_id = (request.POST.get("first_member_registration_id") or "").strip()
+        registration_id = (request.POST.get("sponsor_membership_id") or "").strip()
 
         if photo_error:
             form.add_error("passport_photo", photo_error)
@@ -228,33 +248,79 @@ def membership_registration(request):
             )
 
         sponsor_contact = None
-        if form_is_valid and photo_data and not photo_error and not form.first_member_registration_token:
+        confirmation = None
+        if form_is_valid and photo_data and not photo_error:
             try:
-                sponsor_contact = find_active_sponsor(
-                    form.cleaned_data["sponsor_membership_id"]
+                confirmation = read_registration_confirmation(
+                    registration_id,
+                    form.cleaned_data.get("registration_id_confirmation"),
+                    session=request.session,
                 )
-            except SponsorLookupError as error:
-                form.add_error("sponsor_membership_id", str(error))
+                if confirmation["kind"] == "ordinary_sponsor":
+                    sponsor_contact = revalidate_ordinary_sponsor(
+                        raw_id=registration_id, payload=confirmation
+                    )
+            except RegistrationIDVerificationError as error:
+                form.add_error("sponsor_membership_id", error)
 
-        bootstrap_token = form.first_member_registration_token if form_is_valid else None
-        if form_is_valid and photo_data and not photo_error and (sponsor_contact or bootstrap_token):
+        if (
+            form_is_valid and photo_data and not photo_error and confirmation
+            and (sponsor_contact or confirmation.get("kind") == "first_member_bootstrap")
+        ):
             application = form.save(commit=False)
             application.stage = MembershipApplication.Stage.PARISH_REVIEW
             application.member = None
+            if confirmation["kind"] == "first_member_bootstrap":
+                # The one-time secret belongs only in the verification request;
+                # persist the token relation and hash, never its raw value.
+                application.sponsor_membership_id = ""
 
             try:
                 with transaction.atomic():
+                    if confirmation["kind"] == "first_member_bootstrap":
+                        revalidate_bootstrap_confirmation(
+                            raw_id=registration_id,
+                            payload=confirmation,
+                        )
                     # The ModelForm assigns the validated signature upload.
                     # The model field retains its private storage and random path.
                     application.save()
-                    if bootstrap_token:
-                        redeem_registration_id(raw_id=bootstrap_id, application=application)
+                    if confirmation["kind"] == "first_member_bootstrap":
+                        redeem_registration_id(raw_id=registration_id, application=application)
                     else:
                         create_sponsor_verification_and_sms(
                             application=application,
                             sponsor_contact=sponsor_contact,
                             request=request,
                         )
+            except ValidationError:
+                # A token can be revoked or become ineligible after the
+                # verification request. The surrounding transaction rolls
+                # back application creation and redemption together.
+                for image_field in (
+                    application.signature_image,
+                    application.passport_photo,
+                ):
+                    if image_field.name:
+                        try:
+                            image_field.storage.delete(image_field.name)
+                        except Exception:
+                            pass
+                if confirmation.get("kind") == "first_member_bootstrap":
+                    record_registration_attempt(
+                        raw_id=registration_id,
+                        outcome=FirstMemberRegistrationAttempt.Outcome.INVALID_ID,
+                        error_code="bootstrap_id_not_available_at_submission",
+                    )
+                form.add_error(
+                    "sponsor_membership_id",
+                    "This ID is invalid, inactive, expired, revoked, or not authorized for registration. Please verify it again.",
+                )
+                return render(
+                    request,
+                    "registration/registration.html",
+                    {"form": form, "passport_photo_data": photo_data},
+                )
             except Exception:
                 # Database transactions cannot roll back filesystem writes.
                 for image_field in (
@@ -267,9 +333,9 @@ def membership_registration(request):
                         except Exception:
                             pass
 
-                if bootstrap_id:
+                if confirmation and confirmation.get("kind") == "first_member_bootstrap":
                     record_registration_attempt(
-                        raw_id=bootstrap_id,
+                        raw_id=registration_id,
                         outcome=FirstMemberRegistrationAttempt.Outcome.REGISTRATION_FAILED,
                         error_code="application_save_failed",
                     )
@@ -303,14 +369,19 @@ def membership_registration(request):
                 application_id=application.pk,
             )
 
-        if bootstrap_id and (not form_is_valid or photo_error):
+        if (
+            registration_id
+            and confirmation
+            and confirmation.get("kind") == "first_member_bootstrap"
+            and (not form_is_valid or photo_error)
+        ):
             attempt_outcome = (
                 FirstMemberRegistrationAttempt.Outcome.INVALID_ID
-                if form.errors.get("first_member_registration_id")
+                if form.errors.get("sponsor_membership_id")
                 else FirstMemberRegistrationAttempt.Outcome.FORM_INVALID
             )
             record_registration_attempt(
-                raw_id=bootstrap_id,
+                raw_id=registration_id,
                 outcome=attempt_outcome,
                 error_code=(
                     "invalid_or_unavailable_id"

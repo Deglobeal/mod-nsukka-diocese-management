@@ -53,6 +53,13 @@ def issue_registration_id(*, actor, replace=False, reason="", exceptional=False)
         raise ValidationError("A reason is required for an exceptional replacement.")
     if Member.objects.exists():
         raise ValidationError("A first-member registration ID cannot be issued after a member exists.")
+    from apps.members.services.registration_id_verification import (
+        has_unresolved_bootstrap_application,
+    )
+    if has_unresolved_bootstrap_application():
+        raise ValidationError(
+            "A first-member application is still awaiting a final decision. No additional ID can be issued."
+        )
     expire_available_ids()
     current = FirstMemberRegistrationToken.objects.select_for_update().filter(
         status=FirstMemberRegistrationToken.Status.AVAILABLE
@@ -169,6 +176,13 @@ def redeem_registration_id(*, raw_id, application):
         raise ValidationError("This first-member registration ID is no longer available.")
     if Member.objects.exists():
         raise ValidationError("The first member has already been created.")
+    from apps.members.services.registration_id_verification import (
+        has_unresolved_bootstrap_application,
+    )
+    if has_unresolved_bootstrap_application():
+        raise ValidationError(
+            "Another first-member application is still awaiting a final decision."
+        )
     token.status = FirstMemberRegistrationToken.Status.REDEEMED
     token.redeemed_application = application
     token.redeemed_at = timezone.now()

@@ -1,0 +1,12 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+<div class="module" style="margin-bottom: 1.5em; padding: 1em;">
+  <h2>First Member Registration IDs</h2>
+  <p>Generate and manage the one-time ID for the first membership registration.</p>
+  <a class="button" href="{% url 'first_member_registration_ids' %}">
+    Open ID generation and management
+  </a>
+</div>
+{{ block.super }}
+{% endblock %}
