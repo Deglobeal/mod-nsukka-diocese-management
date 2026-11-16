@@ -1,20 +1,29 @@
 export const PASSPORT_FRAME_WIDTH = 720;
 export const PASSPORT_FRAME_HEIGHT = 900;
 
-export function containRect(sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
+export function coverRect(sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
     if ([sourceWidth, sourceHeight, targetWidth, targetHeight].some((value) =>
         !Number.isFinite(value) || value <= 0
     )) return null;
 
-    const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
-    const width = sourceWidth * scale;
-    const height = sourceHeight * scale;
+    const targetAspect = targetWidth / targetHeight;
+    let x = 0;
+    let y = 0;
+    let width = sourceWidth;
+    let height = sourceHeight;
+    if (sourceWidth / sourceHeight > targetAspect) {
+        width = sourceHeight * targetAspect;
+        x = (sourceWidth - width) / 2;
+    } else {
+        height = sourceWidth / targetAspect;
+        y = (sourceHeight - height) / 2;
+    }
     return {
-        x: (targetWidth - width) / 2,
-        y: (targetHeight - height) / 2,
+        x,
+        y,
         width,
         height,
-        scale
+        scale: targetWidth / width
     };
 }
 
@@ -22,18 +31,18 @@ export function passportCanvasRenderPlan(sourceWidth, sourceHeight) {
     return {
         width: PASSPORT_FRAME_WIDTH,
         height: PASSPORT_FRAME_HEIGHT,
-        frame: containRect(sourceWidth, sourceHeight)
+        frame: coverRect(sourceWidth, sourceHeight)
     };
 }
 
-export function mapRectToContainFrame(rect, sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
-    const fit = containRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
-    if (!fit || !rect) return null;
+export function mapRectToCoverFrame(rect, sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
+    const crop = coverRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
+    if (!crop || !rect) return null;
     return {
-        x: (fit.x + rect.x * fit.scale) / targetWidth,
-        y: (fit.y + rect.y * fit.scale) / targetHeight,
-        width: (rect.width * fit.scale) / targetWidth,
-        height: (rect.height * fit.scale) / targetHeight
+        x: (rect.x - crop.x) / crop.width,
+        y: (rect.y - crop.y) / crop.height,
+        width: rect.width / crop.width,
+        height: rect.height / crop.height
     };
 }
 

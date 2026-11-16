@@ -2,7 +2,7 @@ import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passpor
 import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
-    mapRectToContainFrame,
+    mapRectToCoverFrame,
     nextFacingMode,
     passportCanvasRenderPlan
 } from "./passport-framing.mjs?v=1";
@@ -295,6 +295,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (video) video.srcObject = null;
         if (capturePhotoButton) capturePhotoButton.disabled = true;
+        if (startCameraButton) startCameraButton.textContent = "Start camera";
+        document.body.classList.remove("passport-camera-stage-open");
     }
 
     function clearCapturedPhoto() {
@@ -409,7 +411,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function getFaceFrameBox(detection) {
         const box = detection && detection.boundingBox;
         if (!box || !video.videoWidth || !video.videoHeight) return null;
-        return mapRectToContainFrame({
+        return mapRectToCoverFrame({
             x: box.originX,
             y: box.originY,
             width: box.width,
@@ -759,8 +761,7 @@ document.addEventListener("DOMContentLoaded", function () {
         capturePhotoButton.disabled = true;
         stopFaceScan();
 
-        // Fit the complete original frame into the same 4:5 portrait canvas
-        // used by the contain preview. White letterboxing avoids crop loss.
+        // Crop to the same 4:5 viewfinder window shown in the live preview.
         const renderPlan = passportCanvasRenderPlan(video.videoWidth, video.videoHeight);
         photoCanvas.width = renderPlan.width;
         photoCanvas.height = renderPlan.height;
@@ -778,11 +779,11 @@ document.addEventListener("DOMContentLoaded", function () {
         context.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
         context.drawImage(
             video,
-            0, 0, video.videoWidth, video.videoHeight,
             renderPlan.frame.x,
             renderPlan.frame.y,
             renderPlan.frame.width,
-            renderPlan.frame.height
+            renderPlan.frame.height,
+            0, 0, photoCanvas.width, photoCanvas.height
         );
 
         // Do not reject the crop using the browser's approximate
@@ -993,7 +994,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             capturePhotoButton.disabled = true;
+            startCameraButton.textContent = "Close camera";
             if (cameraSwitchButton) cameraSwitchButton.disabled = false;
+            document.body.classList.add("passport-camera-stage-open");
             if (whiteScanStatus) {
                 whiteScanStatus.textContent =
                     "AI will check the person and white background before accepting the photo.";
@@ -1042,7 +1045,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (video && photoCanvas && photoInput && startCameraButton) {
-        startCameraButton.addEventListener("click", startCamera);
+        startCameraButton.addEventListener("click", function () {
+            if (!cameraStream) {
+                startCamera();
+                return;
+            }
+            stopCamera();
+            video.hidden = true;
+            photoPlaceholder.hidden = false;
+            cameraStatus.textContent = "Camera closed. Tap Start camera when you are ready.";
+        });
 
         updateCameraSwitchLabel();
         if (cameraSwitchButton) {
