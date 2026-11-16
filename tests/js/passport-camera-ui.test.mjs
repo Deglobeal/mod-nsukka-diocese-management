@@ -34,3 +34,10 @@ test("front camera preview mirrors visually while capture stays sourced from vid
     assert.match(cameraScript, /context\.drawImage\(\s*video,/);
     assert.match(cameraScript, /mirrorRectHorizontally/);
 });
+
+test("mobile preview fills more of the viewport and shares contain framing with capture", () => {
+    assert.match(registrationStyles, /width:\s*min\(100%,\s*44dvh,\s*440px\)/);
+    assert.match(registrationStyles, /registration-passport-square video,[\s\S]*?object-fit:\s*contain/);
+    assert.match(cameraScript, /mapRectToContainFrame/);
+    assert.match(cameraScript, /renderPlan\.frame\.x,[\s\S]*?renderPlan\.frame\.width/);
+});

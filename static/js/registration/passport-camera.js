@@ -2,12 +2,15 @@ import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passpor
 import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
-    mapRectToCoverFrame,
+    mapRectToContainFrame,
     mirrorRectHorizontally,
+    minimumSupportedZoom,
     nextFacingMode,
     passportCanvasRenderPlan,
+    selectWideCameraDevice,
+    PASSPORT_FRAME_BACKGROUND,
     stopMediaTracks
-} from "./passport-framing.mjs?v=2";
+} from "./passport-framing.mjs?v=3";
 import {
     AutoCaptureCountdown,
     CAPTURE_STABILITY_MS,
@@ -52,6 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let faceStableSince = null;
     let lastFaceScanAt = 0;
     let previousFaceBox = null;
+    let previousFaceGuidance = null;
     let photoCaptureInProgress = false;
     let captureAttempts = 0;
     let captureRetryTimer = null;
@@ -81,6 +85,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         faceStableSince = null;
         previousFaceBox = null;
+        previousFaceGuidance = null;
     }
 
     function secureRandom() {
@@ -273,7 +278,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const displayedFaceBox = requestedFacingMode === "user"
             ? mirrorRectHorizontally(sourceFaceBox, video.videoWidth)
             : sourceFaceBox;
-        return mapRectToCoverFrame({
+        return mapRectToContainFrame({
             x: displayedFaceBox.x,
             y: displayedFaceBox.y,
             width: displayedFaceBox.width,
@@ -350,8 +355,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 const frameFaceBox = getFaceFrameBox(detection);
                 const faceGuidance = getPassportFaceGuidance(
                     frameFaceBox,
-                    measurements ? measurements.roll : null
+                    measurements ? measurements.roll : null,
+                    previousFaceGuidance
                 );
+                previousFaceGuidance = faceGuidance;
                 const positioned = faceGuidance === "ready";
                 if (cameraGuide) cameraGuide.dataset.state = faceGuidance;
 
@@ -625,7 +632,7 @@ document.addEventListener("DOMContentLoaded", function () {
         capturePhotoButton.disabled = true;
         stopFaceScan();
 
-        // Crop to the same 4:5 viewfinder window shown in the live preview.
+        // Fit the full camera image into the same 4:5 viewfinder used by the preview.
         const renderPlan = passportCanvasRenderPlan(video.videoWidth, video.videoHeight);
         photoCanvas.width = renderPlan.width;
         photoCanvas.height = renderPlan.height;
@@ -639,15 +646,13 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        context.fillStyle = "#fff";
+        context.fillStyle = PASSPORT_FRAME_BACKGROUND;
         context.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
         context.drawImage(
             video,
-            renderPlan.frame.x,
-            renderPlan.frame.y,
-            renderPlan.frame.width,
-            renderPlan.frame.height,
-            0, 0, photoCanvas.width, photoCanvas.height
+            0, 0, video.videoWidth, video.videoHeight,
+            renderPlan.frame.x, renderPlan.frame.y,
+            renderPlan.frame.width, renderPlan.frame.height
         );
 
         // Do not reject the crop using the browser's approximate
@@ -807,6 +812,49 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (!requestedStream) throw lastConstraintError || new Error("Camera unavailable");
 
+            // Browser labels become available after permission. If a device
+            // explicitly exposes a wide camera, prefer it; otherwise retain
+            // the browser's facingMode selection.
+            if (navigator.mediaDevices.enumerateDevices) {
+                try {
+                    const initialTrack = requestedStream.getVideoTracks()[0];
+                    const initialSettings = initialTrack && initialTrack.getSettings
+                        ? initialTrack.getSettings() : {};
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    if (startRequestId !== cameraStartRequestId) {
+                        stopMediaTracks(requestedStream);
+                        return;
+                    }
+                    const wideCamera = selectWideCameraDevice(
+                        devices, requestedFacingMode, initialSettings.deviceId || ""
+                    );
+                    if (wideCamera) {
+                        try {
+                            const wideStream = await navigator.mediaDevices.getUserMedia({
+                                audio: false,
+                                video: {
+                                    deviceId: { exact: wideCamera.deviceId },
+                                    width: { ideal: 720 },
+                                    height: { ideal: 1280 },
+                                    aspectRatio: { ideal: 9 / 16 }
+                                }
+                            });
+                            if (startRequestId !== cameraStartRequestId) {
+                                stopMediaTracks(wideStream);
+                                stopMediaTracks(requestedStream);
+                                return;
+                            }
+                            stopMediaTracks(requestedStream);
+                            requestedStream = wideStream;
+                        } catch (wideCameraError) {
+                            console.info("Wide camera unavailable; keeping browser-selected camera.");
+                        }
+                    }
+                } catch (deviceListError) {
+                    console.info("Camera list unavailable; keeping browser-selected camera.");
+                }
+            }
+
             // A newer start/stop request superseded this request.
             if (startRequestId !== cameraStartRequestId) {
                 stopMediaTracks(requestedStream);
@@ -848,6 +896,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const trackCapabilities = activeVideoTrack && activeVideoTrack.getCapabilities
                 ? activeVideoTrack.getCapabilities()
                 : {};
+            const minimumZoom = minimumSupportedZoom(trackCapabilities);
+            if (minimumZoom !== null && activeVideoTrack && activeVideoTrack.applyConstraints) {
+                try {
+                    await activeVideoTrack.applyConstraints({ advanced: [{ zoom: minimumZoom }] });
+                } catch (zoomError) {
+                    console.info("Camera does not support applying its minimum zoom setting.");
+                }
+            }
             console.info(
                 "Passport camera dimensions:",
                 `${video.videoWidth}x${video.videoHeight}`,
@@ -855,7 +911,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     facingMode: trackSettings.facingMode || "not reported",
                     width: trackSettings.width || video.videoWidth,
                     height: trackSettings.height || video.videoHeight,
-                    zoomRange: trackCapabilities.zoom || "unsupported"
+                    zoomRange: trackCapabilities.zoom || "unsupported",
+                    zoom: activeVideoTrack && activeVideoTrack.getSettings
+                        ? activeVideoTrack.getSettings().zoom ?? "not reported"
+                        : "not reported"
                 }
             );
 
