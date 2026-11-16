@@ -3,19 +3,16 @@ import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
     mapRectToCoverFrame,
+    mirrorRectHorizontally,
     nextFacingMode,
-    passportCanvasRenderPlan
-} from "./passport-framing.mjs?v=1";
+    passportCanvasRenderPlan,
+    stopMediaTracks
+} from "./passport-framing.mjs?v=2";
 import {
     AutoCaptureCountdown,
     CAPTURE_STABILITY_MS,
-    isFatalVoiceRecognitionError,
-    isCaptureEligible,
-    supportsOnDeviceRecognition,
-    VoiceCommandGate,
-    voiceCaptureAllowed,
-    voiceRecognitionErrorMessage
-} from "./passport-capture.mjs?v=1";
+    isCaptureEligible
+} from "./passport-capture.mjs?v=2";
 
 document.addEventListener("DOMContentLoaded", function () {
     const video = document.getElementById("passport-camera-video");
@@ -25,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const photoTokenInput = document.getElementById("passport-photo-token");
     const acceptPhotoButton = document.getElementById("passport-camera-accept");
     const photoPreview = document.getElementById("passport-camera-image");
+    const cameraGuide = document.querySelector(".registration-camera-guide");
     let pendingPhotoData = "";
     let pendingPhotoToken = "";
     let previewRequestId = 0;
@@ -37,12 +35,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const cameraError = document.getElementById("passport-camera-error");
     const autoCaptureInput = document.getElementById("passport-auto-capture");
     const countdownStatus = document.getElementById("passport-capture-countdown");
-    const voiceToggle = document.getElementById("passport-voice-toggle");
-    const voiceStatus = document.getElementById("passport-voice-status");
-    const voiceFeedback = document.getElementById("passport-voice-feedback");
     const registrationForm = document.querySelector(".registration-card form");
     let cameraStream = null;
-    let requestedFacingMode = "environment";
+    let requestedFacingMode = "user";
     let faceLandmarker = null;
     let faceLandmarkerLoading = null;
     let livenessSession = null;
@@ -58,7 +53,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let lastFaceScanAt = 0;
     let previousFaceBox = null;
     let photoCaptureInProgress = false;
-    let latestFaceBox = null;
     let captureAttempts = 0;
     let captureRetryTimer = null;
     let lightingCanvas = null;
@@ -67,11 +61,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let lastLightingCheckAt = -Infinity;
     let latestCaptureChecks = null;
     let latestCaptureEligible = false;
-    let voiceRecognition = null;
-    let voiceEnabled = false;
-    let voiceRestartTimer = null;
-    let lastAnnouncedCountdown = null;
-    const voiceCommandGate = new VoiceCommandGate();
     const autoCaptureCountdown = new AutoCaptureCountdown(3000);
 
     const MAX_CAPTURE_ATTEMPTS = 4;
@@ -98,146 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const value = new Uint32Array(1);
         crypto.getRandomValues(value);
         return value[0] / 0x100000000;
-    }
-
-    function setVoiceStatus(message) {
-        if (voiceStatus) voiceStatus.textContent = message;
-    }
-
-    function speak(text) {
-        if (!voiceEnabled || !window.speechSynthesis || !text ||
-            window.speechSynthesis.speaking) return;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = navigator.language || "en-US";
-        window.speechSynthesis.speak(utterance);
-    }
-
-    function disableVoiceCommands(message = "Voice commands are off.") {
-        voiceEnabled = false;
-        voiceCommandGate.disable();
-        if (voiceRestartTimer !== null) {
-            clearTimeout(voiceRestartTimer);
-            voiceRestartTimer = null;
-        }
-        if (voiceRecognition) {
-            voiceRecognition.onend = null;
-            try { voiceRecognition.stop(); } catch (error) { /* already stopped */ }
-            voiceRecognition = null;
-        }
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        if (voiceToggle) {
-            voiceToggle.setAttribute("aria-pressed", "false");
-            voiceToggle.textContent = "Enable voice commands";
-        }
-        if (voiceFeedback) voiceFeedback.hidden = true;
-        setVoiceStatus(message);
-    }
-
-    function requestVoiceCapture(commandName) {
-        if (!voiceCaptureAllowed(commandName, latestCaptureEligible)) {
-            if (voiceFeedback) {
-                voiceFeedback.textContent =
-                    "Not ready yet. Complete the face, blink, head-turn and stability checks first.";
-                voiceFeedback.hidden = false;
-            }
-            return;
-        }
-        autoCaptureCountdown.cancel();
-        if (countdownStatus) countdownStatus.hidden = true;
-        capturePhoto(commandName);
-    }
-
-    function runVoiceCommand(command) {
-        if (command === "start-camera") {
-            startCamera();
-        } else if (command === "take-photo" || command === "capture-passport") {
-            requestVoiceCapture(command);
-        } else if (command === "retake-photo") {
-            if (photoPreview && !photoPreview.hidden) retakePhotoButton.click();
-            else startCamera();
-        } else if (command === "stop-camera") {
-            disableVoiceCommands("Voice commands stopped.");
-            stopCamera();
-            cameraStatus.textContent = "Camera and microphone stopped.";
-        } else if (command === "repeat-instructions") {
-            const instructions = cameraStatus ? cameraStatus.textContent : "Position your face in the guide.";
-            if (window.speechSynthesis) speak(instructions);
-            else if (voiceFeedback) {
-                voiceFeedback.textContent = "Speech output is unavailable. Follow the on-screen instructions.";
-                voiceFeedback.hidden = false;
-            }
-        }
-    }
-
-    function enableVoiceCommands() {
-        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!supportsOnDeviceRecognition(Recognition)) {
-            setVoiceStatus("On-device voice recognition is not supported in this browser. Use the camera buttons.");
-            return;
-        }
-
-        try {
-            const recognition = new Recognition();
-            recognition.processLocally = true;
-            recognition.lang = navigator.language || "en-US";
-            recognition.continuous = true;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-            recognition.onstart = function () {
-                setVoiceStatus("Listening for voice commands on this device.");
-                if (voiceToggle) {
-                    voiceToggle.setAttribute("aria-pressed", "true");
-                    voiceToggle.textContent = "Disable voice commands";
-                }
-            };
-            recognition.onresult = function (event) {
-                for (let index = event.resultIndex; index < event.results.length; index += 1) {
-                    const result = event.results[index];
-                    if (!result.isFinal) continue;
-                    const transcript = result[0].transcript.trim();
-                    if (voiceFeedback) {
-                        voiceFeedback.textContent = `Heard: “${transcript}”`;
-                        voiceFeedback.hidden = false;
-                    }
-                    const command = voiceCommandGate.accept(transcript, Date.now());
-                    if (!command) {
-                        if (voiceFeedback) {
-                            voiceFeedback.textContent += " — command not recognized or repeated.";
-                        }
-                        continue;
-                    }
-                    runVoiceCommand(command);
-                    if (!voiceEnabled) break;
-                }
-            };
-            recognition.onerror = function (event) {
-                if (isFatalVoiceRecognitionError(event.error)) {
-                    disableVoiceCommands(voiceRecognitionErrorMessage(event.error));
-                } else if (voiceFeedback) {
-                    voiceFeedback.textContent = voiceRecognitionErrorMessage(event.error);
-                    voiceFeedback.hidden = false;
-                }
-            };
-            recognition.onend = function () {
-                voiceRecognition = null;
-                if (!voiceEnabled) return;
-                voiceRestartTimer = setTimeout(function () {
-                    voiceRestartTimer = null;
-                    if (!voiceEnabled) return;
-                    enableVoiceCommands();
-                }, 500);
-            };
-            voiceEnabled = true;
-            voiceCommandGate.enable();
-            voiceRecognition = recognition;
-            if (voiceToggle) {
-                voiceToggle.setAttribute("aria-pressed", "true");
-                voiceToggle.textContent = "Disable voice commands";
-            }
-            recognition.start();
-        } catch (error) {
-            disableVoiceCommands("Microphone access is unavailable. Use the camera buttons instead.");
-        }
     }
 
     function updateLighting(timestamp, faceBox) {
@@ -273,27 +122,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let cameraStartRequestId = 0;
 
-    function stopCamera({ preserveVoice = false } = {}) {
+    function stopCamera() {
         cameraStartRequestId += 1;
         stopFaceScan();
         autoCaptureCountdown.cancel();
         latestCaptureEligible = false;
         latestCaptureChecks = null;
         if (countdownStatus) countdownStatus.hidden = true;
-        if (!preserveVoice && voiceEnabled) disableVoiceCommands();
-
         if (captureRetryTimer !== null) {
             clearTimeout(captureRetryTimer);
             captureRetryTimer = null;
         }
 
         if (cameraStream) {
-            cameraStream.getTracks().forEach(function (track) {
-                track.stop();
-            });
+            stopMediaTracks(cameraStream);
             cameraStream = null;
         }
-        if (video) video.srcObject = null;
+        if (video) {
+            video.srcObject = null;
+            video.hidden = true;
+        }
+        if (cameraGuide) delete cameraGuide.dataset.state;
+        if (photoPlaceholder && (!photoPreview || photoPreview.hidden)) {
+            photoPlaceholder.hidden = false;
+        }
         if (capturePhotoButton) capturePhotoButton.disabled = true;
         if (startCameraButton) startCameraButton.textContent = "Start camera";
         document.body.classList.remove("passport-camera-stage-open");
@@ -313,12 +165,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (photoPreview) {
             photoPreview.removeAttribute("src");
             photoPreview.hidden = true;
+            photoPreview.parentElement.classList.remove("is-reviewing");
         }
         if (photoPlaceholder) photoPlaceholder.hidden = false;
         if (acceptPhotoButton) acceptPhotoButton.hidden = true;
         if (retakePhotoButton) retakePhotoButton.hidden = true;
         if (retakePhotoButton) retakePhotoButton.textContent = "Retake photo";
-        if (cameraStatus) cameraStatus.textContent = "Photograph required.";
+        if (cameraStatus) cameraStatus.textContent = "Start the camera to begin your photo check.";
     }
 
 
@@ -411,19 +264,33 @@ document.addEventListener("DOMContentLoaded", function () {
     function getFaceFrameBox(detection) {
         const box = detection && detection.boundingBox;
         if (!box || !video.videoWidth || !video.videoHeight) return null;
-        return mapRectToCoverFrame({
+        const sourceFaceBox = {
             x: box.originX,
             y: box.originY,
             width: box.width,
             height: box.height
+        };
+        const displayedFaceBox = requestedFacingMode === "user"
+            ? mirrorRectHorizontally(sourceFaceBox, video.videoWidth)
+            : sourceFaceBox;
+        return mapRectToCoverFrame({
+            x: displayedFaceBox.x,
+            y: displayedFaceBox.y,
+            width: displayedFaceBox.width,
+            height: displayedFaceBox.height
         }, video.videoWidth, video.videoHeight);
     }
 
     function faceGuidanceMessage(guidance) {
         const messages = {
             "no-face": "No face detected. Move into view and improve the lighting.",
-            closer: "Move slightly closer to the camera.",
-            farther: "Move farther away so your head and shoulders fit in the frame.",
+            closer: requestedFacingMode === "user"
+                ? "Move your phone slightly closer to the camera."
+                : "Move the camera slightly closer.",
+            farther: requestedFacingMode === "user"
+                ? "Move your phone slightly farther away so your full head fits."
+                : "Move farther away so the full head and shoulders fit.",
+            straight: "Keep your head straight and look at the camera.",
             right: "Move your face slightly to your right.",
             left: "Move your face slightly to your left.",
             down: "Move your face slightly down into the guide.",
@@ -481,9 +348,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 } : null;
                 const frameFaceBox = getFaceFrameBox(detection);
-                const faceGuidance = getPassportFaceGuidance(frameFaceBox);
+                const faceGuidance = getPassportFaceGuidance(
+                    frameFaceBox,
+                    measurements ? measurements.roll : null
+                );
                 const positioned = faceGuidance === "ready";
-                latestFaceBox = detection ? detection.boundingBox : null;
+                if (cameraGuide) cameraGuide.dataset.state = faceGuidance;
 
                 if (!livenessPassed) {
                     const faceBox = detection ? {
@@ -522,11 +392,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         cameraStatus.textContent =
                             `Liveness check ${status.step} of ${status.total}: Blink naturally, then open your eyes.`;
                     } else if (status.challenge === "turn-left") {
+                        const screenSide = requestedFacingMode === "user" ? "right" : "left";
                         cameraStatus.textContent =
-                            `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the left side of the screen, then face forward.`;
+                            `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the ${screenSide} side of the screen, then face forward.`;
                     } else if (status.challenge === "turn-right") {
+                        const screenSide = requestedFacingMode === "user" ? "left" : "right";
                         cameraStatus.textContent =
-                            `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the right side of the screen, then face forward.`;
+                            `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the ${screenSide} side of the screen, then face forward.`;
                     } else {
                         cameraStatus.textContent = "Hold your face steady while checks begin…";
                     }
@@ -583,7 +455,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     latestCaptureChecks = null;
                     autoCaptureCountdown.update(false, autoCaptureInput.checked, timestamp);
                     countdownStatus.hidden = true;
-                    lastAnnouncedCountdown = null;
                     capturePhotoButton.disabled = true;
                     if (faceCount > 1) {
                         cameraStatus.textContent = "Only one person should be visible. Please try again.";
@@ -602,7 +473,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     latestCaptureChecks = null;
                     autoCaptureCountdown.update(false, autoCaptureInput.checked, timestamp);
                     countdownStatus.hidden = true;
-                    lastAnnouncedCountdown = null;
                     capturePhotoButton.disabled = true;
                     cameraStatus.textContent = "Perfect positioning. Hold still while the camera checks your position.";
                 } else {
@@ -630,19 +500,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         countdownStatus.hidden = false;
                         countdownStatus.textContent = `Automatic capture in ${countdown.seconds}… Keep facing forward and hold still.`;
                         cameraStatus.textContent = "Checks passed. You can capture now or wait for automatic capture.";
-                        if (voiceEnabled && countdown.seconds !== lastAnnouncedCountdown) {
-                            speak(`Automatic capture in ${countdown.seconds}.`);
-                        }
-                        lastAnnouncedCountdown = countdown.seconds;
                     } else if (countdown.state === "capture") {
                         countdownStatus.hidden = false;
                         countdownStatus.textContent = "Capturing your passport photo…";
-                        speak("Capturing your passport photo.");
-                        capturePhoto("automatic");
+                        capturePhoto();
                         return;
                     } else {
                         countdownStatus.hidden = true;
-                        lastAnnouncedCountdown = null;
                         cameraStatus.textContent = "Checks passed. Tap Capture photo when you are ready.";
                     }
                 }
@@ -858,6 +722,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         pendingPhotoToken = result.photo_token;
                         photoPreview.src = pendingPhotoData;
                         photoPreview.hidden = false;
+                        photoPreview.parentElement.classList.add("is-reviewing");
                         video.hidden = true;
                         photoPlaceholder.hidden = true;
                         acceptPhotoButton.hidden = false;
@@ -915,7 +780,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        stopCamera({ preserveVoice: voiceEnabled });
+        stopCamera();
         const startRequestId = ++cameraStartRequestId;
 
         captureAttempts = 0;
@@ -944,9 +809,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // A newer start/stop request superseded this request.
             if (startRequestId !== cameraStartRequestId) {
-                requestedStream.getTracks().forEach(function (track) {
-                    track.stop();
-                });
+                stopMediaTracks(requestedStream);
                 return;
             }
 
@@ -960,6 +823,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, { once: true });
             });
             video.srcObject = requestedStream;
+            video.classList.toggle(
+                "passport-camera-video-mirrored",
+                requestedFacingMode === "user"
+            );
             video.hidden = false;
             photoPreview.hidden = true;
             photoPlaceholder.hidden = true;
@@ -970,6 +837,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const trackSettings = activeVideoTrack && activeVideoTrack.getSettings
                 ? activeVideoTrack.getSettings()
                 : {};
+            if (["user", "environment"].includes(trackSettings.facingMode)) {
+                requestedFacingMode = trackSettings.facingMode;
+                video.classList.toggle(
+                    "passport-camera-video-mirrored",
+                    requestedFacingMode === "user"
+                );
+                updateCameraSwitchLabel();
+            }
             const trackCapabilities = activeVideoTrack && activeVideoTrack.getCapabilities
                 ? activeVideoTrack.getCapabilities()
                 : {};
@@ -1009,9 +884,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Never let a stale request stop a newer camera session.
             if (startRequestId !== cameraStartRequestId) {
                 if (requestedStream) {
-                    requestedStream.getTracks().forEach(function (track) {
-                        track.stop();
-                    });
+                    stopMediaTracks(requestedStream);
                 }
                 return;
             }
@@ -1115,25 +988,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (voiceToggle) {
-        if (!supportsOnDeviceRecognition(Recognition)) {
-            voiceToggle.disabled = true;
-            voiceToggle.title = "This browser does not provide private on-device speech recognition.";
-            setVoiceStatus("On-device voice recognition is unavailable. Use the camera buttons.");
-        } else {
-            voiceToggle.addEventListener("click", function () {
-                if (voiceEnabled) disableVoiceCommands();
-                else enableVoiceCommands();
-            });
-        }
-    }
-
     if (autoCaptureInput) {
         autoCaptureInput.addEventListener("change", function () {
             autoCaptureCountdown.cancel();
             countdownStatus.hidden = true;
-            lastAnnouncedCountdown = null;
             if (!autoCaptureInput.checked && latestCaptureEligible) {
                 cameraStatus.textContent = "Checks passed. Automatic capture is off; tap Capture photo when ready.";
             }

@@ -87,56 +87,53 @@
                     {% include "registration/partials/registration_field.html" with field=form.sex %}
                     {% include "registration/partials/registration_field.html" with field=form.date_of_birth %}
                     <div class="registration-field registration-camera-field">
-                        <span class="registration-field-label">Passport photograph <span aria-hidden="true">*</span></span>
-                        <p class="registration-camera-help registration-camera-instructions">
-                            Wear your M.O.D. uniform. Keep your full head and shoulders inside the guide.
-                        </p>
-                        <details class="registration-camera-privacy">
-                            <summary>Camera privacy</summary>
-                            <p>Face and movement checks run in this browser. Video frames are not sent or stored; only your accepted passport photo is submitted.</p>
-                        </details>
-                        <div class="registration-passport-shell">
-                            <div class="registration-camera-preview registration-passport-square">
-                                <video id="passport-camera-video" playsinline autoplay muted hidden></video>
-                                <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
-                                <p id="passport-camera-placeholder">Camera preview will appear here.</p>
-                                <div class="registration-camera-guide" aria-hidden="true"></div>
+                        <div class="passport-capture-card">
+                            <header class="passport-capture-header">
+                                <p class="passport-capture-eyebrow">SECURE IDENTITY CHECK · STEP 1</p>
+                                <h3 class="passport-capture-title">Passport photograph <span aria-hidden="true">*</span></h3>
+                                <p class="passport-capture-instructions">
+                                    Face the camera. Keep your full head and chin inside the guide.
+                                </p>
+                                <details class="registration-camera-privacy">
+                                    <summary>Camera privacy</summary>
+                                    <p>Face and movement checks run in this browser. Video frames are not sent or stored; only your accepted passport photo is submitted.</p>
+                                </details>
+                            </header>
+                            <div class="registration-passport-shell">
+                                <div class="registration-camera-preview registration-passport-square">
+                                    <video id="passport-camera-video" playsinline autoplay muted hidden></video>
+                                    <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
+                                    <p id="passport-camera-placeholder">Tap Start camera to begin your photo check.</p>
+                                    <div class="registration-camera-guide" aria-hidden="true"></div>
+                                </div>
+                            </div>
+                            <p id="passport-white-scan-status"
+                               class="passport-white-scan-status" aria-live="polite">
+                                Your background will be changed to white after capture.
+                            </p>
+                            <p id="passport-camera-status" class="registration-camera-status passport-camera-status" aria-live="polite">
+                                Camera ready when you are.
+                            </p>
+                            <p id="passport-capture-countdown" class="registration-camera-status passport-camera-countdown" role="status" aria-live="assertive" hidden></p>
+                            <p id="passport-camera-error" class="registration-camera-error" role="alert" hidden></p>
+                            <div class="registration-camera-actions">
+                                <button type="button" id="passport-camera-start" class="passport-camera-button passport-camera-button-secondary">Start camera</button>
+                                <button type="button" id="passport-camera-switch" class="passport-camera-button passport-camera-button-secondary">Use rear camera</button>
+                                <button type="button" id="passport-camera-capture" class="passport-camera-button passport-camera-button-primary" disabled>Capture photo</button>
+                                <button type="button" id="passport-camera-accept" class="passport-camera-button passport-camera-button-primary" hidden>Use this photo</button>
+                                <button type="button" id="passport-camera-retake" class="passport-camera-button passport-camera-button-secondary" hidden>Retake photo</button>
+                                <label class="registration-camera-auto-capture">
+                                    <input type="checkbox" id="passport-auto-capture" checked>
+                                    Auto capture after checks
+                                </label>
                             </div>
                         </div>
-                        <p id="passport-white-scan-status"
-                           class="passport-white-scan-status" aria-live="polite"
-                           >
-                            AI checks for a person and a white background before accepting the photo.
-                        </p>
                         <canvas id="passport-camera-canvas" hidden></canvas>
                         <input type="hidden" name="passport_photo_data" id="passport-photo-data"
                                data-process-url="{% url 'members:passport_photo_process' %}"
                                value="{{ passport_photo_data|default:'' }}">
                         <input type="hidden" name="passport_photo_token" id="passport-photo-token"
                                value="{{ passport_photo_token|default:'' }}">
-                        <div class="registration-camera-actions">
-                            <button type="button" id="passport-camera-start">Start camera</button>
-                            <button type="button" id="passport-camera-switch">Use front camera</button>
-                            <button type="button" id="passport-camera-capture" disabled>Capture photo</button>
-                            <button type="button" id="passport-camera-accept" hidden>Use this photo</button>
-                            <button type="button" id="passport-camera-retake" hidden>Retake photo</button>
-                            <button type="button" id="passport-voice-toggle" aria-pressed="false">
-                                Enable voice commands
-                            </button>
-                            <label class="registration-camera-auto-capture">
-                                <input type="checkbox" id="passport-auto-capture" checked>
-                                Automatic capture with 3-second countdown
-                            </label>
-                        </div>
-                        <p id="passport-camera-status" class="registration-camera-status" aria-live="polite">
-                            Photograph required.
-                        </p>
-                        <p id="passport-voice-status" class="registration-camera-status" aria-live="polite">
-                            Voice commands are off.
-                        </p>
-                        <p id="passport-voice-feedback" class="registration-camera-status" aria-live="polite" hidden></p>
-                        <p id="passport-capture-countdown" class="registration-camera-status" role="status" aria-live="assertive" hidden></p>
-                        <p id="passport-camera-error" class="registration-camera-error" role="alert" hidden></p>
                         {% if form.passport_photo.errors %}
                             <ul class="registration-field-errors">
                                 {% for error in form.passport_photo.errors %}
@@ -346,231 +343,9 @@
 </section>
 
 
-<style>
-/* Full-frame portrait preview and face-positioning guide. */
-.registration-passport-shell {
-    width: min(100%, 460px);
-    margin: 12px auto;
-    padding: 0;
-    border-radius: 22px;
-    background: #171923;
-    box-sizing: border-box;
-}
 
-.registration-passport-square {
-    position: relative;
-    display: block;
-    width: 100%;
-    aspect-ratio: 4 / 5;
-    height: auto;
-    min-height: 0;
-    margin: 0 auto;
-    padding: 0;
-    overflow: hidden;
-    border: 0;
-    border-radius: 14px;
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 24%);
-    background: #fff;
-    box-sizing: border-box;
-}
 
-.registration-passport-square video,
-.registration-passport-square img {
-    position: absolute;
-    inset: 0;
-    display: block;
-    width: 100%;
-    height: 100%;
-    max-width: none;
-    max-height: none;
-    object-fit: cover;
-    object-position: center;
-}
-
-.registration-passport-square video[hidden],
-.registration-passport-square img[hidden] {
-    display: none;
-}
-
-.registration-passport-square .registration-camera-guide {
-    position: absolute;
-    inset: 0;
-    display: block;
-    visibility: visible;
-    opacity: 1;
-    z-index: 5;
-    pointer-events: none;
-    box-sizing: border-box;
-}
-
-.registration-passport-square .registration-camera-guide::before,
-.registration-passport-square .registration-camera-guide::after {
-    content: "";
-    position: absolute;
-    display: block;
-    border: 3px solid #7c3aed;
-    box-sizing: border-box;
-}
-
-/* Oval head guide: leave breathing room above the hair. */
-.registration-passport-square .registration-camera-guide::before {
-    width: 36%;
-    height: 34%;
-    left: 32%;
-    top: 4%;
-    border-radius: 50%;
-}
-
-/* Wider shoulder and upper-chest guide. */
-.registration-passport-square .registration-camera-guide::after {
-    width: 96%;
-    height: 49%;
-    left: 2%;
-    bottom: 3%;
-    border-radius: 46% 46% 14% 14% / 42% 42% 10% 10%;
-}
-
-.registration-passport-square .registration-background-warning {
-    margin-top: 4px;
-}
-
-.passport-white-scan-status {
-    position: static;
-    z-index: auto;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    margin: 0;
-    padding: 2px 0;
-    border-radius: 0;
-    background: transparent;
-    color: inherit;
-    font-size: 12px;
-    text-align: center;
-}
-
-.registration-passport-square #passport-camera-placeholder {
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 16px;
-    text-align: center;
-}
-
-.registration-passport-square #passport-camera-placeholder[hidden] {
-    display: none;
-}
-
-.registration-camera-privacy {
-    margin-block: 4px;
-    font-size: 12px;
-}
-
-.registration-camera-privacy summary {
-    cursor: pointer;
-}
-
-.registration-camera-privacy p {
-    margin-block: 6px;
-}
-
-@media (max-width: 560px) {
-    body.passport-camera-stage-open {
-        overflow: hidden;
-    }
-
-    body.passport-camera-stage-open .registration-camera-field {
-        position: fixed;
-        z-index: 10000;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        box-sizing: border-box;
-        width: 100%;
-        max-width: none;
-        height: 100vh;
-        height: 100dvh;
-        overflow-y: auto;
-        margin: 0;
-        padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
-        background: #101116;
-        color: #fff;
-    }
-
-    body.passport-camera-stage-open .registration-camera-field > .registration-field-label {
-        margin: 0;
-        color: #fff;
-        font-size: 16px;
-    }
-
-    body.passport-camera-stage-open .registration-camera-help {
-        margin: 0;
-        color: #d7d7df;
-        font-size: 13px;
-        line-height: 1.35;
-    }
-
-    body.passport-camera-stage-open .registration-camera-privacy {
-        font-size: 12px;
-    }
-
-    body.passport-camera-stage-open .registration-passport-shell {
-        display: flex;
-        flex: 0 1 auto;
-        justify-content: center;
-        width: 100%;
-        max-width: 460px;
-        min-height: 0;
-        margin: 0 auto;
-    }
-
-    body.passport-camera-stage-open .registration-passport-square {
-        width: min(100%, 38.4dvh, 440px);
-        height: auto;
-        aspect-ratio: 4 / 5;
-    }
-
-    body.passport-camera-stage-open .registration-camera-actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-        margin-top: 0;
-    }
-
-    body.passport-camera-stage-open .registration-camera-actions button {
-        min-height: 44px;
-        padding: 8px 10px;
-        color: #171923;
-    }
-
-    body.passport-camera-stage-open .registration-camera-actions button:disabled {
-        color: #696a73;
-    }
-
-    body.passport-camera-stage-open .registration-camera-auto-capture {
-        grid-column: 1 / -1;
-        min-height: 40px;
-        padding: 4px 8px;
-        border-color: #53545f;
-    }
-
-    body.passport-camera-stage-open .registration-camera-status,
-    body.passport-camera-stage-open .passport-white-scan-status,
-    body.passport-camera-stage-open .registration-camera-error {
-        margin: 0;
-        color: #f4f4f6;
-        font-size: 13px;
-        line-height: 1.35;
-    }
-
-}
-</style>
-
-<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=4"></script>
+<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=6"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>

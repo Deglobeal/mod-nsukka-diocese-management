@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { LivenessSession, createChallengeSequence } from "../../static/js/registration/passport-liveness.mjs";
+import { getFaceMeasurements, LivenessSession, createChallengeSequence } from "../../static/js/registration/passport-liveness.mjs";
 
 const box = { x: 0.3, y: 0.2, width: 0.4, height: 0.5 };
 const face = (overrides = {}) => ({
@@ -21,6 +21,27 @@ function prime(session) {
 test("challenge sequence varies order and turn direction", () => {
     assert.deepEqual(createChallengeSequence(() => 0), ["blink", "turn-left"]);
     assert.deepEqual(createChallengeSequence(() => 0.99), ["turn-right", "blink"]);
+});
+
+test("face measurements estimate head roll from the eye line", () => {
+    const landmarks = Array.from({ length: 468 }, () => ({ x: 0.5, y: 0.5 }));
+    landmarks[33] = { x: 0.4, y: 0.48 };
+    landmarks[263] = { x: 0.6, y: 0.52 };
+    landmarks[1] = { x: 0.5, y: 0.5 };
+    for (const [outerA, innerA, upperA, upperB, lowerB, lowerA] of [
+        [33, 160, 158, 133, 153, 144],
+        [362, 385, 387, 263, 373, 380]
+    ]) {
+        landmarks[outerA] = { x: 0.4, y: 0.48 };
+        landmarks[innerA] = { x: 0.43, y: 0.48 };
+        landmarks[upperA] = { x: 0.45, y: 0.47 };
+        landmarks[upperB] = { x: 0.47, y: 0.48 };
+        landmarks[lowerB] = { x: 0.46, y: 0.49 };
+        landmarks[lowerA] = { x: 0.42, y: 0.49 };
+    }
+    landmarks[263] = { x: 0.6, y: 0.52 };
+    const measurements = getFaceMeasurements(landmarks);
+    assert.ok(Math.abs(measurements.roll - Math.atan2(0.04, 0.2)) < 1e-12);
 });
 
 test("no face, multiple faces and timeout never pass", () => {

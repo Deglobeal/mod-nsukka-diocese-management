@@ -36,6 +36,12 @@ export function getFaceMeasurements(landmarks) {
     const nose = landmarks[1];
     const eyeMidpoint = (landmarks[33].x + landmarks[263].x) / 2;
     const eyeWidth = Math.abs(landmarks[33].x - landmarks[263].x);
+    let eyeDeltaX = landmarks[263].x - landmarks[33].x;
+    let eyeDeltaY = landmarks[263].y - landmarks[33].y;
+    if (eyeDeltaX < 0) {
+        eyeDeltaX *= -1;
+        eyeDeltaY *= -1;
+    }
     const xs = landmarks.map((point) => point.x);
     const ys = landmarks.map((point) => point.y);
     return {
@@ -43,6 +49,7 @@ export function getFaceMeasurements(landmarks) {
             ? null
             : (leftEye + rightEye) / 2,
         yaw: eyeWidth ? (nose.x - eyeMidpoint) / eyeWidth : null,
+        roll: eyeWidth ? Math.atan2(eyeDeltaY, eyeDeltaX) : null,
         bounds: {
             left: Math.min(...xs), right: Math.max(...xs),
             top: Math.min(...ys), bottom: Math.max(...ys)
