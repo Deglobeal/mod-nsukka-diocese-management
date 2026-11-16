@@ -1,5 +1,8 @@
 import base64
 import hashlib
+import hmac
+import secrets
+from datetime import timedelta
 from django.core import signing
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -11,12 +14,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from PIL import Image, UnidentifiedImageError
 
 from apps.members.forms import MembershipRegistrationForm
 from apps.members.passport_photo_processing import process_passport_photo
 from apps.members.models import FirstMemberRegistrationAttempt
+from apps.members.models import PassportPhotoPreviewToken
 from apps.members.services.first_member_registration import (
     record_registration_attempt,
     redeem_registration_id,
@@ -98,6 +103,16 @@ def _passport_photo_from_post(value):
 PASSPORT_PREVIEW_SIGNING_SALT = "members.passport-photo-preview"
 PASSPORT_PREVIEW_MAX_AGE_SECONDS = 30 * 60
 
+class PassportPreviewTokenError(Exception):
+    pass
+
+
+def _passport_session_digest(request):
+    if not request.session.session_key:
+        request.session.save()
+    request.session.modified = True
+    return hashlib.sha256(request.session.session_key.encode("utf-8")).hexdigest()
+
 
 @require_POST
 def process_passport_photo_preview(request):
@@ -115,10 +130,32 @@ def process_passport_photo_preview(request):
                 )
             image.verify()
 
+        photo_digest = hashlib.sha256(processed_photo).hexdigest()
+        session_digest = _passport_session_digest(request)
+        nonce = secrets.token_urlsafe(32)
+        with transaction.atomic():
+            PassportPhotoPreviewToken.objects.filter(
+                issued_at__lt=timezone.now() - timedelta(
+                    seconds=PASSPORT_PREVIEW_MAX_AGE_SECONDS
+                )
+            ).delete()
+            PassportPhotoPreviewToken.objects.filter(
+                session_digest=session_digest,
+                redeemed_at__isnull=True,
+                revoked_at__isnull=True,
+            ).update(revoked_at=timezone.now())
+            PassportPhotoPreviewToken.objects.create(
+                nonce_digest=hashlib.sha256(nonce.encode("utf-8")).hexdigest(),
+                session_digest=session_digest,
+                photo_digest=photo_digest,
+                photo_size=len(processed_photo),
+            )
         token = signing.dumps(
             {
-                "sha256": hashlib.sha256(processed_photo).hexdigest(),
+                "sha256": photo_digest,
                 "size": len(processed_photo),
+                "session": session_digest,
+                "nonce": nonce,
             },
             salt=PASSPORT_PREVIEW_SIGNING_SALT,
         )
@@ -184,6 +221,7 @@ def membership_registration(request):
         # Passport photographs must still come from the camera capture.
         photo_data = request.POST.get("passport_photo_data", "")
         photo_token = request.POST.get("passport_photo_token", "")
+        preview_nonce = None
         uploaded_files = request.FILES.copy()
         uploaded_files.pop("passport_photo", None)
         photo_error = None
@@ -206,10 +244,33 @@ def membership_registration(request):
                         token_data.get("sha256")
                         != hashlib.sha256(photo_bytes).hexdigest()
                         or token_data.get("size") != len(photo_bytes)
+                        or not hmac.compare_digest(
+                            str(token_data.get("session", "")),
+                            _passport_session_digest(request),
+                        )
                     ):
                         raise ValidationError(
                             "Your accepted photograph has changed. "
                             "Please capture and accept it again."
+                        )
+                    preview_nonce = token_data.get("nonce")
+                    nonce_digest = hashlib.sha256(
+                        str(preview_nonce or "").encode("utf-8")
+                    ).hexdigest()
+                    if not PassportPhotoPreviewToken.objects.filter(
+                        nonce_digest=nonce_digest,
+                        session_digest=_passport_session_digest(request),
+                        photo_digest=token_data.get("sha256"),
+                        photo_size=token_data.get("size"),
+                        redeemed_at__isnull=True,
+                        revoked_at__isnull=True,
+                        issued_at__gte=timezone.now() - timedelta(
+                            seconds=PASSPORT_PREVIEW_MAX_AGE_SECONDS
+                        ),
+                    ).exists():
+                        raise ValidationError(
+                            "Your photo preview has expired or was already used. "
+                            "Please capture and accept your photograph again."
                         )
                     with Image.open(BytesIO(photo_bytes)) as image:
                         if image.format != "JPEG":
@@ -218,9 +279,7 @@ def membership_registration(request):
                             )
                         image.verify()
                 else:
-                    # Compatibility path for existing tests and older clients.
-                    # The camera UI will submit a token after preview acceptance.
-                    photo_bytes = process_passport_photo(photo_bytes)
+                    raise signing.BadSignature("Missing passport preview token.")
 
                 uploaded_files["passport_photo"] = SimpleUploadedFile(
                     "camera-capture.jpg",
@@ -277,6 +336,31 @@ def membership_registration(request):
 
             try:
                 with transaction.atomic():
+                    preview_token = (
+                        PassportPhotoPreviewToken.objects.select_for_update()
+                        .filter(
+                            nonce_digest=hashlib.sha256(
+                                str(preview_nonce or "").encode("utf-8")
+                            ).hexdigest(),
+                            session_digest=_passport_session_digest(request),
+                            redeemed_at__isnull=True,
+                            revoked_at__isnull=True,
+                            issued_at__gte=timezone.now() - timedelta(
+                                seconds=PASSPORT_PREVIEW_MAX_AGE_SECONDS
+                            ),
+                        )
+                        .first()
+                    )
+                    if (
+                        preview_token is None
+                        or preview_token.photo_digest
+                        != hashlib.sha256(photo_bytes).hexdigest()
+                        or preview_token.photo_size != len(photo_bytes)
+                    ):
+                        raise PassportPreviewTokenError(
+                            "Your photo preview expired or was already used. "
+                            "Please capture and accept your photograph again."
+                        )
                     if confirmation["kind"] == "first_member_bootstrap":
                         revalidate_bootstrap_confirmation(
                             raw_id=registration_id,
@@ -285,6 +369,8 @@ def membership_registration(request):
                     # The ModelForm assigns the validated signature upload.
                     # The model field retains its private storage and random path.
                     application.save()
+                    preview_token.redeemed_at = timezone.now()
+                    preview_token.save(update_fields=("redeemed_at",))
                     if confirmation["kind"] == "first_member_bootstrap":
                         redeem_registration_id(raw_id=registration_id, application=application)
                     else:
@@ -293,6 +379,26 @@ def membership_registration(request):
                             sponsor_contact=sponsor_contact,
                             request=request,
                         )
+            except PassportPreviewTokenError as error:
+                for image_field in (
+                    application.signature_image,
+                    application.passport_photo,
+                ):
+                    if image_field.name:
+                        try:
+                            image_field.storage.delete(image_field.name)
+                        except Exception:
+                            pass
+                form.add_error("passport_photo", str(error))
+                return render(
+                    request,
+                    "registration/registration.html",
+                    {
+                        "form": form,
+                        "passport_photo_data": photo_data,
+                        "passport_photo_token": "",
+                    },
+                )
             except ValidationError:
                 # A token can be revoked or become ineligible after the
                 # verification request. The surrounding transaction rolls
@@ -319,7 +425,11 @@ def membership_registration(request):
                 return render(
                     request,
                     "registration/registration.html",
-                    {"form": form, "passport_photo_data": photo_data},
+                    {
+                        "form": form,
+                        "passport_photo_data": photo_data,
+                        "passport_photo_token": photo_token if not photo_error else "",
+                    },
                 )
             except Exception:
                 # Database transactions cannot roll back filesystem writes.
@@ -351,11 +461,13 @@ def membership_registration(request):
                     {
                         "form": form,
                         "passport_photo_data": photo_data,
+                        "passport_photo_token": photo_token if not photo_error else "",
                     },
                     status=500,
                 )
 
             # Permit PDF downloads only from the submitting browser session.
+            request.session.cycle_key()
             allowed_ids = request.session.get(
                 "registration_application_ids", []
             )
@@ -396,6 +508,7 @@ def membership_registration(request):
             {
                 "form": form,
                 "passport_photo_data": photo_data,
+                "passport_photo_token": photo_token if not photo_error else "",
             },
         )
     else:
@@ -404,7 +517,7 @@ def membership_registration(request):
     return render(
         request,
         "registration/registration.html",
-        {"form": form, "passport_photo_data": ""},
+        {"form": form, "passport_photo_data": "", "passport_photo_token": ""},
     )
 
 

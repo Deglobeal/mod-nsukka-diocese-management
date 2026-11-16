@@ -91,6 +91,9 @@
                         <p class="registration-camera-help registration-background-warning">
                             Wear your M.O.D. uniform and capture your current photograph with a white background, your whole head inside the circle, and no caps, hats, or eyeglasses.
                         </p>
+                        <p class="registration-camera-help">
+                            Privacy: the camera checks your face and movement in this browser. Video frames are not sent or stored; only the accepted passport photo is submitted.
+                        </p>
                         <div class="registration-camera-preview registration-passport-square">
                             <video id="passport-camera-video" playsinline autoplay muted hidden></video>
                             <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
@@ -113,10 +116,22 @@
                             <button type="button" id="passport-camera-capture" disabled>Capture photo</button>
                             <button type="button" id="passport-camera-accept" hidden>Use this photo</button>
                             <button type="button" id="passport-camera-retake" hidden>Retake photo</button>
+                            <button type="button" id="passport-voice-toggle" aria-pressed="false">
+                                Enable voice commands
+                            </button>
+                            <label class="registration-camera-auto-capture">
+                                <input type="checkbox" id="passport-auto-capture" checked>
+                                Automatic capture with 3-second countdown
+                            </label>
                         </div>
                         <p id="passport-camera-status" class="registration-camera-status" aria-live="polite">
                             Photograph required.
                         </p>
+                        <p id="passport-voice-status" class="registration-camera-status" aria-live="polite">
+                            Voice commands are off.
+                        </p>
+                        <p id="passport-voice-feedback" class="registration-camera-status" aria-live="polite" hidden></p>
+                        <p id="passport-capture-countdown" class="registration-camera-status" role="status" aria-live="assertive" hidden></p>
                         <p id="passport-camera-error" class="registration-camera-error" role="alert" hidden></p>
                         {% if form.passport_photo.errors %}
                             <ul class="registration-field-errors">
@@ -435,7 +450,7 @@
 }
 </style>
 
-<script src="{% static 'js/registration/passport-camera.js' %}"></script>
+<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=2"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>
