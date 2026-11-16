@@ -11,7 +11,8 @@ test("front and rear getUserMedia fallbacks prefer ideal settings then facing mo
         const [preferred, loose, facingOnly] = cameraConstraintFallbacks(facingMode);
         assert.deepEqual(preferred.video.facingMode, { ideal: facingMode });
         assert.equal(preferred.video.width.ideal, 720);
-        assert.equal(preferred.video.height.ideal, 1280);
+        assert.equal(preferred.video.height.ideal, 900);
+        assert.equal(preferred.video.aspectRatio.ideal, 4 / 5);
         assert.deepEqual(loose.video.facingMode, { ideal: facingMode });
         assert.equal(facingOnly.video.facingMode, facingMode);
         assert.equal(preferred.audio, false);
@@ -31,9 +32,9 @@ test("camera chooser prefers front wide and rear main while rejecting telephoto 
     assert.equal(selectPreferredCameraDevice(devices, "environment", "rear-main"), null);
 });
 
-test("zoom is skipped when unsupported or fixed and clamped to min plus 0.2", () => {
-    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 2 }), 1.2);
-    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1.1 }), 1.1);
+test("zoom is reset to the device minimum and skipped when already at minimum or fixed", () => {
+    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 2 }), 1);
+    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1 }), null);
     assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 1 } }), null);
     assert.equal(zoomConstraintTarget({}), null);
 });

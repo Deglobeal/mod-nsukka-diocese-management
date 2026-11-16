@@ -83,8 +83,8 @@ export function cameraConstraintFallbacks(facingMode) {
             video: {
                 facingMode: { ideal: facingMode },
                 width: { ideal: 720 },
-                height: { ideal: 1280 },
-                aspectRatio: { ideal: 9 / 16 }
+                height: { ideal: 900 },
+                aspectRatio: { ideal: 4 / 5 }
             }
         },
         {
@@ -92,7 +92,8 @@ export function cameraConstraintFallbacks(facingMode) {
             video: {
                 facingMode: { ideal: facingMode },
                 width: { ideal: 640 },
-                height: { ideal: 480 }
+                height: { ideal: 800 },
+                aspectRatio: { ideal: 4 / 5 }
             }
         },
         { audio: false, video: { facingMode } }
@@ -103,9 +104,8 @@ export function zoomConstraintTarget(capabilities, settings = {}) {
     const zoom = capabilities && capabilities.zoom;
     if (!zoom || !Number.isFinite(zoom.min) || !Number.isFinite(zoom.max) ||
         zoom.max <= zoom.min) return null;
-    const ceiling = Math.min(zoom.max, zoom.min + 0.2);
-    const current = Number.isFinite(settings.zoom) ? settings.zoom : zoom.min;
-    return Math.max(zoom.min, Math.min(current, ceiling));
+    const current = Number.isFinite(settings.zoom) ? settings.zoom : null;
+    return current === null || current > zoom.min + 0.01 ? zoom.min : null;
 }
 
 export function selectPreferredCameraDevice(devices, facingMode, currentDeviceId = "") {
