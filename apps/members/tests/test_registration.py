@@ -16,7 +16,7 @@ from apps.members.forms.registration_form import (
     NIGERIA_LGAS,
     MembershipRegistrationForm,
 )
-from apps.members.models import Member, MemberProfile
+from apps.members.models import Member, MemberProfile, Rank
 from apps.notifications.models import SMSNotification, SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication
@@ -76,6 +76,7 @@ class MembershipRegistrationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        Rank.objects.get_or_create(name="Major")
         cls.diocese, _created = Diocese.objects.get_or_create(
             code="036",
             defaults={"name": "Nsukka Diocese"},

@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+{% block content %}
+<h1>First Member Registration IDs</h1>
+{% if message %}<div class="messagelist"><div class="success">{{ message }}</div></div>{% endif %}
+{% if generated_id %}
+<section class="module" aria-label="New ID">
+  <h2>Copy this ID now</h2>
+  <p><code id="new-registration-id">{{ generated_id }}</code></p>
+  <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('new-registration-id').textContent)">Copy ID</button>
+</section>
+{% endif %}
+<section class="module">
+  <h2>Generate an ID</h2>
+  <p>Each ID expires after 7 days. The full ID is shown only once after generation.</p>
+  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="generate"><button class="button default" type="submit">Generate new ID</button></form>
+  {% if available_token %}<form method="post" style="margin-top:1em">{% csrf_token %}<input type="hidden" name="action" value="replace"><label>Replacement reason <textarea name="reason" required rows="2"></textarea></label><button class="button" type="submit">Revoke and replace current ID</button></form>{% endif %}
+</section>
+{% if rejected_bootstrap_exists %}
+<section class="module">
+  <h2>Exceptional replacement after rejection</h2>
+  <p>A rejected bootstrap application does not reopen its ID. A replacement requires an explicit reason.</p>
+  <form method="post">{% csrf_token %}<input type="hidden" name="action" value="exceptional_replace"><label>Reason <textarea name="reason" required rows="3"></textarea></label><button class="button" type="submit">Authorize replacement</button></form>
+</section>
+{% endif %}
+<section class="module">
+  <h2>Issued IDs</h2>
+  <div class="results"><table><thead><tr><th>Status</th><th>Created</th><th>Expires</th><th>Registration</th><th>Member</th><th>Replacement</th><th>Actions</th></tr></thead><tbody>
+  {% for token in tokens %}<tr>
+    <td>{{ token.get_status_display }}</td><td>{{ token.created_at }}</td><td>{{ token.expires_at }}</td>
+    <td>{% if token.redeemed_application %}<a href="{% url 'admin:verification_membershipapplication_change' token.redeemed_application_id %}">Application #{{ token.redeemed_application_id }}</a>{% else %}—{% endif %}</td>
+    <td>{% if token.redeemed_by %}{{ token.redeemed_by }}{% else %}—{% endif %}</td>
+    <td>{% if token.replaced_by %}ID #{{ token.replaced_by_id }}{% else %}—{% endif %}</td>
+    <td>{% if token.status == 'available' %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="token_id" value="{{ token.pk }}"><label>Reason <input name="reason" required></label><button class="button" type="submit">Revoke</button></form>{% else %}—{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="7">No registration IDs have been generated.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<section class="module"><h2>Registration attempts</h2><div class="results"><table><thead><tr><th>Time</th><th>Outcome</th><th>Error</th><th>Application</th><th>Token record</th></tr></thead><tbody>
+{% for attempt in attempts %}<tr><td>{{ attempt.created_at }}</td><td>{{ attempt.get_outcome_display }}</td><td>{{ attempt.error_code|default:'—' }}</td><td>{{ attempt.application_id|default:'—' }}</td><td>{% if attempt.token_id %}ID #{{ attempt.token_id }}{% else %}Unavailable/unknown{% endif %}</td></tr>{% empty %}<tr><td colspan="5">No attempts recorded.</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="module"><h2>Audit history</h2><div class="results"><table><thead><tr><th>Time</th><th>Action</th><th>ID</th><th>Actor</th><th>Reason</th></tr></thead><tbody>
+{% for event in audit_events %}<tr><td>{{ event.created_at }}</td><td>{{ event.get_action_display }}</td><td>ID #{{ event.token_id }}</td><td>{{ event.actor|default:'System' }}</td><td>{{ event.reason|default:'—' }}</td></tr>{% empty %}<tr><td colspan="5">No audit events recorded.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}
