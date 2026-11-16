@@ -2,7 +2,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("members", "0002_memberprofile")]
+    dependencies = [("members", "0004_memberprofile_whatsapp_consent_phone_and_more")]
     operations = [
         migrations.CreateModel(
             name="Rank",
