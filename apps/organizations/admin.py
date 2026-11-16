@@ -30,6 +30,15 @@ class DeaneryAdmin(admin.ModelAdmin):
     search_fields = ("name", "code", "diocese__name")
     readonly_fields = ("created_at", "updated_at")
 
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(Parish)
 class ParishAdmin(admin.ModelAdmin):
@@ -43,6 +52,15 @@ class ParishAdmin(admin.ModelAdmin):
     )
     readonly_fields = ("created_at", "updated_at")
 
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(Station)
 class StationAdmin(admin.ModelAdmin):
@@ -55,3 +73,12 @@ class StationAdmin(admin.ModelAdmin):
         "parish__deanery__name",
     )
     readonly_fields = ("created_at", "updated_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

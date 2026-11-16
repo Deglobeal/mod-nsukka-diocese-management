@@ -5,15 +5,22 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 
 from apps.accounts.models import OfficeAssignment
+from apps.identity_cards.models import OfficeAppointment, ReservedOffice
 from apps.members.models import Member, MemberAccount
+
+
+CHAIRMAN_SEAT_IDENTIFIER = "MODCHAIRMAN/036/00002"
 
 
 def link_member_account(*, actor, user_id, member_id):
     """
     Link an existing login account to an active official member.
 
-    The actor must hold an active office assignment covering the member.
-    Neither account nor member records are created by this service.
+    The actor must hold an active office assignment covering the member,
+    except for the superuser linking an existing account to the first
+    appointed Chairman. That bootstrap link also grants the Chairman's
+    Diocese Administrator assignment. Neither account nor member records
+    are created by this service.
     """
     if actor is None or not getattr(actor, "is_authenticated", False):
         raise PermissionDenied("An authenticated staff member is required.")
@@ -75,10 +82,45 @@ def link_member_account(*, actor, user_id, member_id):
             authorized = True
             break
 
-    if not authorized:
+    first_chairman_appointment = None
+    if actor.is_superuser:
+        first_chairman_appointment = (
+            OfficeAppointment.objects.filter(
+                reserved_office__official_identifier=CHAIRMAN_SEAT_IDENTIFIER,
+                reserved_office__office_type=(
+                    ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN
+                ),
+                reserved_office__diocese_id=member.parish.deanery.diocese_id,
+                member=member,
+                ended_at__isnull=True,
+                appointed_by=actor,
+            )
+            .select_related("reserved_office")
+            .first()
+        )
+        if first_chairman_appointment and OfficeAppointment.objects.filter(
+            reserved_office=first_chairman_appointment.reserved_office,
+        ).count() != 1:
+            first_chairman_appointment = None
+
+    is_first_chairman_bootstrap = first_chairman_appointment is not None
+
+    if not authorized and not is_first_chairman_bootstrap:
         raise PermissionDenied(
             "You do not have an active office assignment authorized "
             "to link accounts for this member."
+        )
+
+    if (
+        is_first_chairman_bootstrap
+        and OfficeAssignment.objects.filter(
+            user=target_user,
+            is_active=True,
+        ).exists()
+    ):
+        raise ValidationError(
+            "The first Chairman must be linked to an existing account that "
+            "does not already hold another office assignment."
         )
 
     try:
@@ -91,11 +133,20 @@ def link_member_account(*, actor, user_id, member_id):
                     "This member is already linked to an account."
                 )
 
-            return MemberAccount.objects.create(
+            account_link = MemberAccount.objects.create(
                 user=target_user,
                 member=member,
                 linked_by=actor,
             )
+
+            if is_first_chairman_bootstrap:
+                OfficeAssignment.objects.create(
+                    user=target_user,
+                    role=OfficeAssignment.Role.DIOCESE_ADMIN,
+                    diocese=member.parish.deanery.diocese,
+                )
+
+            return account_link
     except IntegrityError as exc:
         # Catch the database error after the atomic block has rolled back.
         raise ValidationError(

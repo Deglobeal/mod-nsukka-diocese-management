@@ -25,6 +25,96 @@
         {% endfor %}
     {% endif %}
 
+    {% if scope.level == "superuser" %}
+    <section class="organization-panel" aria-labelledby="initial-setup-heading">
+        <h2 id="initial-setup-heading">Initial Diocese setup</h2>
+        <p>
+            The Nsukka Diocese record is provisioned as
+            <strong>{{ bootstrap_diocese.name }} ({{ bootstrap_diocese.code }})</strong>.
+            Complete the initial structure before membership registration.
+        </p>
+        <ol>
+            <li>Diocese: {{ bootstrap_diocese.name }} ({{ bootstrap_diocese.code }})</li>
+            <li>Initial Deanery: {% if initial_deanery %}{{ initial_deanery.name }}{% else %}Not created{% endif %}</li>
+            <li>Initial Parish: {% if initial_parish %}{{ initial_parish.name }}{% else %}Not created{% endif %}</li>
+        </ol>
+
+        {% if chairman_history %}
+            {% if current_chairman_appointment %}
+                <p class="organization-message" role="status">
+                    {{ current_chairman_appointment.member.full_name }} is the appointed Diocesan Chairman.
+                    Superuser bootstrap is closed. Continue Diocese management through the Chairman.
+                </p>
+                {% if first_chairman_account_form %}
+                    <h3>Link the Chairman’s existing login account</h3>
+                    <p>
+                        Create the login account separately in Django Admin,
+                        then select it here. This step only links an existing
+                        account to the appointed ACTIVE Member; it does not
+                        create an account. The link activates the Chairman’s
+                        Diocese Administrator dashboard access.
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="setup_action" value="link_first_chairman_account">
+                        {{ first_chairman_account_form.as_p }}
+                        <button class="organization-link" type="submit">Link existing account</button>
+                    </form>
+                {% endif %}
+            {% else %}
+                <p class="organization-message" role="status">
+                    The reserved Chairman seat has appointment history. Superuser first-appointment setup is closed.
+                </p>
+            {% endif %}
+        {% elif initial_deanery_form %}
+            <h3>Create the initial Deanery</h3>
+            <p>Only the first Deanery can be created during superuser setup.</p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="setup_action" value="create_initial_deanery">
+                {{ initial_deanery_form.as_p }}
+                <button class="organization-link" type="submit">Create initial Deanery</button>
+            </form>
+        {% elif initial_parish_form %}
+            <h3>Create the initial Parish</h3>
+            <p>Only the first Parish can be created during superuser setup.</p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="setup_action" value="create_initial_parish">
+                {{ initial_parish_form.as_p }}
+                <button class="organization-link" type="submit">Create initial Parish</button>
+            </form>
+        {% elif first_chairman_form %}
+            <h3>Appoint the first Diocesan Chairman</h3>
+            <p>
+                The candidate must already be an ACTIVE Member in this Diocese.
+                This appoints the member to the existing reserved seat
+                <strong>{{ chairman_office.official_identifier }}</strong>.
+                It does not create a login account or a personal Membership ID.
+            </p>
+            {% if active_candidate_count %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="setup_action" value="appoint_first_chairman">
+                    {{ first_chairman_form.as_p }}
+                    <button class="organization-link" type="submit">Appoint first Chairman</button>
+                </form>
+            {% else %}
+                <p class="organization-empty">
+                    No ACTIVE members are available yet. Register the candidate,
+                    complete the approval process, and return here after the
+                    membership status becomes ACTIVE.
+                </p>
+            {% endif %}
+        {% elif not chairman_office %}
+            <p class="organization-empty">
+                The reserved Chairman seat has not been provisioned. Apply the
+                reserved-office migrations before completing setup.
+            </p>
+        {% endif %}
+    </section>
+    {% endif %}
+
     <section class="organization-summary">
         {% if scope.level == "superuser" %}
         <div class="organization-stat">
