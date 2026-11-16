@@ -88,12 +88,13 @@
                     {% include "registration/partials/registration_field.html" with field=form.date_of_birth %}
                     <div class="registration-field registration-camera-field">
                         <span class="registration-field-label">Passport photograph <span aria-hidden="true">*</span></span>
-                        <p class="registration-camera-help registration-background-warning">
-                            Wear your M.O.D. uniform and capture your current photograph with a white background, your whole head inside the circle, and no caps, hats, or eyeglasses.
+                        <p class="registration-camera-help registration-camera-instructions">
+                            Wear your M.O.D. uniform. Keep your full head and shoulders inside the guide.
                         </p>
-                        <p class="registration-camera-help">
-                            Privacy: the camera checks your face and movement in this browser. Video frames are not sent or stored; only the accepted passport photo is submitted.
-                        </p>
+                        <details class="registration-camera-privacy">
+                            <summary>Camera privacy</summary>
+                            <p>Face and movement checks run in this browser. Video frames are not sent or stored; only your accepted passport photo is submitted.</p>
+                        </details>
                         <div class="registration-passport-shell">
                             <div class="registration-camera-preview registration-passport-square">
                                 <video id="passport-camera-video" playsinline autoplay muted hidden></video>
@@ -348,9 +349,9 @@
 <style>
 /* Full-frame portrait preview and face-positioning guide. */
 .registration-passport-shell {
-    width: min(100%, 340px);
+    width: min(100%, 460px);
     margin: 12px auto;
-    padding: 12px;
+    padding: 0;
     border-radius: 22px;
     background: #171923;
     box-sizing: border-box;
@@ -382,7 +383,7 @@
     height: 100%;
     max-width: none;
     max-height: none;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
 }
 
@@ -440,10 +441,10 @@
     right: auto;
     bottom: auto;
     margin: 0;
-    padding: 6px 8px;
-    border-radius: 6px;
-    background: rgb(255 255 255 / 94%);
-    color: #333;
+    padding: 2px 0;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
     font-size: 12px;
     text-align: center;
 }
@@ -461,9 +462,115 @@
 .registration-passport-square #passport-camera-placeholder[hidden] {
     display: none;
 }
+
+.registration-camera-privacy {
+    margin-block: 4px;
+    font-size: 12px;
+}
+
+.registration-camera-privacy summary {
+    cursor: pointer;
+}
+
+.registration-camera-privacy p {
+    margin-block: 6px;
+}
+
+@media (max-width: 560px) {
+    body.passport-camera-stage-open {
+        overflow: hidden;
+    }
+
+    body.passport-camera-stage-open .registration-camera-field {
+        position: fixed;
+        z-index: 10000;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        overflow-y: auto;
+        margin: 0;
+        padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+        background: #101116;
+        color: #fff;
+    }
+
+    body.passport-camera-stage-open .registration-camera-field > .registration-field-label {
+        margin: 0;
+        color: #fff;
+        font-size: 16px;
+    }
+
+    body.passport-camera-stage-open .registration-camera-help {
+        margin: 0;
+        color: #d7d7df;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+
+    body.passport-camera-stage-open .registration-camera-privacy {
+        font-size: 12px;
+    }
+
+    body.passport-camera-stage-open .registration-passport-shell {
+        display: flex;
+        flex: 0 1 auto;
+        justify-content: center;
+        width: 100%;
+        max-width: 460px;
+        min-height: 0;
+        margin: 0 auto;
+    }
+
+    body.passport-camera-stage-open .registration-passport-square {
+        width: min(100%, 38.4dvh, 440px);
+        height: auto;
+        aspect-ratio: 4 / 5;
+    }
+
+    body.passport-camera-stage-open .registration-camera-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 0;
+    }
+
+    body.passport-camera-stage-open .registration-camera-actions button {
+        min-height: 44px;
+        padding: 8px 10px;
+        color: #171923;
+    }
+
+    body.passport-camera-stage-open .registration-camera-actions button:disabled {
+        color: #696a73;
+    }
+
+    body.passport-camera-stage-open .registration-camera-auto-capture {
+        grid-column: 1 / -1;
+        min-height: 40px;
+        padding: 4px 8px;
+        border-color: #53545f;
+    }
+
+    body.passport-camera-stage-open .registration-camera-status,
+    body.passport-camera-stage-open .passport-white-scan-status,
+    body.passport-camera-stage-open .registration-camera-error {
+        margin: 0;
+        color: #f4f4f6;
+        font-size: 13px;
+        line-height: 1.35;
+    }
+
+}
 </style>
 
-<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=3"></script>
+<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=4"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>

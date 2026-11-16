@@ -1,44 +1,44 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    containRect,
+    coverRect,
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
-    mapRectToContainFrame,
+    mapRectToCoverFrame,
     nextFacingMode,
     passportCanvasRenderPlan,
     PASSPORT_FRAME_HEIGHT,
     PASSPORT_FRAME_WIDTH
 } from "../../static/js/registration/passport-framing.mjs";
 
-test("portrait and landscape sources fit without cropping or distortion", () => {
-    const portrait = containRect(720, 1280);
+test("portrait and landscape sources fill the frame without letterbox bars", () => {
+    const portrait = coverRect(720, 1280);
+    assert.equal(portrait.width, 720);
     assert.equal(portrait.height, PASSPORT_FRAME_HEIGHT);
-    assert.ok(portrait.width < PASSPORT_FRAME_WIDTH);
-    assert.equal(portrait.x, (PASSPORT_FRAME_WIDTH - portrait.width) / 2);
+    assert.equal(portrait.y, 190);
 
-    const landscape = containRect(1920, 1080);
-    assert.equal(landscape.width, PASSPORT_FRAME_WIDTH);
-    assert.ok(landscape.height < PASSPORT_FRAME_HEIGHT);
-    assert.equal(landscape.y, (PASSPORT_FRAME_HEIGHT - landscape.height) / 2);
+    const landscape = coverRect(1920, 1080);
+    assert.equal(landscape.width, 864);
+    assert.equal(landscape.height, 1080);
+    assert.equal(landscape.x, 528);
 });
 
-test("capture uses a fixed 4:5 canvas and the same contain transform", () => {
+test("capture uses a fixed 4:5 canvas and the same cover crop", () => {
     const plan = passportCanvasRenderPlan(1280, 720);
     assert.equal(plan.width, 720);
     assert.equal(plan.height, 900);
-    assert.equal(plan.frame.width, 720);
-    assert.equal(plan.frame.height, 405);
-    assert.equal(plan.frame.y, 247.5);
+    assert.equal(plan.frame.width, 576);
+    assert.equal(plan.frame.height, 720);
+    assert.equal(plan.frame.x, 352);
 });
 
-test("face coordinates map to the same centered contain transform as canvas rendering", () => {
+test("face coordinates map to the same centered cover crop as canvas rendering", () => {
     const sourceRect = { x: 180, y: 250, width: 250, height: 360 };
-    const mapped = mapRectToContainFrame(sourceRect, 720, 1280);
-    const fit = containRect(720, 1280);
-    assert.ok(Math.abs(mapped.x - (fit.x + sourceRect.x * fit.scale) / 720) < 1e-12);
-    assert.ok(Math.abs(mapped.y - (sourceRect.y * fit.scale) / 900) < 1e-12);
-    assert.ok(mapped.width < sourceRect.width / 720);
+    const mapped = mapRectToCoverFrame(sourceRect, 720, 1280);
+    const crop = coverRect(720, 1280);
+    assert.ok(Math.abs(mapped.x - (sourceRect.x - crop.x) / crop.width) < 1e-12);
+    assert.ok(Math.abs(mapped.y - (sourceRect.y - crop.y) / crop.height) < 1e-12);
+    assert.equal(mapped.width, sourceRect.width / crop.width);
 });
 
 test("normalized framing guidance handles distance, alignment and ready position", () => {
