@@ -1,40 +1,42 @@
 export const PASSPORT_FRAME_WIDTH = 720;
 export const PASSPORT_FRAME_HEIGHT = 900;
-export const PASSPORT_FRAME_BACKGROUND = "#10151b";
 
-export function containRect(sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
+export function coverRect(sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
     if ([sourceWidth, sourceHeight, targetWidth, targetHeight].some((value) =>
         !Number.isFinite(value) || value <= 0
     )) return null;
 
-    const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
-    const width = sourceWidth * scale;
-    const height = sourceHeight * scale;
-    return {
-        x: (targetWidth - width) / 2,
-        y: (targetHeight - height) / 2,
-        width,
-        height,
-        scale
-    };
+    const targetAspect = targetWidth / targetHeight;
+    let x = 0;
+    let y = 0;
+    let width = sourceWidth;
+    let height = sourceHeight;
+    if (sourceWidth / sourceHeight > targetAspect) {
+        width = sourceHeight * targetAspect;
+        x = (sourceWidth - width) / 2;
+    } else {
+        height = sourceWidth / targetAspect;
+        y = (sourceHeight - height) / 2;
+    }
+    return { x, y, width, height, scale: targetWidth / width };
 }
 
 export function passportCanvasRenderPlan(sourceWidth, sourceHeight) {
     return {
         width: PASSPORT_FRAME_WIDTH,
         height: PASSPORT_FRAME_HEIGHT,
-        frame: containRect(sourceWidth, sourceHeight)
+        frame: coverRect(sourceWidth, sourceHeight)
     };
 }
 
-export function mapRectToContainFrame(rect, sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
-    const fit = containRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
-    if (!fit || !rect) return null;
+export function mapRectToCoverFrame(rect, sourceWidth, sourceHeight, targetWidth = PASSPORT_FRAME_WIDTH, targetHeight = PASSPORT_FRAME_HEIGHT) {
+    const crop = coverRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
+    if (!crop || !rect) return null;
     return {
-        x: (fit.x + rect.x * fit.scale) / targetWidth,
-        y: (fit.y + rect.y * fit.scale) / targetHeight,
-        width: (rect.width * fit.scale) / targetWidth,
-        height: (rect.height * fit.scale) / targetHeight
+        x: (rect.x - crop.x) / crop.width,
+        y: (rect.y - crop.y) / crop.height,
+        width: rect.width / crop.width,
+        height: rect.height / crop.height
     };
 }
 
@@ -48,18 +50,18 @@ export function getPassportFaceGuidance(face, roll = 0, previous = null) {
     const centerX = face.x + face.width / 2;
     const centerY = face.y + face.height / 2;
 
-    const tooClose = face.width > 0.43 || face.height > 0.48;
-    const stillLeavingCloseZone = face.width > 0.38 || face.height > 0.43;
+    const tooClose = face.height > 0.55;
+    const stillLeavingCloseZone = face.height >= 0.50;
     if (previous === "farther" ? stillLeavingCloseZone : tooClose) return "farther";
 
-    const tooFar = face.width < 0.14 || face.height < 0.17;
-    const stillLeavingFarZone = face.width < 0.18 || face.height < 0.21;
+    const tooFar = face.height < 0.30;
+    const stillLeavingFarZone = face.height <= 0.35;
     if (previous === "closer" ? stillLeavingFarZone : tooFar) return "closer";
     if (Number.isFinite(roll) && Math.abs(roll) > 0.18) return "straight";
     if (face.x < 0.16 || centerX < 0.38) return "right";
     if (face.x + face.width > 0.84 || centerX > 0.62) return "left";
-    if (face.y < 0.04 || centerY < 0.20) return "down";
-    if (face.y + face.height > 0.50 || centerY > 0.38) return "up";
+    if (face.y < 0.05 || centerY < 0.35) return "down";
+    if (face.y + face.height > 0.95 || centerY > 0.65) return "up";
     return "ready";
 }
 
@@ -75,49 +77,68 @@ export function stopMediaTracks(stream) {
 }
 
 export function cameraConstraintFallbacks(facingMode) {
-    const preferredVideo = {
-        facingMode: { ideal: facingMode },
-        width: { ideal: 720 },
-        height: { ideal: 1280 },
-        aspectRatio: { ideal: 9 / 16 }
-    };
     return [
         {
             audio: false,
-            video: preferredVideo
+            video: {
+                facingMode: { ideal: facingMode },
+                width: { ideal: 720 },
+                height: { ideal: 1280 },
+                aspectRatio: { ideal: 9 / 16 }
+            }
         },
-        { audio: false, video: { facingMode: { ideal: facingMode } } },
-        { audio: false, video: true }
+        {
+            audio: false,
+            video: {
+                facingMode: { ideal: facingMode },
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        },
+        { audio: false, video: { facingMode } }
     ];
 }
 
-export function minimumSupportedZoom(capabilities) {
+export function zoomConstraintTarget(capabilities, settings = {}) {
     const zoom = capabilities && capabilities.zoom;
-    if (!zoom || !Number.isFinite(zoom.min) || !Number.isFinite(zoom.max) || zoom.max < zoom.min) {
-        return null;
-    }
-    return zoom.min;
+    if (!zoom || !Number.isFinite(zoom.min) || !Number.isFinite(zoom.max) ||
+        zoom.max <= zoom.min) return null;
+    const ceiling = Math.min(zoom.max, zoom.min + 0.2);
+    const current = Number.isFinite(settings.zoom) ? settings.zoom : zoom.min;
+    return Math.max(zoom.min, Math.min(current, ceiling));
 }
 
-export function selectWideCameraDevice(devices, facingMode, currentDeviceId = "") {
+export function selectPreferredCameraDevice(devices, facingMode, currentDeviceId = "") {
     if (!Array.isArray(devices)) return null;
-    const directionPattern = facingMode === "user"
-        ? /front|user|selfie/i
-        : /rear|back|environment/i;
-    const widePattern = /ultra[ -]?wide|\bwide\b|0\.5\s*x/i;
-    const telePattern = /telephoto|tele[ -]?photo|zoom|2\s*x|3\s*x/i;
-    const candidates = devices.filter((device) =>
-        device && device.kind === "videoinput" && device.deviceId &&
-        device.deviceId !== currentDeviceId && directionPattern.test(device.label || "")
+    const videoDevices = devices.filter((device) =>
+        device && device.kind === "videoinput" && device.deviceId
     );
-    const wideCandidates = candidates.filter((device) => widePattern.test(device.label || ""));
-    const currentCamera = devices.find((device) => device && device.deviceId === currentDeviceId);
-    // Prefer a camera explicitly identified as wide. Otherwise leave selection
-    // to the browser's facingMode preference instead of guessing by device order.
-    const labelledWide = wideCandidates.find((device) => !telePattern.test(device.label || ""));
-    if (labelledWide) return labelledWide;
-    if (currentCamera && telePattern.test(currentCamera.label || "")) {
-        return candidates.find((device) => !telePattern.test(device.label || "")) || null;
+    const current = videoDevices.find((device) => device.deviceId === currentDeviceId);
+
+    if (facingMode === "user") {
+        const frontPattern = /front|user|selfie/i;
+        const fronts = videoDevices.filter((device) => frontPattern.test(device.label || ""));
+        const wide = fronts.find((device) => /ultra[ -]?wide|\bwide\b|0\.5\s*x/i.test(device.label || ""));
+        if (wide) return wide.deviceId !== currentDeviceId ? wide : null;
+        const frontNonWide = fronts.find((device) => device.deviceId !== currentDeviceId &&
+            !/tele|zoom/i.test(device.label || ""));
+        return current && /tele|zoom/i.test(current.label || "") ? frontNonWide || null : null;
+    }
+
+    const rearPattern = /back|rear|environment|wide|main|primary/i;
+    const rejectPattern = /tele|macro|depth|ultra|periscope/i;
+    const labelledRear = videoDevices.filter((device) =>
+        rearPattern.test(device.label || "") && !rejectPattern.test(device.label || "")
+    );
+    const mainRear = labelledRear.find((device) =>
+        /main|primary/i.test(device.label || "") && device.deviceId !== currentDeviceId
+    );
+    if (mainRear) return mainRear;
+
+    // Keep the browser-chosen environment device unless its label identifies
+    // a lens that should not be used as the primary passport camera.
+    if (current && rejectPattern.test(current.label || "")) {
+        return labelledRear.find((device) => device.deviceId !== currentDeviceId) || null;
     }
     return null;
 }

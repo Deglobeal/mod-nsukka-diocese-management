@@ -91,9 +91,11 @@
                             <header class="passport-capture-header">
                                 <p class="passport-capture-eyebrow">SECURE IDENTITY CHECK · STEP 1</p>
                                 <h3 class="passport-capture-title">Passport photograph <span aria-hidden="true">*</span></h3>
-                                <p class="passport-capture-instructions">
-                                    Face the camera. Keep your full head and chin inside the guide.
-                                </p>
+                                <p id="passport-camera-indicator" class="passport-camera-indicator" aria-live="polite">Front camera</p>
+                                <details class="passport-capture-tips">
+                                    <summary>Photo tips</summary>
+                                    <p>Face the camera. Keep your full head and chin inside the guide. Hold the phone at arm’s length and keep your head straight.</p>
+                                </details>
                                 <details class="registration-camera-privacy">
                                     <summary>Camera privacy</summary>
                                     <p>Face and movement checks run in this browser. Video frames are not sent or stored; only your accepted passport photo is submitted.</p>
@@ -104,7 +106,11 @@
                                     <video id="passport-camera-video" playsinline autoplay muted hidden></video>
                                     <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
                                     <p id="passport-camera-placeholder">Tap Start camera to begin your photo check.</p>
-                                    <div class="registration-camera-guide" aria-hidden="true"></div>
+                                    <svg class="registration-camera-guide" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true">
+                                        <path class="passport-guide-head" d="M36 7 C23 9 19 22 20 37 C21 53 29 63 38 67 L38 73 C29 75 24 80 19 88 L16 96" />
+                                        <path class="passport-guide-head" d="M64 7 C77 9 81 22 80 37 C79 53 71 63 62 67 L62 73 C71 75 76 80 81 88 L84 96" />
+                                        <path class="passport-guide-shoulders" d="M16 96 C25 89 34 86 50 86 C66 86 75 89 84 96 L88 119 L12 119 Z" />
+                                    </svg>
                                 </div>
                             </div>
                             <p id="passport-white-scan-status"
@@ -345,7 +351,7 @@
 
 
 
-<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=7"></script>
+<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=8"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>
