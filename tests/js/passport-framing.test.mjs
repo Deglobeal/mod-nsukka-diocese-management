@@ -5,10 +5,12 @@ import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
     mapRectToCoverFrame,
+    mirrorRectHorizontally,
     nextFacingMode,
     passportCanvasRenderPlan,
     PASSPORT_FRAME_HEIGHT,
-    PASSPORT_FRAME_WIDTH
+    PASSPORT_FRAME_WIDTH,
+    stopMediaTracks
 } from "../../static/js/registration/passport-framing.mjs";
 
 test("portrait and landscape sources fill the frame without letterbox bars", () => {
@@ -41,10 +43,18 @@ test("face coordinates map to the same centered cover crop as canvas rendering",
     assert.equal(mapped.width, sourceRect.width / crop.width);
 });
 
+test("selfie preview mirrors face guidance without changing the source capture", () => {
+    const sourceFace = { x: 80, y: 200, width: 180, height: 240 };
+    const mirroredFace = mirrorRectHorizontally(sourceFace, 720);
+    assert.deepEqual(mirroredFace, { x: 460, y: 200, width: 180, height: 240 });
+    assert.equal(sourceFace.x, 80);
+});
+
 test("normalized framing guidance handles distance, alignment and ready position", () => {
     assert.equal(getPassportFaceGuidance(null), "no-face");
     assert.equal(getPassportFaceGuidance({ x: 0.43, y: 0.2, width: 0.10, height: 0.15 }), "closer");
     assert.equal(getPassportFaceGuidance({ x: 0.3, y: 0.1, width: 0.45, height: 0.5 }), "farther");
+    assert.equal(getPassportFaceGuidance({ x: 0.42, y: 0.2, width: 0.2, height: 0.25 }, 0.25), "straight");
     assert.equal(getPassportFaceGuidance({ x: 0.05, y: 0.2, width: 0.2, height: 0.25 }), "right");
     assert.equal(getPassportFaceGuidance({ x: 0.42, y: 0.2, width: 0.2, height: 0.25 }), "ready");
 });
@@ -57,8 +67,17 @@ test("camera switch alternates rear and front preference", () => {
 test("camera constraints use non-exact preferences and include broad fallbacks", () => {
     const [preferred, facingOnly, generic] = cameraConstraintFallbacks("environment");
     assert.deepEqual(preferred.video.facingMode, { ideal: "environment" });
+    assert.equal(preferred.audio, false);
     assert.equal(preferred.video.width.ideal, 720);
     assert.equal(preferred.video.height.ideal, 1280);
     assert.deepEqual(facingOnly.video.facingMode, { ideal: "environment" });
     assert.equal(generic.video, true);
+});
+
+test("camera cleanup stops each active media track", () => {
+    let stopped = 0;
+    stopMediaTracks({
+        getTracks: () => [{ stop: () => stopped += 1 }, { stop: () => stopped += 1 }]
+    });
+    assert.equal(stopped, 2);
 });

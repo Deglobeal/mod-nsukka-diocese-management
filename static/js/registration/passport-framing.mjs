@@ -46,13 +46,19 @@ export function mapRectToCoverFrame(rect, sourceWidth, sourceHeight, targetWidth
     };
 }
 
-export function getPassportFaceGuidance(face) {
+export function mirrorRectHorizontally(rect, sourceWidth) {
+    if (!rect || !Number.isFinite(sourceWidth) || sourceWidth <= 0) return null;
+    return { ...rect, x: sourceWidth - rect.x - rect.width };
+}
+
+export function getPassportFaceGuidance(face, roll = 0) {
     if (!face) return "no-face";
     const centerX = face.x + face.width / 2;
     const centerY = face.y + face.height / 2;
 
     if (face.width < 0.14 || face.height < 0.18) return "closer";
     if (face.width > 0.40 || face.height > 0.46) return "farther";
+    if (Number.isFinite(roll) && Math.abs(roll) > 0.18) return "straight";
     if (face.x < 0.16 || centerX < 0.38) return "right";
     if (face.x + face.width > 0.84 || centerX > 0.62) return "left";
     if (face.y < 0.04 || centerY < 0.20) return "down";
@@ -62,6 +68,13 @@ export function getPassportFaceGuidance(face) {
 
 export function nextFacingMode(current) {
     return current === "environment" ? "user" : "environment";
+}
+
+export function stopMediaTracks(stream) {
+    if (!stream || typeof stream.getTracks !== "function") return;
+    stream.getTracks().forEach((track) => {
+        if (track && typeof track.stop === "function") track.stop();
+    });
 }
 
 export function cameraConstraintFallbacks(facingMode) {
