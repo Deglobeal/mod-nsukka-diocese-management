@@ -43,6 +43,14 @@ class FirstMemberRegistrationIdTests(TestCase):
         self.assertEqual(token.token_hash, hash_registration_id(raw))
         self.assertIsNotNone(find_available_registration_id(raw))
 
+    def test_superuser_admin_dashboard_links_to_id_generation(self):
+        self.client.force_login(self.admin)
+        dashboard = self.client.get("/admin/")
+        self.assertContains(dashboard, "First Member Registration IDs")
+        self.assertContains(dashboard, "Open ID generation and management")
+        page = self.client.get("/admin/first-member-registration-ids/")
+        self.assertContains(page, "Generate new ID")
+
     def test_replacement_revokes_prior_id_and_keeps_single_available(self):
         prior, old_raw = issue_registration_id(actor=self.admin)
         replacement, new_raw = issue_registration_id(

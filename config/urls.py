@@ -4,6 +4,8 @@ from django.urls import include, path
 from apps.core.views.home_view import HomeView
 from apps.members.views.first_member_registration_admin import first_member_registration_ids
 
+admin.site.index_template = "admin/index_with_first_member_registration.html"
+
 urlpatterns = [
     path("favicon.ico", favicon_view, name="favicon"),
     path("admin/first-member-registration-ids/", first_member_registration_ids, name="first_member_registration_ids"),
