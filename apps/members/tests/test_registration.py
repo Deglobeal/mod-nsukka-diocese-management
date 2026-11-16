@@ -161,6 +161,8 @@ class MembershipRegistrationTests(TestCase):
             "next_of_kin_relationship": "Brother",
             "emergency_contact_name": "Example Emergency Contact",
             "emergency_contact_phone": "08087654321",
+            "emergency_contact_2_name": "Example Second Emergency Contact",
+            "emergency_contact_2_phone": "08044445555",
             "blood_group": "O+",
             "genotype": "AA",
             "height_cm": "170",
@@ -213,10 +215,9 @@ class MembershipRegistrationTests(TestCase):
             'data-lga-data-url="/static/data/nigeria-lgas.json"',
         )
 
-    def test_contact_relationships_reject_unknown_value_and_require_next_of_kin(self):
+    def test_contact_relationships_reject_unknown_values_through_direct_post(self):
         cases = (
             ("next_of_kin_relationship", "Cousin", "Cousin is not one of the available choices."),
-            ("next_of_kin_relationship", "", "This field is required."),
             ("emergency_contact_relationship", "Parent", "Parent is not one of the available choices."),
             ("emergency_contact_2_relationship", "Friend", "Friend is not one of the available choices."),
         )
@@ -229,6 +230,17 @@ class MembershipRegistrationTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(error, str(response.context["form"].errors[field]))
                 self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_empty_relationship_values_are_accepted(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                next_of_kin_relationship="",
+                emergency_contact_relationship="",
+                emergency_contact_2_relationship="",
+            ),
+        )
+        self.assertEqual(response.status_code, 302)
 
     def test_duplicate_contact_names_are_rejected_after_whitespace_and_case_normalization(self):
         cases = (
@@ -259,23 +271,25 @@ class MembershipRegistrationTests(TestCase):
                 )
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("different relationship", str(response.context["form"].errors[field]))
+                self.assertEqual(
+                    response.context["form"]["next_of_kin_relationship"].value(),
+                    overrides.get("next_of_kin_relationship", "Brother"),
+                )
                 self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
 
-    def test_emergency_contact_2_is_optional_or_requires_name_and_phone_when_started(self):
+    def test_emergency_contact_2_details_are_required_and_relationship_is_optional(self):
         response = self.client.post(
             reverse("members:register"),
             self.valid_data(
                 emergency_contact_relationship="",
-                emergency_contact_2_name="",
-                emergency_contact_2_phone="",
                 emergency_contact_2_relationship="",
             ),
         )
         self.assertEqual(response.status_code, 302)
         for overrides, field in (
-            ({"emergency_contact_2_name": "Peter Example"}, "emergency_contact_2_phone"),
-            ({"emergency_contact_2_phone": "08011112222"}, "emergency_contact_2_name"),
-            ({"emergency_contact_2_relationship": "Father"}, "emergency_contact_2_name"),
+            ({"emergency_contact_2_name": ""}, "emergency_contact_2_name"),
+            ({"emergency_contact_2_phone": ""}, "emergency_contact_2_phone"),
+            ({"emergency_contact_2_name": "", "emergency_contact_2_relationship": "Father"}, "emergency_contact_2_name"),
         ):
             with self.subTest(overrides=overrides):
                 response = self.client.post(

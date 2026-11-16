@@ -88,6 +88,11 @@
     font: inherit;
 }
 
+.registration-field select.registration-input {
+    appearance: auto;
+    cursor: pointer;
+}
+
 .registration-input:focus {
     border-color: var(--color-primary);
     outline: 2px solid var(--color-focus-ring);

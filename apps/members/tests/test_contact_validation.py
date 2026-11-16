@@ -28,7 +28,7 @@ def valid_contacts(**overrides):
 class ContactValidationTests(TestCase):
     def test_only_six_relationship_options_are_rendered(self):
         form = MembershipRegistrationForm()
-        expected = [("", "Select relationship"), *((value, value) for value in CONTACT_RELATIONSHIPS)]
+        expected = [("", "Select relationship (optional)"), *((value, value) for value in CONTACT_RELATIONSHIPS)]
         for field in (
             "next_of_kin_relationship",
             "emergency_contact_relationship",
@@ -36,40 +36,51 @@ class ContactValidationTests(TestCase):
         ):
             with self.subTest(field=field):
                 self.assertEqual(list(form.fields[field].choices), expected)
+                self.assertEqual(form.fields[field].widget.__class__.__name__, "Select")
+                self.assertEqual(form.fields[field].clean(""), "")
                 for relationship in CONTACT_RELATIONSHIPS:
                     self.assertEqual(
                         form.fields[field].clean(relationship), relationship
                     )
-        self.assertTrue(form.fields["next_of_kin_relationship"].required)
+        self.assertFalse(form.fields["next_of_kin_relationship"].required)
         self.assertFalse(form.fields["emergency_contact_relationship"].required)
         self.assertFalse(form.fields["emergency_contact_2_relationship"].required)
 
-    def test_each_allowed_relationship_is_valid(self):
+        rendered = str(form)
+        for field in (
+            "next_of_kin_relationship",
+            "emergency_contact_relationship",
+            "emergency_contact_2_relationship",
+        ):
+            self.assertIn(f'<select name="{field}"', rendered)
+
+    def test_all_allowed_relationship_values_are_valid_for_each_field(self):
         for relationship in CONTACT_RELATIONSHIPS:
-            with self.subTest(relationship=relationship):
-                errors = contact_validation_errors(
-                    valid_contacts(
-                        next_of_kin_relationship=relationship,
-                        emergency_contact_relationship="",
-                        emergency_contact_2_relationship="",
-                    ),
-                    require_next_of_kin=True,
-                    require_emergency_contact_1=True,
-                )
-                self.assertEqual(errors, {})
+            for field in (
+                "next_of_kin_relationship",
+                "emergency_contact_relationship",
+                "emergency_contact_2_relationship",
+            ):
+                with self.subTest(relationship=relationship, field=field):
+                    form = MembershipRegistrationForm()
+                    self.assertEqual(form.fields[field].clean(relationship), relationship)
 
-    def test_unsupported_relationship_is_rejected(self):
-        errors = contact_validation_errors(
-            valid_contacts(emergency_contact_relationship="Cousin")
-        )
-        self.assertIn("emergency_contact_relationship", errors)
+    def test_unsupported_relationship_is_rejected_for_each_field(self):
+        for field in (
+            "next_of_kin_relationship",
+            "emergency_contact_relationship",
+            "emergency_contact_2_relationship",
+        ):
+            with self.subTest(field=field):
+                errors = contact_validation_errors(valid_contacts(**{field: "Cousin"}))
+                self.assertIn(field, errors)
 
-    def test_next_of_kin_relationship_is_required(self):
+    def test_next_of_kin_relationship_is_optional(self):
         errors = contact_validation_errors(
             valid_contacts(next_of_kin_relationship=""),
             require_next_of_kin=True,
         )
-        self.assertIn("next_of_kin_relationship", errors)
+        self.assertNotIn("next_of_kin_relationship", errors)
 
     def test_duplicate_names_are_normalized_for_all_contact_pairs(self):
         cases = (
@@ -104,13 +115,19 @@ class ContactValidationTests(TestCase):
                 self.assertIn(expected_field, errors)
                 self.assertTrue(any("different relationship" in msg for msg in errors[expected_field]))
 
-    def test_emergency_contact_2_is_optional_but_partial_details_are_rejected(self):
-        omitted = valid_contacts(
-            emergency_contact_2_name="",
-            emergency_contact_2_phone="",
-            emergency_contact_2_relationship="",
+    def test_relationships_remain_optional_when_contact_details_are_present(self):
+        self.assertEqual(
+            contact_validation_errors(
+                valid_contacts(
+                    next_of_kin_relationship="",
+                    emergency_contact_relationship="",
+                    emergency_contact_2_relationship="",
+                )
+            ),
+            {},
         )
-        self.assertEqual(contact_validation_errors(omitted), {})
+
+    def test_emergency_contact_2_partial_direct_model_values_are_rejected(self):
         for overrides, missing_field in (
             (
                 {
@@ -162,12 +179,11 @@ class ContactValidationTests(TestCase):
         with self.assertRaises(ValidationError):
             invalid.save()
 
-        missing_relationship = MembershipApplication(
+        optional_relationship = MembershipApplication(
             next_of_kin_name="Mary Example",
             next_of_kin_phone="08012345678",
         )
-        with self.assertRaises(ValidationError):
-            missing_relationship.save()
+        optional_relationship._validate_contact_details()
 
         partial_second_contact = MembershipApplication(
             emergency_contact_2_name="Peter Example",
