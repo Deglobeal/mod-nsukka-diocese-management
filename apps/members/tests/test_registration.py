@@ -16,7 +16,12 @@ from apps.members.forms.registration_form import (
     NIGERIA_LGAS,
     MembershipRegistrationForm,
 )
-from apps.members.models import Member, MemberProfile, Rank
+from apps.members.models import (
+    Member,
+    MemberProfile,
+    PassportPhotoPreviewToken,
+    Rank,
+)
 from apps.members.services.first_member_registration import (
     find_available_registration_id,
     hash_registration_id,
@@ -182,6 +187,13 @@ class MembershipRegistrationTests(TestCase):
             "medical_confidentiality_acknowledged": "on",
         }
         data.update(overrides)
+        photo_preview = self.client.post(
+            reverse("members:passport_photo_process"),
+            {"passport_photo_data": data["passport_photo_data"]},
+        )
+        self.assertEqual(photo_preview.status_code, 200)
+        data["passport_photo_data"] = photo_preview.json()["photo_data"]
+        data["passport_photo_token"] = photo_preview.json()["photo_token"]
         verification = self.client.post(
             reverse("members:sponsor_verify"),
             {"sponsor_membership_id": data["sponsor_membership_id"]},
@@ -688,17 +700,13 @@ class MembershipRegistrationTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("members:register"),
-            self.valid_data(),
+            reverse("members:passport_photo_process"),
+            {"passport_photo_data": self.valid_photo_data()},
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(MembershipApplication.objects.filter(
-            email="ada@example.com"
-        ).exists())
-        self.assertTrue(
-            response.context["form"].errors.get("passport_photo")
-        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Background removal failed.")
+        self.assertFalse(MembershipApplication.objects.exists())
 
     def test_registration_rejects_missing_signature(self):
         data = self.valid_data()
@@ -1115,6 +1123,68 @@ class MembershipRegistrationTests(TestCase):
         self.assertTrue(
             response.context["form"].errors.get("passport_photo")
         )
+
+    def test_passport_preview_token_is_bound_to_the_issuing_session(self):
+        data = self.valid_data()
+        other_session = Client()
+
+        response = other_session.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors.get("passport_photo"))
+        self.assertFalse(MembershipApplication.objects.exists())
+
+    def test_invalid_registration_does_not_consume_passport_preview_token(self):
+        data = self.valid_data(first_name="")
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(PassportPhotoPreviewToken.objects.get().redeemed_at)
+
+    def test_passport_preview_token_is_consumed_after_successful_registration(self):
+        data = self.valid_data()
+
+        first_response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(first_response.status_code, 302)
+        self.assertIsNotNone(
+            PassportPhotoPreviewToken.objects.get().redeemed_at
+        )
+
+        replay_response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(replay_response.status_code, 200)
+        self.assertTrue(
+            replay_response.context["form"].errors.get("passport_photo")
+        )
+        self.assertEqual(MembershipApplication.objects.count(), 1)
+
+    def test_expired_passport_preview_token_is_rejected(self):
+        data = self.valid_data()
+        PassportPhotoPreviewToken.objects.update(
+            issued_at=timezone.now() - timedelta(minutes=31)
+        )
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors.get("passport_photo"))
+        self.assertFalse(MembershipApplication.objects.exists())
+
+    def test_replaced_passport_preview_token_is_revoked(self):
+        data = self.valid_data()
+        replacement = self.client.post(
+            reverse("members:passport_photo_process"),
+            {"passport_photo_data": data["passport_photo_data"]},
+        )
+        self.assertEqual(replacement.status_code, 200)
+
+        response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].errors.get("passport_photo"))
+        self.assertFalse(MembershipApplication.objects.exists())
 
     def test_future_date_of_birth_is_rejected(self):
         future_date = (timezone.localdate() + timedelta(days=1)).isoformat()
