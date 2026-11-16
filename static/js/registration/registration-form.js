@@ -211,85 +211,83 @@ document.addEventListener("DOMContentLoaded", function () {
 
         fields.forEach(validateCustomField);
 
-        // Emergency contacts must differ by name, phone, and relationship.
-        const contact2NameField = document.getElementById(
-            "id_emergency_contact_2_name"
-        );
+        const contactFields = [
+            {
+                label: "Next of Kin",
+                name: document.getElementById("id_next_of_kin_name"),
+                phone: document.getElementById("id_next_of_kin_phone"),
+                relationship: document.getElementById("id_next_of_kin_relationship")
+            },
+            {
+                label: "Emergency Contact 1",
+                name: document.getElementById("id_emergency_contact_name"),
+                phone: document.getElementById("id_emergency_contact_phone"),
+                relationship: document.getElementById("id_emergency_contact_relationship")
+            },
+            {
+                label: "Emergency Contact 2",
+                name: document.getElementById("id_emergency_contact_2_name"),
+                phone: document.getElementById("id_emergency_contact_2_phone"),
+                relationship: document.getElementById("id_emergency_contact_2_relationship")
+            }
+        ];
 
-        if (contact2NameField && section.contains(contact2NameField)) {
-            const contact1NameField = document.getElementById(
-                "id_emergency_contact_name"
-            );
-            const contact1PhoneField = document.getElementById(
-                "id_emergency_contact_phone"
-            );
-            const contact2PhoneField = document.getElementById(
-                "id_emergency_contact_2_phone"
-            );
-            const contact1RelationshipField = document.getElementById(
-                "id_emergency_contact_relationship"
-            );
-            const contact2RelationshipField = document.getElementById(
-                "id_emergency_contact_2_relationship"
-            );
-
+        const contactsInSection = contactFields.some(function (contact) {
+            return contact.name && section.contains(contact.name);
+        });
+        if (contactsInSection) {
             function normalizeContactName(value) {
-                return (value || "").trim().replace(/\\s+/g, " ").toLocaleLowerCase();
+                return (value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
             }
 
-            function normalizeContactPhone(value) {
-                let digits = (value || "").replace(/\\D/g, "");
+            function normalizePhone(value) {
+                let digits = (value || "").replace(/\D/g, "");
                 if (digits.length === 13 && digits.startsWith("234")) {
                     digits = "0" + digits.slice(3);
                 }
                 return digits;
             }
 
-            function normalizeRelationship(value) {
-                return (value || "").trim().toLocaleLowerCase();
+            for (let firstIndex = 0; firstIndex < contactFields.length; firstIndex += 1) {
+                for (let secondIndex = firstIndex + 1; secondIndex < contactFields.length; secondIndex += 1) {
+                    const first = contactFields[firstIndex];
+                    const second = contactFields[secondIndex];
+                    const firstName = normalizeContactName(first.name && first.name.value);
+                    const secondName = normalizeContactName(second.name && second.name.value);
+                    if (firstName && firstName === secondName && second.name) {
+                        second.name.setCustomValidity(
+                            second.label + " must have a different full name from " + first.label + "."
+                        );
+                    }
+
+                    const firstRelationship = (first.relationship && first.relationship.value || "").trim().toLocaleLowerCase();
+                    const secondRelationship = (second.relationship && second.relationship.value || "").trim().toLocaleLowerCase();
+                    if (firstRelationship && firstRelationship === secondRelationship && second.relationship) {
+                        second.relationship.setCustomValidity(
+                            second.label + " must have a different relationship from " + first.label + "."
+                        );
+                    }
+                }
             }
 
-            if (contact2NameField) {
-                const duplicateName =
-                    normalizeContactName(contact1NameField && contact1NameField.value) &&
-                    normalizeContactName(contact1NameField && contact1NameField.value) ===
-                        normalizeContactName(contact2NameField.value);
-
-                contact2NameField.setCustomValidity(
-                    duplicateName
-                        ? "Emergency Contact 1 and Emergency Contact 2 must be different people."
-                        : ""
-                );
+            const emergency2 = contactFields[2];
+            const emergency2Started = [emergency2.name, emergency2.phone, emergency2.relationship]
+                .some(function (field) { return field && field.value.trim(); });
+            if (emergency2Started) {
+                if (emergency2.name && !emergency2.name.value.trim()) {
+                    emergency2.name.setCustomValidity("Emergency Contact 2 full name is required when any of its details are supplied.");
+                }
+                if (emergency2.phone && !emergency2.phone.value.trim()) {
+                    emergency2.phone.setCustomValidity("Emergency Contact 2 phone number is required when any of its details are supplied.");
+                }
             }
 
-            if (contact2PhoneField) {
-                const phone1 = normalizeContactPhone(
-                    contact1PhoneField && contact1PhoneField.value
-                );
-                const phone2 = normalizeContactPhone(contact2PhoneField.value);
-                const duplicatePhone = phone1 && phone1 === phone2;
-
-                contact2PhoneField.setCustomValidity(
-                    duplicatePhone
-                        ? "Emergency Contact 1 and Emergency Contact 2 must have different phone numbers."
-                        : ""
-                );
-            }
-
-            if (contact2RelationshipField) {
-                const relationship1 = normalizeRelationship(
-                    contact1RelationshipField && contact1RelationshipField.value
-                );
-                const relationship2 = normalizeRelationship(
-                    contact2RelationshipField.value
-                );
-                const duplicateRelationship =
-                    relationship1 && relationship1 === relationship2;
-
-                contact2RelationshipField.setCustomValidity(
-                    duplicateRelationship
-                        ? "Emergency Contact 1 and Emergency Contact 2 must have different relationships."
-                        : ""
+            // Preserve the existing Emergency Contact 1/2 phone distinction.
+            const phone1 = normalizePhone(contactFields[1].phone && contactFields[1].phone.value);
+            const phone2 = normalizePhone(contactFields[2].phone && contactFields[2].phone.value);
+            if (phone1 && phone1 === phone2 && contactFields[2].phone) {
+                contactFields[2].phone.setCustomValidity(
+                    "Emergency Contact 1 and Emergency Contact 2 must have different phone numbers."
                 );
             }
         }

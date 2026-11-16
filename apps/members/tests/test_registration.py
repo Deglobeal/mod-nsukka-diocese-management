@@ -158,6 +158,7 @@ class MembershipRegistrationTests(TestCase):
             "admission_date": "2020-01-15",
             "next_of_kin_name": "Example Next of Kin",
             "next_of_kin_phone": "08012345678",
+            "next_of_kin_relationship": "Brother",
             "emergency_contact_name": "Example Emergency Contact",
             "emergency_contact_phone": "08087654321",
             "blood_group": "O+",
@@ -211,6 +212,92 @@ class MembershipRegistrationTests(TestCase):
             response,
             'data-lga-data-url="/static/data/nigeria-lgas.json"',
         )
+
+    def test_contact_relationships_reject_unknown_value_and_require_next_of_kin(self):
+        cases = (
+            ("next_of_kin_relationship", "Cousin", "Cousin is not one of the available choices."),
+            ("next_of_kin_relationship", "", "This field is required."),
+            ("emergency_contact_relationship", "Parent", "Parent is not one of the available choices."),
+            ("emergency_contact_2_relationship", "Friend", "Friend is not one of the available choices."),
+        )
+        for field, value, error in cases:
+            with self.subTest(field=field, value=value):
+                response = self.client.post(
+                    reverse("members:register"),
+                    self.valid_data(**{field: value}),
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(error, str(response.context["form"].errors[field]))
+                self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_duplicate_contact_names_are_rejected_after_whitespace_and_case_normalization(self):
+        cases = (
+            ({"next_of_kin_name": "  MARY   EXAMPLE ", "emergency_contact_name": "mary example"}, "emergency_contact_name"),
+            ({"next_of_kin_name": "  ADA   EXAMPLE ", "emergency_contact_2_name": "ada example"}, "emergency_contact_2_name"),
+            ({"emergency_contact_name": "  JOHN   EXAMPLE ", "emergency_contact_2_name": "john example"}, "emergency_contact_2_name"),
+        )
+        for overrides, field in cases:
+            with self.subTest(overrides=overrides):
+                response = self.client.post(
+                    reverse("members:register"), self.valid_data(**overrides)
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context["form"].errors.get(field))
+                self.assertIn("different full name", str(response.context["form"].errors[field]))
+                self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_duplicate_relationships_are_rejected_across_all_contacts(self):
+        cases = (
+            ({"next_of_kin_relationship": "Brother", "emergency_contact_relationship": "Brother"}, "emergency_contact_relationship"),
+            ({"next_of_kin_relationship": "Mother", "emergency_contact_2_relationship": "Mother"}, "emergency_contact_2_relationship"),
+            ({"emergency_contact_relationship": "Uncle", "emergency_contact_2_relationship": "Uncle"}, "emergency_contact_2_relationship"),
+        )
+        for overrides, field in cases:
+            with self.subTest(overrides=overrides):
+                response = self.client.post(
+                    reverse("members:register"), self.valid_data(**overrides)
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("different relationship", str(response.context["form"].errors[field]))
+                self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_emergency_contact_2_is_optional_or_requires_name_and_phone_when_started(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                emergency_contact_relationship="",
+                emergency_contact_2_name="",
+                emergency_contact_2_phone="",
+                emergency_contact_2_relationship="",
+            ),
+        )
+        self.assertEqual(response.status_code, 302)
+        for overrides, field in (
+            ({"emergency_contact_2_name": "Peter Example"}, "emergency_contact_2_phone"),
+            ({"emergency_contact_2_phone": "08011112222"}, "emergency_contact_2_name"),
+            ({"emergency_contact_2_relationship": "Father"}, "emergency_contact_2_name"),
+        ):
+            with self.subTest(overrides=overrides):
+                response = self.client.post(
+                    reverse("members:register"), self.valid_data(**overrides)
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context["form"].errors.get(field))
+
+    def test_valid_three_distinct_contacts_with_distinct_relationships_register(self):
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(
+                next_of_kin_name="Mary Example",
+                next_of_kin_relationship="Mother",
+                emergency_contact_name="John Example",
+                emergency_contact_relationship="Brother",
+                emergency_contact_2_name="Ada Example",
+                emergency_contact_2_phone="08011112222",
+                emergency_contact_2_relationship="Uncle",
+            ),
+        )
+        self.assertEqual(response.status_code, 302)
 
     def test_state_and_local_government_area_fields_use_nigeria_lists(self):
         form = MembershipRegistrationForm()
@@ -660,10 +747,10 @@ class MembershipRegistrationTests(TestCase):
                 sponsor_rank="Major",
                 marital_status="Single",
                 next_of_kin_relationship="Sibling",
-                emergency_contact_relationship="Parent",
+                emergency_contact_relationship="Uncle",
                 emergency_contact_2_name="Second Contact",
                 emergency_contact_2_phone="08033334444",
-                emergency_contact_2_relationship="Sibling",
+                emergency_contact_2_relationship="Auntie",
             ),
         )
         application = MembershipApplication.objects.get(

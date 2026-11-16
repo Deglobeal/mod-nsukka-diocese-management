@@ -8,6 +8,11 @@ from django.conf import settings
 from apps.organizations.models import Deanery, Parish, Station
 from apps.members.models import Rank
 from apps.verification.models import MembershipApplication
+from apps.verification.contact_validation import (
+    CONTACT_RELATIONSHIPS,
+    contact_validation_errors,
+    normalize_contact_relationship,
+)
 
 
 NIGERIA_LGAS = json.loads(
@@ -297,11 +302,27 @@ class MembershipRegistrationForm(forms.ModelForm):
 
 
         # Additional approved form fields. These new values are not persisted yet.
-        self.fields["next_of_kin_relationship"] = forms.CharField(label="Next of Kin — Relationship", max_length=100, required=False)
-        self.fields["emergency_contact_relationship"] = forms.CharField(label="Emergency Contact 1 — Relationship", max_length=100, required=False)
+        relationship_choices = [
+            ("", "Select relationship"),
+            *((value, value) for value in CONTACT_RELATIONSHIPS),
+        ]
+        self.fields["next_of_kin_relationship"] = forms.ChoiceField(
+            label="Next of Kin — Relationship",
+            choices=relationship_choices,
+            required=True,
+        )
+        self.fields["emergency_contact_relationship"] = forms.ChoiceField(
+            label="Emergency Contact 1 — Relationship",
+            choices=relationship_choices,
+            required=False,
+        )
         self.fields["emergency_contact_2_name"] = forms.CharField(label="Emergency Contact 2 — Full name", max_length=200, required=False)
         self.fields["emergency_contact_2_phone"] = forms.CharField(label="Emergency Contact 2 — Phone number", max_length=30, required=False, widget=forms.TelInput())
-        self.fields["emergency_contact_2_relationship"] = forms.CharField(label="Emergency Contact 2 — Relationship", max_length=100, required=False)
+        self.fields["emergency_contact_2_relationship"] = forms.ChoiceField(
+            label="Emergency Contact 2 — Relationship",
+            choices=relationship_choices,
+            required=False,
+        )
         self.fields["medical_evidence"] = forms.FileField(
             label="Medical or laboratory evidence (private upload)", required=False,
             help_text="Private storage and access controls must be implemented before this upload is used operationally.",
@@ -504,6 +525,53 @@ class MembershipRegistrationForm(forms.ModelForm):
                 )
             else:
                 cleaned_data[field_name] = value
+
+        contact_field_names = (
+            "next_of_kin_name",
+            "next_of_kin_phone",
+            "next_of_kin_relationship",
+            "emergency_contact_name",
+            "emergency_contact_phone",
+            "emergency_contact_relationship",
+            "emergency_contact_2_name",
+            "emergency_contact_2_phone",
+            "emergency_contact_2_relationship",
+        )
+        contact_values = {}
+        for field_name in contact_field_names:
+            if field_name in self.errors:
+                contact_values[field_name] = self.data.get(field_name, "")
+            else:
+                contact_values[field_name] = cleaned_data.get(field_name, "")
+
+        for field_name, messages in contact_validation_errors(
+            contact_values,
+            require_next_of_kin=True,
+            require_emergency_contact_1=True,
+        ).items():
+            if not self._errors.get(field_name):
+                if (
+                    field_name in {
+                        "next_of_kin_relationship",
+                        "emergency_contact_relationship",
+                        "emergency_contact_2_relationship",
+                    }
+                    and field_name not in cleaned_data
+                ):
+                    continue
+                for message in messages:
+                    self.add_error(field_name, message)
+
+        for field_name in (
+            "next_of_kin_relationship",
+            "emergency_contact_relationship",
+            "emergency_contact_2_relationship",
+        ):
+            normalized_relationship = normalize_contact_relationship(
+                cleaned_data.get(field_name, "")
+            )
+            if normalized_relationship is not None:
+                cleaned_data[field_name] = normalized_relationship
 
         # Nigerian phone numbers:
         # Local: 08012345678 (11 digits)
