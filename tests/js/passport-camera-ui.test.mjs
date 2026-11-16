@@ -27,6 +27,9 @@ test("mobile capture stage handles safe areas and both screen orientations", () 
     assert.match(registrationStyles, /safe-area-inset-bottom/);
     assert.match(registrationStyles, /orientation:\s*landscape/);
     assert.match(registrationStyles, /overflow-x:\s*hidden/);
+    assert.match(registrationStyles, /52dvh/);
+    assert.match(registrationStyles, /position:\s*sticky/);
+    assert.match(registrationStyles, /registration-camera-guide path[\s\S]*?fill:\s*none/);
 });
 
 test("front camera preview mirrors visually while capture stays sourced from video", () => {
@@ -35,9 +38,10 @@ test("front camera preview mirrors visually while capture stays sourced from vid
     assert.match(cameraScript, /mirrorRectHorizontally/);
 });
 
-test("mobile preview fills more of the viewport and shares contain framing with capture", () => {
-    assert.match(registrationStyles, /width:\s*min\(100%,\s*44dvh,\s*440px\)/);
-    assert.match(registrationStyles, /registration-passport-square video,[\s\S]*?object-fit:\s*contain/);
-    assert.match(cameraScript, /mapRectToContainFrame/);
+test("mobile preview fills more of the viewport and shares cover framing with capture", () => {
+    assert.match(registrationStyles, /width:\s*min\(100%,\s*52dvh,\s*440px\)/);
+    assert.match(registrationStyles, /registration-passport-square video,[\s\S]*?object-fit:\s*cover/);
+    assert.match(cameraScript, /mapRectToCoverFrame/);
     assert.match(cameraScript, /renderPlan\.frame\.x,[\s\S]*?renderPlan\.frame\.width/);
+    assert.match(cameraTemplate, /<svg class="registration-camera-guide"/);
 });

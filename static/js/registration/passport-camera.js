@@ -2,15 +2,13 @@ import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passpor
 import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
-    mapRectToContainFrame,
+    mapRectToCoverFrame,
     mirrorRectHorizontally,
-    minimumSupportedZoom,
     nextFacingMode,
     passportCanvasRenderPlan,
-    selectWideCameraDevice,
-    PASSPORT_FRAME_BACKGROUND,
+    selectPreferredCameraDevice,
     stopMediaTracks
-} from "./passport-framing.mjs?v=3";
+} from "./passport-framing.mjs?v=4";
 import {
     AutoCaptureCountdown,
     CAPTURE_STABILITY_MS,
@@ -32,6 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const photoPlaceholder = document.getElementById("passport-camera-placeholder");
     const startCameraButton = document.getElementById("passport-camera-start");
     const cameraSwitchButton = document.getElementById("passport-camera-switch");
+    const cameraIndicator = document.getElementById("passport-camera-indicator");
     const capturePhotoButton = document.getElementById("passport-camera-capture");
     const retakePhotoButton = document.getElementById("passport-camera-retake");
     const cameraStatus = document.getElementById("passport-camera-status");
@@ -56,6 +55,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let lastFaceScanAt = 0;
     let previousFaceBox = null;
     let previousFaceGuidance = null;
+    let lastFaceGuidanceShown = null;
+    let preserveLivenessOnNextCameraStart = false;
     let photoCaptureInProgress = false;
     let captureAttempts = 0;
     let captureRetryTimer = null;
@@ -278,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const displayedFaceBox = requestedFacingMode === "user"
             ? mirrorRectHorizontally(sourceFaceBox, video.videoWidth)
             : sourceFaceBox;
-        return mapRectToContainFrame({
+        return mapRectToCoverFrame({
             x: displayedFaceBox.x,
             y: displayedFaceBox.y,
             width: displayedFaceBox.width,
@@ -312,6 +313,12 @@ document.addEventListener("DOMContentLoaded", function () {
             ? "Use front camera"
             : "Use rear camera";
         cameraSwitchButton.setAttribute("aria-label", cameraSwitchButton.textContent);
+    }
+
+    function updateCameraIndicator(mode) {
+        if (!cameraIndicator) return;
+        const direction = mode === "environment" ? "Rear" : "Front";
+        cameraIndicator.textContent = `${direction} camera`;
     }
 
     function faceBoxIsStable(frameBox) {
@@ -358,6 +365,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     measurements ? measurements.roll : null,
                     previousFaceGuidance
                 );
+                const guidanceChanged = previousFaceGuidance !== faceGuidance;
                 previousFaceGuidance = faceGuidance;
                 const positioned = faceGuidance === "ready";
                 if (cameraGuide) cameraGuide.dataset.state = faceGuidance;
@@ -394,15 +402,21 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (status.state === "no-face") {
                         cameraStatus.textContent = "No face detected. Move into view and improve the lighting.";
                     } else if (status.state === "position") {
-                        cameraStatus.textContent = faceGuidanceMessage(faceGuidance);
+                        if (guidanceChanged || lastFaceGuidanceShown !== faceGuidance) {
+                            cameraStatus.textContent = faceGuidanceMessage(faceGuidance);
+                            lastFaceGuidanceShown = faceGuidance;
+                        }
                     } else if (status.challenge === "blink") {
+                        lastFaceGuidanceShown = null;
                         cameraStatus.textContent =
                             `Liveness check ${status.step} of ${status.total}: Blink naturally, then open your eyes.`;
                     } else if (status.challenge === "turn-left") {
+                        lastFaceGuidanceShown = null;
                         const screenSide = requestedFacingMode === "user" ? "right" : "left";
                         cameraStatus.textContent =
                             `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the ${screenSide} side of the screen, then face forward.`;
                     } else if (status.challenge === "turn-right") {
+                        lastFaceGuidanceShown = null;
                         const screenSide = requestedFacingMode === "user" ? "left" : "right";
                         cameraStatus.textContent =
                             `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the ${screenSide} side of the screen, then face forward.`;
@@ -534,17 +548,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!cameraStream || video.hidden) return;
 
+            const preserveLiveness = preserveLivenessOnNextCameraStart && Boolean(livenessSession);
+            preserveLivenessOnNextCameraStart = false;
             faceStableSince = null;
             previousFaceBox = null;
+            previousFaceGuidance = null;
+            lastFaceGuidanceShown = null;
             lastFaceScanAt = 0;
             lastLightingCheckAt = -Infinity;
             lightingAdequate = false;
             capturePhotoButton.disabled = true;
-            livenessSession = new LivenessSession({ random: secureRandom });
-            livenessPassed = false;
-            glassesCheckPassed = false;
-            cameraStatus.textContent =
-                "Face landmarks ready. Centre your face to begin the liveness checks.";
+            if (!preserveLiveness) {
+                livenessSession = new LivenessSession({ random: secureRandom });
+                livenessPassed = false;
+                glassesCheckPassed = false;
+            }
+            cameraStatus.textContent = preserveLiveness
+                ? "Camera switched. Continue the current liveness check."
+                : "Face landmarks ready. Centre your face to begin the liveness checks.";
             faceScanFrame = requestAnimationFrame(scanForFace);
         } catch (error) {
             // Liveness must not silently fall back to an unverified capture.
@@ -632,7 +653,7 @@ document.addEventListener("DOMContentLoaded", function () {
         capturePhotoButton.disabled = true;
         stopFaceScan();
 
-        // Fit the full camera image into the same 4:5 viewfinder used by the preview.
+        // Draw one source crop identical to the CSS cover preview.
         const renderPlan = passportCanvasRenderPlan(video.videoWidth, video.videoHeight);
         photoCanvas.width = renderPlan.width;
         photoCanvas.height = renderPlan.height;
@@ -646,13 +667,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        context.fillStyle = PASSPORT_FRAME_BACKGROUND;
+        context.fillStyle = "#fff";
         context.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
         context.drawImage(
             video,
-            0, 0, video.videoWidth, video.videoHeight,
-            renderPlan.frame.x, renderPlan.frame.y,
-            renderPlan.frame.width, renderPlan.frame.height
+            renderPlan.frame.x,
+            renderPlan.frame.y,
+            renderPlan.frame.width,
+            renderPlan.frame.height,
+            0, 0, photoCanvas.width, photoCanvas.height
         );
 
         // Do not reject the crop using the browser's approximate
@@ -798,9 +821,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         try {
             const constraints = cameraConstraintFallbacks(requestedFacingMode);
+            console.info("Passport getUserMedia constraints:", constraints);
             let lastConstraintError = null;
             for (const constraint of constraints) {
                 try {
+                    console.info("Passport camera constraint attempt:", constraint);
                     requestedStream = await navigator.mediaDevices.getUserMedia(constraint);
                     break;
                 } catch (constraintError) {
@@ -812,9 +837,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (!requestedStream) throw lastConstraintError || new Error("Camera unavailable");
 
-            // Browser labels become available after permission. If a device
-            // explicitly exposes a wide camera, prefer it; otherwise retain
-            // the browser's facingMode selection.
+            let selectedDevice = null;
             if (navigator.mediaDevices.enumerateDevices) {
                 try {
                     const initialTrack = requestedStream.getVideoTracks()[0];
@@ -825,15 +848,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         stopMediaTracks(requestedStream);
                         return;
                     }
-                    const wideCamera = selectWideCameraDevice(
+                    const preferredCamera = selectPreferredCameraDevice(
                         devices, requestedFacingMode, initialSettings.deviceId || ""
                     );
-                    if (wideCamera) {
+                    if (preferredCamera) {
                         try {
                             const wideStream = await navigator.mediaDevices.getUserMedia({
                                 audio: false,
                                 video: {
-                                    deviceId: { exact: wideCamera.deviceId },
+                                    deviceId: { exact: preferredCamera.deviceId },
                                     width: { ideal: 720 },
                                     height: { ideal: 1280 },
                                     aspectRatio: { ideal: 9 / 16 }
@@ -846,8 +869,9 @@ document.addEventListener("DOMContentLoaded", function () {
                             }
                             stopMediaTracks(requestedStream);
                             requestedStream = wideStream;
+                            selectedDevice = preferredCamera;
                         } catch (wideCameraError) {
-                            console.info("Wide camera unavailable; keeping browser-selected camera.");
+                            console.info("Preferred camera unavailable; keeping browser-selected camera.");
                         }
                     }
                 } catch (deviceListError) {
@@ -882,7 +906,7 @@ document.addEventListener("DOMContentLoaded", function () {
             await video.play();
 
             const activeVideoTrack = requestedStream.getVideoTracks()[0];
-            const trackSettings = activeVideoTrack && activeVideoTrack.getSettings
+            let trackSettings = activeVideoTrack && activeVideoTrack.getSettings
                 ? activeVideoTrack.getSettings()
                 : {};
             if (["user", "environment"].includes(trackSettings.facingMode)) {
@@ -893,28 +917,62 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
                 updateCameraSwitchLabel();
             }
-            const trackCapabilities = activeVideoTrack && activeVideoTrack.getCapabilities
-                ? activeVideoTrack.getCapabilities()
-                : {};
-            const minimumZoom = minimumSupportedZoom(trackCapabilities);
-            if (minimumZoom !== null && activeVideoTrack && activeVideoTrack.applyConstraints) {
+            let trackCapabilities = {};
+            try {
+                trackCapabilities = activeVideoTrack && activeVideoTrack.getCapabilities
+                    ? activeVideoTrack.getCapabilities()
+                    : {};
+            } catch (capabilityError) {
+                // Capability reporting is optional and must not block camera use.
+            }
+            const zoomRange = trackCapabilities.zoom;
+            const currentZoom = trackSettings.zoom;
+            const zoomTarget = zoomRange && Number.isFinite(zoomRange.min) &&
+                Number.isFinite(zoomRange.max) && zoomRange.max > zoomRange.min
+                ? Math.max(zoomRange.min, Math.min(
+                    Number.isFinite(currentZoom) ? currentZoom : zoomRange.min,
+                    zoomRange.min + 0.2,
+                    zoomRange.max
+                ))
+                : null;
+            if (zoomTarget !== null && activeVideoTrack && activeVideoTrack.applyConstraints &&
+                (!Number.isFinite(currentZoom) || Math.abs(currentZoom - zoomTarget) > 0.01)) {
                 try {
-                    await activeVideoTrack.applyConstraints({ advanced: [{ zoom: minimumZoom }] });
+                    await activeVideoTrack.applyConstraints({ advanced: [{ zoom: zoomTarget }] });
                 } catch (zoomError) {
-                    console.info("Camera does not support applying its minimum zoom setting.");
+                    console.info("Camera did not accept the bounded zoom preference.");
                 }
             }
+            if (activeVideoTrack && activeVideoTrack.getSettings) {
+                trackSettings = activeVideoTrack.getSettings();
+            }
+            let selectedDeviceDetails = selectedDevice;
+            if (navigator.mediaDevices.enumerateDevices) {
+                try {
+                    selectedDeviceDetails = (await navigator.mediaDevices.enumerateDevices())
+                        .find((device) => device.deviceId === trackSettings.deviceId) || selectedDevice;
+                } catch (deviceInfoError) {
+                    // Camera labels are optional diagnostics; keep startup functional.
+                }
+            }
+            if (["user", "environment"].includes(trackSettings.facingMode)) {
+                requestedFacingMode = trackSettings.facingMode;
+                video.classList.toggle("passport-camera-video-mirrored", requestedFacingMode === "user");
+                updateCameraSwitchLabel();
+            }
+            updateCameraIndicator(
+                trackSettings.facingMode || requestedFacingMode,
+                selectedDeviceDetails ? selectedDeviceDetails.label : ""
+            );
             console.info(
-                "Passport camera dimensions:",
-                `${video.videoWidth}x${video.videoHeight}`,
+                "Passport camera diagnostics:",
                 {
-                    facingMode: trackSettings.facingMode || "not reported",
-                    width: trackSettings.width || video.videoWidth,
-                    height: trackSettings.height || video.videoHeight,
-                    zoomRange: trackCapabilities.zoom || "unsupported",
-                    zoom: activeVideoTrack && activeVideoTrack.getSettings
-                        ? activeVideoTrack.getSettings().zoom ?? "not reported"
-                        : "not reported"
+                    resolution: `${video.videoWidth}x${video.videoHeight}`,
+                    deviceLabel: selectedDeviceDetails ? selectedDeviceDetails.label : "not reported",
+                    deviceId: trackSettings.deviceId || "not reported",
+                    groupId: trackSettings.groupId || "not reported",
+                    settings: trackSettings,
+                    capabilities: trackCapabilities
                 }
             );
 
@@ -940,6 +998,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 "Loading local face landmarks and liveness checks…";
             beginFaceScan();
         } catch (error) {
+            preserveLivenessOnNextCameraStart = false;
             // Never let a stale request stop a newer camera session.
             if (startRequestId !== cameraStartRequestId) {
                 if (requestedStream) {
@@ -991,6 +1050,7 @@ document.addEventListener("DOMContentLoaded", function () {
         updateCameraSwitchLabel();
         if (cameraSwitchButton) {
             cameraSwitchButton.addEventListener("click", function () {
+                preserveLivenessOnNextCameraStart = true;
                 requestedFacingMode = nextFacingMode(requestedFacingMode);
                 updateCameraSwitchLabel();
                 startCamera();

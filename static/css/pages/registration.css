@@ -936,6 +936,32 @@ body[data-mod-theme="command"] .registration-button:hover {
     line-height: 1.45;
 }
 
+.passport-camera-indicator {
+    width: fit-content;
+    margin: 0;
+    padding: 4px 9px;
+    border: 1px solid #384252;
+    border-radius: 999px;
+    color: #dbe4ef;
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.passport-capture-tips {
+    color: #c0c7d2;
+    font-size: 12px;
+}
+
+.passport-capture-tips summary {
+    width: fit-content;
+    cursor: pointer;
+}
+
+.passport-capture-tips p {
+    margin: 5px 0 0;
+    line-height: 1.4;
+}
+
 .registration-camera-privacy {
     color: #9ca6b4;
     font-size: 12px;
@@ -987,7 +1013,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     height: 100%;
     max-width: none;
     max-height: none;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
 }
 
@@ -1010,41 +1036,22 @@ body[data-mod-theme="command"] .registration-button:hover {
     position: absolute;
     z-index: 2;
     inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
     pointer-events: none;
 }
 
-.registration-passport-square .registration-camera-guide::before,
-.registration-passport-square .registration-camera-guide::after {
-    position: absolute;
-    display: block;
-    content: "";
-    border: 2px solid rgb(117 244 211 / 92%);
-    box-shadow: 0 0 18px rgb(59 231 190 / 20%);
-    box-sizing: border-box;
+.registration-camera-guide path {
+    fill: none;
+    stroke: rgb(117 244 211 / 92%);
+    stroke-width: 1.2;
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 2px rgb(59 231 190 / 35%));
 }
 
-/* Head guide leaves room above the hair and below the chin. */
-.registration-passport-square .registration-camera-guide::before {
-    top: 4%;
-    left: 25%;
-    width: 50%;
-    height: 45%;
-    border-radius: 48% 48% 44% 44%;
-}
-
-/* Shoulder guide keeps the composition wide enough for the uniform. */
-.registration-passport-square .registration-camera-guide::after {
-    bottom: 3%;
-    left: 3%;
-    width: 94%;
-    height: 47%;
-    border-radius: 46% 46% 15% 15% / 40% 40% 12% 12%;
-}
-
-.registration-camera-guide[data-state="ready"]::before,
-.registration-camera-guide[data-state="ready"]::after {
-    border-color: #8af4cf;
-    box-shadow: 0 0 22px rgb(105 239 199 / 42%);
+.registration-camera-guide[data-state="ready"] path {
+    stroke: #8af4cf;
 }
 
 .registration-passport-square #passport-camera-placeholder {
@@ -1232,7 +1239,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 
     body.passport-camera-stage-open .passport-capture-card {
         flex: 1 0 auto;
-        gap: 10px;
+        gap: 7px;
         width: 100%;
         max-width: none;
         margin: 0;
@@ -1244,19 +1251,32 @@ body[data-mod-theme="command"] .registration-button:hover {
     }
 
     body.passport-camera-stage-open .passport-capture-header {
-        gap: 5px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 5px 8px;
     }
 
     body.passport-camera-stage-open .passport-capture-eyebrow {
-        font-size: 10px;
+        display: none;
     }
 
     body.passport-camera-stage-open .passport-capture-title {
-        font-size: 19px;
+        grid-column: 1;
+        font-size: 16px;
     }
 
-    body.passport-camera-stage-open .passport-capture-instructions {
-        font-size: 13px;
+    body.passport-camera-stage-open .passport-camera-indicator {
+        grid-column: 2;
+        grid-row: 1;
+        padding: 3px 7px;
+        font-size: 11px;
+    }
+
+    body.passport-camera-stage-open .passport-capture-tips,
+    body.passport-camera-stage-open .registration-camera-privacy {
+        grid-column: 1 / -1;
+        font-size: 11px;
     }
 
     body.passport-camera-stage-open .registration-camera-privacy {
@@ -1273,13 +1293,18 @@ body[data-mod-theme="command"] .registration-button:hover {
     }
 
     body.passport-camera-stage-open .registration-passport-square {
-        width: min(100%, 44dvh, 440px);
+        width: min(100%, 52dvh, 440px);
         aspect-ratio: 4 / 5;
         border-radius: 14px;
     }
 
     body.passport-camera-stage-open .registration-camera-actions {
         gap: 8px;
+        position: sticky;
+        z-index: 4;
+        bottom: 0;
+        padding: 6px 0 max(4px, env(safe-area-inset-bottom));
+        background: #0c1016;
     }
 
     body.passport-camera-stage-open .passport-camera-button {
@@ -1345,15 +1370,14 @@ body[data-mod-theme="command"] .registration-button:hover {
         padding: 4px;
     }
 
-    body.passport-camera-stage-open .registration-passport-square {
-        width: auto;
-        height: min(70dvh, 420px);
-        max-width: 100%;
-        aspect-ratio: 4 / 5;
-    }
-
     body.passport-camera-stage-open .registration-camera-actions {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.passport-camera-stage-open .registration-passport-square {
+        height: min(60dvh, calc(100dvh - 120px), 420px);
+        width: auto;
+        aspect-ratio: 4 / 5;
     }
 }
 
