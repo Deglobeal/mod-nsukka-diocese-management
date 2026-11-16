@@ -1,5 +1,12 @@
 import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passport-liveness.mjs?v=2";
 import {
+    cameraConstraintFallbacks,
+    getPassportFaceGuidance,
+    mapRectToContainFrame,
+    nextFacingMode,
+    passportCanvasRenderPlan
+} from "./passport-framing.mjs?v=1";
+import {
     AutoCaptureCountdown,
     CAPTURE_STABILITY_MS,
     isFatalVoiceRecognitionError,
@@ -23,6 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let previewRequestId = 0;
     const photoPlaceholder = document.getElementById("passport-camera-placeholder");
     const startCameraButton = document.getElementById("passport-camera-start");
+    const cameraSwitchButton = document.getElementById("passport-camera-switch");
     const capturePhotoButton = document.getElementById("passport-camera-capture");
     const retakePhotoButton = document.getElementById("passport-camera-retake");
     const cameraStatus = document.getElementById("passport-camera-status");
@@ -34,6 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const voiceFeedback = document.getElementById("passport-voice-feedback");
     const registrationForm = document.querySelector(".registration-card form");
     let cameraStream = null;
+    let requestedFacingMode = "environment";
     let faceLandmarker = null;
     let faceLandmarkerLoading = null;
     let livenessSession = null;
@@ -397,64 +406,43 @@ document.addEventListener("DOMContentLoaded", function () {
         return result.glasses === true;
     }
 
-    function faceIsWellPositioned(detection) {
+    function getFaceFrameBox(detection) {
         const box = detection && detection.boundingBox;
-        if (!box || !video.videoWidth || !video.videoHeight) return false;
-
-        const width = video.videoWidth;
-        const height = video.videoHeight;
-
-        const left = box.originX / width;
-        const top = box.originY / height;
-        const faceWidth = box.width / width;
-        const faceHeight = box.height / height;
-        const centerX = left + faceWidth / 2;
-        const centerY = top + faceHeight / 2;
-
-        // Keep the face in the upper portion of a full portrait composition.
-        // Smaller face limits leave room for the head, shoulders and upper chest.
-        const circleCenterX = 0.5;
-        const circleCenterY = 0.38;
-        const circleRadiusX = 0.42;
-        const circleRadiusY = 0.48;
-
-        const corners = [
-            [left, top],
-            [left + faceWidth, top],
-            [left, top + faceHeight],
-            [left + faceWidth, top + faceHeight]
-        ];
-
-        const faceInsideGuide = corners.every(function (point) {
-            const dx = (point[0] - circleCenterX) / circleRadiusX;
-            const dy = (point[1] - circleCenterY) / circleRadiusY;
-            return (dx * dx) + (dy * dy) <= 1;
-        });
-
-        return (
-            faceWidth >= 0.12 &&
-            faceWidth <= 0.65 &&
-            faceHeight >= 0.16 &&
-            faceHeight <= 0.85 &&
-            centerX >= 0.30 &&
-            centerX <= 0.70 &&
-            centerY >= 0.20 &&
-            centerY <= 0.78 &&
-            faceInsideGuide
-        );
+        if (!box || !video.videoWidth || !video.videoHeight) return null;
+        return mapRectToContainFrame({
+            x: box.originX,
+            y: box.originY,
+            width: box.width,
+            height: box.height
+        }, video.videoWidth, video.videoHeight);
     }
 
-    function faceBoxIsStable(detection) {
-        const box = detection && detection.boundingBox;
-        if (!box) return false;
-
-        const current = {
-            x: box.originX / video.videoWidth,
-            y: box.originY / video.videoHeight,
-            width: box.width / video.videoWidth,
-            height: box.height / video.videoHeight
+    function faceGuidanceMessage(guidance) {
+        const messages = {
+            "no-face": "No face detected. Move into view and improve the lighting.",
+            closer: "Move slightly closer to the camera.",
+            farther: "Move farther away so your head and shoulders fit in the frame.",
+            right: "Move your face slightly to your right.",
+            left: "Move your face slightly to your left.",
+            down: "Move your face slightly down into the guide.",
+            up: "Move your face slightly up into the guide.",
+            ready: "Perfect positioning. Hold still."
         };
+        return messages[guidance] || "Centre your face in the guide.";
+    }
 
+    function updateCameraSwitchLabel() {
+        if (!cameraSwitchButton) return;
+        const nextMode = nextFacingMode(requestedFacingMode);
+        cameraSwitchButton.textContent = nextMode === "user"
+            ? "Use front camera"
+            : "Use rear camera";
+        cameraSwitchButton.setAttribute("aria-label", cameraSwitchButton.textContent);
+    }
+
+    function faceBoxIsStable(frameBox) {
+        if (!frameBox) return false;
+        const current = frameBox;
         const previous = previousFaceBox;
         previousFaceBox = current;
 
@@ -490,7 +478,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         height: (measurements.bounds.bottom - measurements.bounds.top) * video.videoHeight
                     }
                 } : null;
-                const positioned = Boolean(detection && faceIsWellPositioned(detection));
+                const frameFaceBox = getFaceFrameBox(detection);
+                const faceGuidance = getPassportFaceGuidance(frameFaceBox);
+                const positioned = faceGuidance === "ready";
                 latestFaceBox = detection ? detection.boundingBox : null;
 
                 if (!livenessPassed) {
@@ -525,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (status.state === "no-face") {
                         cameraStatus.textContent = "No face detected. Move into view and improve the lighting.";
                     } else if (status.state === "position") {
-                        cameraStatus.textContent = "Centre your face inside the guide and look at the camera.";
+                        cameraStatus.textContent = faceGuidanceMessage(faceGuidance);
                     } else if (status.challenge === "blink") {
                         cameraStatus.textContent =
                             `Liveness check ${status.step} of ${status.total}: Blink naturally, then open your eyes.`;
@@ -598,13 +588,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (faceCount === 0) {
                         cameraStatus.textContent = "No face detected. Move into view and improve the lighting.";
                     } else if (!positioned) {
-                        cameraStatus.textContent = "Move your face into the centre of the guide.";
+                        cameraStatus.textContent = faceGuidanceMessage(faceGuidance);
                     } else if (!facingForward) {
                         cameraStatus.textContent = "Face forward and look at the camera.";
                     } else {
                         cameraStatus.textContent = "The lighting is too low. Move to a brighter place.";
                     }
-                } else if (!faceBoxIsStable(detection)) {
+                } else if (!faceBoxIsStable(frameFaceBox)) {
                     faceStableSince = null;
                     latestCaptureEligible = false;
                     latestCaptureChecks = null;
@@ -612,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     countdownStatus.hidden = true;
                     lastAnnouncedCountdown = null;
                     capturePhotoButton.disabled = true;
-                    cameraStatus.textContent = "Face detected. Hold still while the camera checks your position.";
+                    cameraStatus.textContent = "Perfect positioning. Hold still while the camera checks your position.";
                 } else {
                     if (faceStableSince === null) faceStableSince = timestamp;
                     const stableForMs = timestamp - faceStableSince;
@@ -769,27 +759,11 @@ document.addEventListener("DOMContentLoaded", function () {
         capturePhotoButton.disabled = true;
         stopFaceScan();
 
-        // Capture the same centered 9:16 crop shown in the live preview.
-        const sourceWidth = video.videoWidth;
-        const sourceHeight = video.videoHeight;
-        const targetAspect = 4 / 5;
-        const sourceAspect = sourceWidth / sourceHeight;
-
-        let cropX = 0;
-        let cropY = 0;
-        let cropWidth = sourceWidth;
-        let cropHeight = sourceHeight;
-
-        if (sourceAspect > targetAspect) {
-            cropWidth = sourceHeight * targetAspect;
-            cropX = (sourceWidth - cropWidth) / 2;
-        } else if (sourceAspect < targetAspect) {
-            cropHeight = sourceWidth / targetAspect;
-            cropY = (sourceHeight - cropHeight) / 2;
-        }
-
-        photoCanvas.width = Math.round(cropWidth);
-        photoCanvas.height = Math.round(cropHeight);
+        // Fit the complete original frame into the same 4:5 portrait canvas
+        // used by the contain preview. White letterboxing avoids crop loss.
+        const renderPlan = passportCanvasRenderPlan(video.videoWidth, video.videoHeight);
+        photoCanvas.width = renderPlan.width;
+        photoCanvas.height = renderPlan.height;
 
         const context = photoCanvas.getContext("2d");
         if (!context) {
@@ -800,10 +774,15 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        context.fillStyle = "#fff";
+        context.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
         context.drawImage(
             video,
-            cropX, cropY, cropWidth, cropHeight,
-            0, 0, photoCanvas.width, photoCanvas.height
+            0, 0, video.videoWidth, video.videoHeight,
+            renderPlan.frame.x,
+            renderPlan.frame.y,
+            renderPlan.frame.width,
+            renderPlan.frame.height
         );
 
         // Do not reject the crop using the browser's approximate
@@ -942,19 +921,25 @@ document.addEventListener("DOMContentLoaded", function () {
         clearCapturedPhoto();
         cameraError.hidden = true;
         cameraStatus.textContent = "Waiting for camera permission…";
+        if (cameraSwitchButton) cameraSwitchButton.disabled = true;
 
         let requestedStream = null;
 
         try {
-            requestedStream = await navigator.mediaDevices.getUserMedia({
-                audio: false,
-                video: {
-                    facingMode: "user",
-                    width: { ideal: 720 },
-                    height: { ideal: 1280 },
-                    aspectRatio: { ideal: 0.8 }
+            const constraints = cameraConstraintFallbacks(requestedFacingMode);
+            let lastConstraintError = null;
+            for (const constraint of constraints) {
+                try {
+                    requestedStream = await navigator.mediaDevices.getUserMedia(constraint);
+                    break;
+                } catch (constraintError) {
+                    lastConstraintError = constraintError;
+                    if (!constraintError || !["OverconstrainedError", "NotFoundError"].includes(constraintError.name)) {
+                        throw constraintError;
+                    }
                 }
-            });
+            }
+            if (!requestedStream) throw lastConstraintError || new Error("Camera unavailable");
 
             // A newer start/stop request superseded this request.
             if (startRequestId !== cameraStartRequestId) {
@@ -981,10 +966,21 @@ document.addEventListener("DOMContentLoaded", function () {
             await video.play();
 
             const activeVideoTrack = requestedStream.getVideoTracks()[0];
+            const trackSettings = activeVideoTrack && activeVideoTrack.getSettings
+                ? activeVideoTrack.getSettings()
+                : {};
+            const trackCapabilities = activeVideoTrack && activeVideoTrack.getCapabilities
+                ? activeVideoTrack.getCapabilities()
+                : {};
             console.info(
                 "Passport camera dimensions:",
                 `${video.videoWidth}x${video.videoHeight}`,
-                activeVideoTrack ? activeVideoTrack.getSettings() : {}
+                {
+                    facingMode: trackSettings.facingMode || "not reported",
+                    width: trackSettings.width || video.videoWidth,
+                    height: trackSettings.height || video.videoHeight,
+                    zoomRange: trackCapabilities.zoom || "unsupported"
+                }
             );
 
             // Do not activate capture for a replaced or stopped stream.
@@ -997,6 +993,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             capturePhotoButton.disabled = true;
+            if (cameraSwitchButton) cameraSwitchButton.disabled = false;
             if (whiteScanStatus) {
                 whiteScanStatus.textContent =
                     "AI will check the person and white background before accepting the photo.";
@@ -1017,6 +1014,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             stopCamera();
+            if (cameraSwitchButton) cameraSwitchButton.disabled = false;
 
             // AbortError can occur when browser playback is interrupted.
             // Report it as a recoverable interruption, not a fatal error.
@@ -1045,6 +1043,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (video && photoCanvas && photoInput && startCameraButton) {
         startCameraButton.addEventListener("click", startCamera);
+
+        updateCameraSwitchLabel();
+        if (cameraSwitchButton) {
+            cameraSwitchButton.addEventListener("click", function () {
+                requestedFacingMode = nextFacingMode(requestedFacingMode);
+                updateCameraSwitchLabel();
+                startCamera();
+            });
+        }
 
         capturePhotoButton.addEventListener("click", capturePhoto);
 
