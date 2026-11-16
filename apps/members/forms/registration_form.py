@@ -219,6 +219,8 @@ class MembershipRegistrationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        rank_names = tuple(Rank.objects.values_list("name", flat=True))
+        rank_choices = [("", "Select rank"), *((name, name) for name in rank_names)]
         selected_state = (
             self.data.get("state_of_origin", "")
             if self.is_bound
@@ -281,7 +283,7 @@ class MembershipRegistrationForm(forms.ModelForm):
         )
         self.fields["sponsor_rank"] = forms.ChoiceField(
             label="Sponsor's rank",
-            choices=[("", "Select rank (optional)"), *[(rank.name, rank.name) for rank in Rank.objects.all()]],
+            choices=[("", "Select rank (optional)"), *((name, name) for name in rank_names)],
             required=False,
         )
         self.fields["marital_status"] = forms.ChoiceField(
@@ -330,7 +332,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             (value, category_labels.get(str(value).strip().lower(), label))
             for value, label in self.fields["category"].choices
         ]
-        rank_choices = [("", "Select rank"), *[(rank.name, rank.name) for rank in Rank.objects.all()]]
         for rank_field in ("first_rank", "current_rank"):
             self.fields[rank_field] = forms.ChoiceField(
                 label="First rank" if rank_field == "first_rank" else "Current rank",
