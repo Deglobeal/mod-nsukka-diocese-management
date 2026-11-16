@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 from django.db import IntegrityError, connection, transaction, close_old_connections
 from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
@@ -18,6 +19,10 @@ from apps.members.services.first_member_registration import (
     issue_registration_id,
     redeem_registration_id,
     revoke_registration_id,
+)
+from apps.members.services.registration_id_verification import (
+    read_registration_confirmation,
+    verify_registration_id,
 )
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.accounts.models import OfficeAssignment
@@ -87,6 +92,67 @@ class FirstMemberRegistrationIdTests(TestCase):
         ).exists())
         with self.assertRaises(ValidationError):
             redeem_registration_id(raw_id=raw, application=application)
+
+    def test_bootstrap_confirmation_is_short_lived_and_bound_to_id(self):
+        _token, raw = issue_registration_id(actor=self.admin)
+        session = {}
+        verified = verify_registration_id(raw, session=session)
+        self.assertEqual(verified.kind, "first_member_bootstrap")
+        self.assertNotIn(raw, verified.confirmation)
+        with self.assertRaises(ValidationError):
+            read_registration_confirmation(
+                raw + "changed", verified.confirmation, session=session
+            )
+        with patch(
+            "apps.members.services.registration_id_verification.CONFIRMATION_MAX_AGE_SECONDS",
+            -1,
+        ):
+            with self.assertRaisesMessage(ValidationError, "ID verification expired"):
+                read_registration_confirmation(
+                    raw, verified.confirmation, session=session
+                )
+
+    def test_second_id_cannot_be_issued_while_bootstrap_application_is_pending(self):
+        _token, raw = issue_registration_id(actor=self.admin)
+        application = MembershipApplication.objects.create(
+            first_name="Pending", last_name="Candidate", parish=self.parish,
+        )
+        redeem_registration_id(raw_id=raw, application=application)
+        with self.assertRaisesMessage(ValidationError, "awaiting a final decision"):
+            issue_registration_id(actor=self.admin)
+
+        ordinary_app = MembershipApplication.objects.create(
+            first_name="Ordinary", last_name="Candidate", parish=self.parish,
+        )
+        reviewer = get_user_model().objects.create_user(
+            username="ordinary-reviewer", password="pass"
+        )
+        for role, parish, deanery in (
+            (OfficeAssignment.Role.PARISH_ADMIN, self.parish, None),
+            (OfficeAssignment.Role.DEANERY_ADMIN, None, self.deanery),
+            (OfficeAssignment.Role.DIOCESE_ADMIN, None, None),
+        ):
+            OfficeAssignment.objects.create(
+                user=reviewer, role=role, diocese=self.diocese,
+                parish=parish, deanery=deanery,
+            )
+        for level in (
+            MembershipReview.ReviewLevel.PARISH,
+            MembershipReview.ReviewLevel.DEANERY,
+        ):
+            record_membership_review(
+                application_id=ordinary_app.pk,
+                reviewer=reviewer,
+                review_level=level,
+                decision=MembershipReview.Decision.APPROVED,
+            )
+        with self.assertRaisesMessage(ValidationError, "awaiting a final decision"):
+            record_membership_review(
+                application_id=ordinary_app.pk,
+                reviewer=reviewer,
+                review_level=MembershipReview.ReviewLevel.DIOCESE,
+                decision=MembershipReview.Decision.APPROVED,
+            )
 
     def test_revoke_rejects_already_redeemed_id(self):
         token, raw = issue_registration_id(actor=self.admin)

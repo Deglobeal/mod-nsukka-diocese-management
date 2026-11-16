@@ -8,7 +8,6 @@ from django.conf import settings
 from apps.organizations.models import Deanery, Parish, Station
 from apps.members.models import Rank
 from apps.verification.models import MembershipApplication
-from apps.members.services.first_member_registration import find_available_registration_id
 
 
 NIGERIA_LGAS = json.loads(
@@ -60,11 +59,9 @@ class StationSelect(forms.Select):
 
 
 class MembershipRegistrationForm(forms.ModelForm):
-    first_member_registration_id = forms.CharField(
-        label="First Member Registration ID",
-        max_length=100,
+    registration_id_confirmation = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={"autocomplete": "off", "placeholder": "Only for the first member registration"}),
+        widget=forms.HiddenInput(),
     )
     state_of_origin = forms.ChoiceField(
         choices=NIGERIA_STATE_CHOICES,
@@ -269,18 +266,16 @@ class MembershipRegistrationForm(forms.ModelForm):
         self.fields["sponsor_membership_id"] = forms.CharField(
             label="Sponsor's official M.O.D. ID number",
             max_length=100,
-            required=False,
+            required=True,
             widget=forms.TextInput(attrs={
-                "placeholder": "Enter sponsor's official M.O.D. ID",
+                "placeholder": "Enter the official M.O.D. ID",
                 "autocomplete": "off",
             }),
             help_text=(
-                "This ID is checked against the official membership register. "
-                "A confirmation request is queued for the phone number saved "
-                "in the sponsor's member profile."
+                "Enter the official M.O.D. Membership ID supplied by your active sponsor. "
+                "An authorized first-member candidate should enter the one-time registration ID supplied by the Diocese."
             ),
         )
-        self.first_member_registration_token = None
         self.fields["sponsor_additional_phone"] = forms.CharField(
             label="Additional sponsor contact number",
             max_length=30,
@@ -470,19 +465,9 @@ class MembershipRegistrationForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        bootstrap_id = (cleaned_data.get("first_member_registration_id") or "").strip()
         sponsor_id = (cleaned_data.get("sponsor_membership_id") or "").strip()
-        if bootstrap_id and sponsor_id:
-            self.add_error(
-                "first_member_registration_id",
-                "Use either a first-member registration ID or a sponsor ID, not both.",
-            )
-        elif bootstrap_id:
-            self.first_member_registration_token = find_available_registration_id(bootstrap_id)
-            if not self.first_member_registration_token:
-                self.add_error("first_member_registration_id", "This ID is invalid, expired, revoked, or already used.")
-        elif not sponsor_id:
-            self.add_error("sponsor_membership_id", "Enter a sponsor ID or the first-member registration ID provided to you.")
+        if not sponsor_id:
+            self.add_error("sponsor_membership_id", "This field is required.")
 
         # Validate human names while allowing spaces, apostrophes,
         # hyphens, accented letters, and non-English alphabets.

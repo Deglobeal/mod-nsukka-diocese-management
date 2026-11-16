@@ -289,6 +289,14 @@ def record_membership_review(
                 raise ValidationError(
                     "A first-member registration ID is reserved. Complete that registration before approving another member as the first member."
                 )
+            if not bootstrap_token:
+                from apps.members.services.registration_id_verification import (
+                    has_unresolved_bootstrap_application,
+                )
+                if has_unresolved_bootstrap_application():
+                    raise ValidationError(
+                        "A first-member application is awaiting a final decision. It must be resolved before another application can create the first member."
+                    )
             if _find_possible_duplicate_member(application) is not None:
                 raise ValidationError(
                     "A possible duplicate member record was found in this parish. "
