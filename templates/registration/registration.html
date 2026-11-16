@@ -159,8 +159,9 @@
                     {% include "registration/partials/registration_field.html" with field=form.previous_diocese %}
                 </div>
                 <h3 class="registration-section-title">Sponsor / Referee Verification</h3>
-                <p>The system will look up the sponsor's official name and registered phone number. Those details cannot be edited by the applicant.</p>
+                <p>Ordinary applicants enter an active sponsor. The authorized first-member candidate may use the one-time ID supplied by the Diocese instead.</p>
                 <div class="registration-grid">
+                    {% include "registration/partials/registration_field.html" with field=form.first_member_registration_id %}
                     <div class="registration-field registration-sponsor-field">
                         {% include "registration/partials/registration_field.html" with field=form.sponsor_membership_id %}
                         <button
@@ -182,7 +183,7 @@
                     {% include "registration/partials/registration_field.html" with field=form.sponsor_additional_phone %}
                     {% include "registration/partials/registration_field.html" with field=form.sponsor_rank %}
                 </div>
-                <p class="registration-notice">A successful match confirms the sponsor's identity and saved phone number, but does not confirm sponsorship authorization. A separate authorization request is sent after you submit your application.</p>
+                <p class="registration-notice">For ordinary registrations, a successful sponsor match confirms the sponsor's identity and saved phone number, and a separate authorization request is sent after submission.</p>
             </section>
 
             <section class="registration-section" aria-labelledby="registration-section-c">

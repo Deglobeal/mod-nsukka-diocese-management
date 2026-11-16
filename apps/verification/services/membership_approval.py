@@ -7,7 +7,12 @@ from apps.accounts.services.office_authorization import (
     authorize_membership_reviewer,
 )
 from apps.audit.models import AuditEvent
-from apps.members.models import Member
+from apps.members.models import (
+    FirstMemberRegistrationAuditEvent,
+    FirstMemberRegistrationToken,
+    Member,
+)
+from apps.organizations.models import Diocese
 from apps.notifications.models import SponsorVerification
 from apps.notifications.services.in_app_notifications import notify_membership_review
 from apps.verification.models import MembershipApplication, MembershipReview
@@ -266,6 +271,24 @@ def record_membership_review(
             member.status = Member.Status.ACTIVE
             member.save(update_fields=["status", "updated_at"])
         else:
+            # Serialize all first-member creation against bootstrap redemption
+            # and against other simultaneous approvals.
+            Diocese.objects.select_for_update().get(code="036")
+            bootstrap_token = FirstMemberRegistrationToken.objects.select_for_update().filter(
+                redeemed_application=application,
+                status=FirstMemberRegistrationToken.Status.REDEEMED,
+            ).first()
+            if bootstrap_token and Member.objects.exists():
+                raise ValidationError(
+                    "A member has already been created; this bootstrap application cannot create another."
+                )
+            if not bootstrap_token and FirstMemberRegistrationToken.objects.filter(
+                status=FirstMemberRegistrationToken.Status.AVAILABLE,
+                expires_at__gt=timezone.now(),
+            ).exists():
+                raise ValidationError(
+                    "A first-member registration ID is reserved. Complete that registration before approving another member as the first member."
+                )
             if _find_possible_duplicate_member(application) is not None:
                 raise ValidationError(
                     "A possible duplicate member record was found in this parish. "
@@ -281,6 +304,16 @@ def record_membership_review(
                 status=Member.Status.ACTIVE,
             )
             application.member = member
+            if bootstrap_token:
+                bootstrap_token.redeemed_by = member
+                bootstrap_token.save(update_fields=["redeemed_by"])
+                FirstMemberRegistrationAuditEvent.objects.create(
+                    token=bootstrap_token,
+                    action=FirstMemberRegistrationAuditEvent.Action.MEMBER_CREATED,
+                    actor=reviewer,
+                    application=application,
+                    member=member,
+                )
 
         application.save(
             update_fields=[

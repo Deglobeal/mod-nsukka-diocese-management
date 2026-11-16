@@ -16,6 +16,11 @@ from PIL import Image, UnidentifiedImageError
 
 from apps.members.forms import MembershipRegistrationForm
 from apps.members.passport_photo_processing import process_passport_photo
+from apps.members.models import FirstMemberRegistrationAttempt
+from apps.members.services.first_member_registration import (
+    record_registration_attempt,
+    redeem_registration_id,
+)
 from apps.notifications.services.sponsor_lookup import (
     SponsorLookupError,
     find_active_sponsor,
@@ -212,6 +217,7 @@ def membership_registration(request):
 
         form = MembershipRegistrationForm(request.POST, uploaded_files)
         form_is_valid = form.is_valid()
+        bootstrap_id = (request.POST.get("first_member_registration_id") or "").strip()
 
         if photo_error:
             form.add_error("passport_photo", photo_error)
@@ -222,7 +228,7 @@ def membership_registration(request):
             )
 
         sponsor_contact = None
-        if form_is_valid and photo_data and not photo_error:
+        if form_is_valid and photo_data and not photo_error and not form.first_member_registration_token:
             try:
                 sponsor_contact = find_active_sponsor(
                     form.cleaned_data["sponsor_membership_id"]
@@ -230,7 +236,8 @@ def membership_registration(request):
             except SponsorLookupError as error:
                 form.add_error("sponsor_membership_id", str(error))
 
-        if form_is_valid and photo_data and not photo_error and sponsor_contact:
+        bootstrap_token = form.first_member_registration_token if form_is_valid else None
+        if form_is_valid and photo_data and not photo_error and (sponsor_contact or bootstrap_token):
             application = form.save(commit=False)
             application.stage = MembershipApplication.Stage.PARISH_REVIEW
             application.member = None
@@ -240,11 +247,14 @@ def membership_registration(request):
                     # The ModelForm assigns the validated signature upload.
                     # The model field retains its private storage and random path.
                     application.save()
-                    create_sponsor_verification_and_sms(
-                        application=application,
-                        sponsor_contact=sponsor_contact,
-                        request=request,
-                    )
+                    if bootstrap_token:
+                        redeem_registration_id(raw_id=bootstrap_id, application=application)
+                    else:
+                        create_sponsor_verification_and_sms(
+                            application=application,
+                            sponsor_contact=sponsor_contact,
+                            request=request,
+                        )
             except Exception:
                 # Database transactions cannot roll back filesystem writes.
                 for image_field in (
@@ -256,6 +266,13 @@ def membership_registration(request):
                             image_field.storage.delete(image_field.name)
                         except Exception:
                             pass
+
+                if bootstrap_id:
+                    record_registration_attempt(
+                        raw_id=bootstrap_id,
+                        outcome=FirstMemberRegistrationAttempt.Outcome.REGISTRATION_FAILED,
+                        error_code="application_save_failed",
+                    )
 
                 form.add_error(
                     None,
@@ -284,6 +301,22 @@ def membership_registration(request):
             return redirect(
                 "members:registration_received",
                 application_id=application.pk,
+            )
+
+        if bootstrap_id and (not form_is_valid or photo_error):
+            attempt_outcome = (
+                FirstMemberRegistrationAttempt.Outcome.INVALID_ID
+                if form.errors.get("first_member_registration_id")
+                else FirstMemberRegistrationAttempt.Outcome.FORM_INVALID
+            )
+            record_registration_attempt(
+                raw_id=bootstrap_id,
+                outcome=attempt_outcome,
+                error_code=(
+                    "invalid_or_unavailable_id"
+                    if attempt_outcome == FirstMemberRegistrationAttempt.Outcome.INVALID_ID
+                    else "form_validation_failed"
+                ),
             )
 
         return render(
