@@ -94,11 +94,13 @@
                         <p class="registration-camera-help">
                             Privacy: the camera checks your face and movement in this browser. Video frames are not sent or stored; only the accepted passport photo is submitted.
                         </p>
-                        <div class="registration-camera-preview registration-passport-square">
-                            <video id="passport-camera-video" playsinline autoplay muted hidden></video>
-                            <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
-                            <p id="passport-camera-placeholder">Camera preview will appear here.</p>
-                            <div class="registration-camera-guide" aria-hidden="true"></div>
+                        <div class="registration-passport-shell">
+                            <div class="registration-camera-preview registration-passport-square">
+                                <video id="passport-camera-video" playsinline autoplay muted hidden></video>
+                                <img id="passport-camera-image" alt="Captured passport photograph preview" hidden>
+                                <p id="passport-camera-placeholder">Camera preview will appear here.</p>
+                                <div class="registration-camera-guide" aria-hidden="true"></div>
+                            </div>
                         </div>
                         <p id="passport-white-scan-status"
                            class="passport-white-scan-status" aria-live="polite"
@@ -113,6 +115,7 @@
                                value="{{ passport_photo_token|default:'' }}">
                         <div class="registration-camera-actions">
                             <button type="button" id="passport-camera-start">Start camera</button>
+                            <button type="button" id="passport-camera-switch">Use front camera</button>
                             <button type="button" id="passport-camera-capture" disabled>Capture photo</button>
                             <button type="button" id="passport-camera-accept" hidden>Use this photo</button>
                             <button type="button" id="passport-camera-retake" hidden>Retake photo</button>
@@ -343,19 +346,29 @@
 
 
 <style>
-/* Portrait passport preview and face-positioning guide only. */
+/* Full-frame portrait preview and face-positioning guide. */
+.registration-passport-shell {
+    width: min(100%, 340px);
+    margin: 12px auto;
+    padding: 12px;
+    border-radius: 22px;
+    background: #171923;
+    box-sizing: border-box;
+}
+
 .registration-passport-square {
     position: relative;
     display: block;
-    width: min(100%, 300px);
+    width: 100%;
     aspect-ratio: 4 / 5;
     height: auto;
     min-height: 0;
-    margin: 12px auto;
+    margin: 0 auto;
     padding: 0;
     overflow: hidden;
     border: 0;
-    border-radius: 0;
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 24%);
     background: #fff;
     box-sizing: border-box;
 }
@@ -369,7 +382,7 @@
     height: 100%;
     max-width: none;
     max-height: none;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
 }
 
@@ -450,7 +463,7 @@
 }
 </style>
 
-<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=2"></script>
+<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=3"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>
