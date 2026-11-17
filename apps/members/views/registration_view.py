@@ -7,6 +7,7 @@ from django.core import signing
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import binascii
+import warnings
 from io import BytesIO
 
 from django.core.exceptions import ValidationError
@@ -78,23 +79,31 @@ def _passport_photo_from_post(value):
 
     extension, expected_format = PASSPORT_PREFIXES[prefix]
     try:
-        with Image.open(BytesIO(raw)) as image:
-            if image.format != expected_format:
-                raise ValidationError(
-                    "The captured image does not match its declared format."
-                )
-            width, height = image.size
-            if width < 100 or height < 100 or width > 4000 or height > 4000:
-                raise ValidationError(
-                    "The photograph dimensions are invalid. Please retake it."
-                )
-            image.verify()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(BytesIO(raw)) as image:
+                if image.format != expected_format:
+                    raise ValidationError(
+                        "The captured image does not match its declared format."
+                    )
+                width, height = image.size
+                if width < 100 or height < 100 or width > 4000 or height > 4000:
+                    raise ValidationError(
+                        "The photograph dimensions are invalid. Please retake it."
+                    )
+                image.verify()
     except ValidationError:
         raise
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+    except (
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ):
         raise ValidationError(
             "The captured photograph could not be read. Please retake it."
-        )
+        ) from None
 
     return raw, extension
 

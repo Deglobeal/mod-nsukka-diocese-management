@@ -1,294 +1,124 @@
-"""Server-side passport background removal and white-background compositing."""
+"""Validate and normalize passport photos without a bundled AI model."""
 
-import hashlib
-import os
-import tempfile
-import urllib.request
+import logging
+import warnings
 from io import BytesIO
-from pathlib import Path
-from threading import Lock
 
 from django.core.exceptions import ValidationError
-from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
-
-_MODEL_NAME = "u2net"
-_session = None
-_session_lock = Lock()
 
 MAX_OUTPUT_BYTES = 5 * 1024 * 1024
 MIN_DIMENSION = 100
 MAX_DIMENSION = 4000
+logger = logging.getLogger(__name__)
 
 
-def _model_path() -> Path:
-    """Find a verified U2NET model or download it into the runtime temp directory."""
-    expected_md5 = "60024c5c889badc19c04ad937298a77b"
-    model_url = (
-        "https://github.com/danielgatis/rembg/releases/download/"
-        "v0.0.0/u2net.onnx"
-    )
-
-    configured_path = os.environ.get("U2NET_MODEL_PATH")
-    candidates = [
-        Path(configured_path).expanduser() if configured_path else None,
-        Path.home() / ".rembg/models/u2net/u2net.onnx",
-        Path.home() / ".u2net/u2net.onnx",
-        Path(tempfile.gettempdir()) / "u2net.onnx",
-    ]
-
-    def is_valid(candidate: Path) -> bool:
-        if not candidate.is_file():
-            return False
-
-        digest = hashlib.md5()
-        with candidate.open("rb") as model_file:
-            for chunk in iter(lambda: model_file.read(1024 * 1024), b""):
-                digest.update(chunk)
-
-        return digest.hexdigest() == expected_md5
-
-    for candidate in candidates:
-        if candidate is not None and is_valid(candidate):
-            return candidate
-
-    destination = Path(tempfile.gettempdir()) / "u2net.onnx"
-    temporary_path = None
-
-    try:
-        digest = hashlib.md5()
-
-        with urllib.request.urlopen(model_url, timeout=120) as response:
-            with tempfile.NamedTemporaryFile(
-                mode="wb",
-                dir=destination.parent,
-                prefix="u2net-",
-                suffix=".download",
-                delete=False,
-            ) as temporary_file:
-                temporary_path = Path(temporary_file.name)
-
-                while True:
-                    chunk = response.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    digest.update(chunk)
-                    temporary_file.write(chunk)
-
-        if digest.hexdigest() != expected_md5:
-            raise RuntimeError("The downloaded U2NET model failed checksum verification.")
-
-        os.replace(temporary_path, destination)
-        return destination
-
-    finally:
-        if temporary_path is not None and temporary_path.exists():
-            temporary_path.unlink()
+def _validate_dimensions(width: int, height: int) -> None:
+    if (
+        width < MIN_DIMENSION
+        or height < MIN_DIMENSION
+        or width > MAX_DIMENSION
+        or height > MAX_DIMENSION
+    ):
+        raise ValidationError(
+            "The photograph dimensions are invalid. Please retake it."
+        )
 
 
-def _get_session():
-    """Load the U2NET ONNX session once per application process."""
-    global _session
+def _normalize_to_rgb(image: Image.Image) -> Image.Image:
+    """Normalize color mode without changing the subject's appearance."""
+    if image.mode in {"RGBA", "LA"} or "transparency" in image.info:
+        foreground = image.convert("RGBA")
+        white_background = Image.new(
+            "RGBA", foreground.size, (255, 255, 255, 255)
+        )
+        white_background.alpha_composite(foreground)
+        return white_background.convert("RGB")
+    return image.convert("RGB")
 
-    if _session is None:
-        with _session_lock:
-            if _session is None:
-                try:
-                    import onnxruntime as ort
-
-                    _session = ort.InferenceSession(
-                        str(_model_path()),
-                        providers=["CPUExecutionProvider"],
-                    )
-                except Exception as exc:
-                    raise ValidationError(
-                        "Passport photo processing is temporarily unavailable. "
-                        "Please try again later."
-                    ) from exc
-
-    return _session
-
-
-def _predict_foreground_mask(image: Image.Image) -> Image.Image:
-    """Run U2NET inference using the same preprocessing as rembg's U2NET session."""
-    import numpy as np
-
-    session = _get_session()
-
-    normalized_image = image.convert("RGB").resize(
-        (320, 320),
-        Image.Resampling.LANCZOS,
-    )
-    image_array = np.array(normalized_image)
-    image_array = image_array / max(np.max(image_array), 1e-6)
-
-    mean = (0.485, 0.456, 0.406)
-    std = (0.229, 0.224, 0.225)
-
-    normalized = np.zeros(
-        (image_array.shape[0], image_array.shape[1], 3)
-    )
-    for channel in range(3):
-        normalized[:, :, channel] = (
-            image_array[:, :, channel] - mean[channel]
-        ) / std[channel]
-
-    model_input = {
-        session.get_inputs()[0].name:
-            np.expand_dims(normalized.transpose((2, 0, 1)), 0).astype(
-                np.float32
-            )
-    }
-
-    prediction = session.run(None, model_input)[0][:, 0, :, :]
-    maximum = np.max(prediction)
-    minimum = np.min(prediction)
-
-    if maximum <= minimum:
-        raise ValueError("U2NET returned an invalid foreground mask.")
-
-    prediction = (prediction - minimum) / (maximum - minimum)
-    prediction = np.squeeze(prediction)
-
-    mask = Image.fromarray(
-        (prediction.clip(0, 1) * 255).astype("uint8"),
-        mode="L",
-    )
-    return mask.resize(image.size, Image.Resampling.LANCZOS)
-
-def _enhance_passport_photo(image: Image.Image) -> Image.Image:
-    """Apply restrained luminance correction and sharpening without retouching."""
-    image = image.convert("RGB")
-
-    # Correct luminance only, leaving the original colour channels intact.
-    lab = image.convert("LAB")
-    luminance, channel_a, channel_b = lab.split()
-
-    histogram = luminance.histogram()
-    total = sum(histogram)
-
-    if total:
-        low_target = total * 0.01
-        high_target = total * 0.99
-        cumulative = 0
-        low = 0
-        high = 255
-
-        for value, count in enumerate(histogram):
-            cumulative += count
-            if cumulative >= low_target:
-                low = value
-                break
-
-        cumulative = 0
-        for value, count in enumerate(histogram):
-            cumulative += count
-            if cumulative >= high_target:
-                high = value
-                break
-
-        # Skip correction when the image already has limited tonal range.
-        if high - low >= 80:
-            corrected = ImageOps.autocontrast(luminance, cutoff=1)
-            luminance = Image.blend(luminance, corrected, 0.20)
-
-    enhanced = Image.merge("LAB", (luminance, channel_a, channel_b)).convert("RGB")
-
-    # Mild sharpening; no smoothing, face reshaping, or cosmetic retouching.
-    return ImageEnhance.Sharpness(enhanced).enhance(1.15)
 
 def process_passport_photo(raw: bytes) -> bytes:
-    """
-    Remove the captured photo's background and composite the subject onto white.
+    """Validate and normalize an image already processed in the browser.
 
-    Never return the original image as a fallback.
+    The server preserves the supplied background. It performs no segmentation
+    or flood fill. PNG transparency is composited onto white, and dimensions are
+    preserved after applying EXIF orientation.
     """
     if not raw:
         raise ValidationError("The passport photograph is empty.")
 
     try:
-        with Image.open(BytesIO(raw)) as source:
-            source.load()
-            image = ImageOps.exif_transpose(source).convert("RGB")
-
-        width, height = image.size
-        if (
-            width < MIN_DIMENSION
-            or height < MIN_DIMENSION
-            or width > MAX_DIMENSION
-            or height > MAX_DIMENSION
-        ):
-            raise ValidationError(
-                "The processed photograph dimensions are invalid. "
-                "Please retake the photograph."
-            )
-
-        mask = _predict_foreground_mask(image)
-
-        if mask.size != image.size:
-            raise ValidationError(
-                "The processed photograph has invalid dimensions. "
-                "Please retake the photograph."
-            )
-
-        # Recover foreground colours at partially covered edge pixels. Directly
-        # applying the mask preserves the old background colour in hair and
-        # clothing edges, which creates a visible halo on white.
-        from rembg.bg import decontaminate_cutout
-
-        alpha = mask.convert("L").point(lambda value: 0 if value < 8 else value)
-        foreground = decontaminate_cutout(image, alpha)
-        if foreground.mode != "RGBA":
-            foreground = foreground.convert("RGBA")
-
-        if foreground.size != image.size:
-            raise ValidationError(
-                "The processed photograph has invalid dimensions. "
-                "Please retake the photograph."
-            )
-
-        # Composite onto pure white after refining the edge.
-        white_background = Image.new(
-            "RGBA", foreground.size, (255, 255, 255, 255)
-        )
-        white_background.alpha_composite(foreground)
-
-        enhanced = _enhance_passport_photo(
-            white_background.convert("RGB")
-        )
-
-        output = BytesIO()
-        enhanced.save(
-            output,
-            format="JPEG",
-            quality=92,
-            optimize=True,
-        )
-        processed = output.getvalue()
-
-        if not processed or len(processed) > MAX_OUTPUT_BYTES:
-            raise ValidationError(
-                "The processed photograph exceeds the allowed size. "
-                "Please retake the photograph."
-            )
-
-        # Verify that the generated output is a readable JPEG.
-        with Image.open(BytesIO(processed)) as check:
-            if check.format != "JPEG" or check.size != image.size:
-                raise ValidationError(
-                    "The processed photograph could not be verified."
-                )
-            check.verify()
-
-        return processed
-
+        # Promote Pillow's decompression warning to an exception. Check the
+        # image's declared dimensions before decoding any pixel data as well.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(BytesIO(raw)) as source:
+                if source.format not in {"JPEG", "PNG"}:
+                    raise ValidationError(
+                        "Use a JPEG or PNG passport photograph."
+                    )
+                _validate_dimensions(*source.size)
+                source.load()
+                oriented = ImageOps.exif_transpose(source)
+                _validate_dimensions(*oriented.size)
+                image = _normalize_to_rgb(oriented)
     except ValidationError:
         raise
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except (
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ):
+        # Malformed or unsafe uploads are expected user errors, not application
+        # failures. Do not log their payload or emit an exception traceback.
         raise ValidationError(
-            "The passport photograph could not be processed. Please retake it."
-        ) from exc
-    except Exception as exc:
+            "The passport photograph could not be read. Please retake it."
+        ) from None
+
+    try:
+        processed = _encode_jpeg_within_limit(image)
+        _verify_output(processed, image.size)
+        return processed
+    except ValidationError:
+        raise
+    except Exception:
+        # Errors during conversion or verification indicate an application or
+        # runtime problem. Log diagnostics server-side, but keep details private.
+        logger.exception("Passport photograph conversion or verification failed.")
         raise ValidationError(
-            "Background removal failed. Your unprocessed photograph was not accepted."
-        ) from exc
+            "The passport photograph could not be prepared. Please retry."
+        ) from None
+
+
+def _encode_jpeg_within_limit(image: Image.Image) -> bytes:
+    for quality in (92, 85, 78, 70, 62):
+        output = BytesIO()
+        image.save(output, format="JPEG", quality=quality, optimize=True)
+        processed = output.getvalue()
+        if processed and len(processed) <= MAX_OUTPUT_BYTES:
+            return processed
+
+    raise ValidationError(
+        "The photograph exceeds the 5 MB processed size limit. Please retake it."
+    )
+
+
+def _verify_output(processed: bytes, expected_size: tuple[int, int]) -> None:
+    if not processed or len(processed) > MAX_OUTPUT_BYTES:
+        raise ValidationError(
+            "The photograph exceeds the 5 MB processed size limit. Please retake it."
+        )
+
+    with Image.open(BytesIO(processed)) as output:
+        if (
+            output.format != "JPEG"
+            or output.mode != "RGB"
+            or output.size != expected_size
+        ):
+            raise ValidationError(
+                "The processed photograph could not be verified. Please retry."
+            )
+        output.verify()
