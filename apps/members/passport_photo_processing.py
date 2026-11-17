@@ -9,7 +9,7 @@ from pathlib import Path
 from threading import Lock
 
 from django.core.exceptions import ValidationError
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageEnhance, ImageOps, UnidentifiedImageError
 
 
 _MODEL_NAME = "u2net"
@@ -224,21 +224,28 @@ def process_passport_photo(raw: bytes) -> bytes:
             )
 
         mask = _predict_foreground_mask(image)
-        foreground = image.convert("RGBA")
-        foreground.putalpha(mask)
+
+        if mask.size != image.size:
+            raise ValidationError(
+                "The processed photograph has invalid dimensions. "
+                "Please retake the photograph."
+            )
+
+        # Recover foreground colours at partially covered edge pixels. Directly
+        # applying the mask preserves the old background colour in hair and
+        # clothing edges, which creates a visible halo on white.
+        from rembg.bg import decontaminate_cutout
+
+        alpha = mask.convert("L").point(lambda value: 0 if value < 8 else value)
+        foreground = decontaminate_cutout(image, alpha)
+        if foreground.mode != "RGBA":
+            foreground = foreground.convert("RGBA")
 
         if foreground.size != image.size:
             raise ValidationError(
                 "The processed photograph has invalid dimensions. "
                 "Please retake the photograph."
             )
-
-        # Refine the transparency boundary to reduce rough edges and halos.
-        # Keep the subject's RGB colours and existing image dimensions unchanged.
-        alpha = foreground.getchannel("A")
-        alpha = alpha.point(lambda value: 0 if value < 8 else value)
-        alpha = alpha.filter(ImageFilter.GaussianBlur(radius=0.6))
-        foreground.putalpha(alpha)
 
         # Composite onto pure white after refining the edge.
         white_background = Image.new(
