@@ -18,9 +18,8 @@ function prime(session) {
     return result;
 }
 
-test("challenge sequence varies order and turn direction", () => {
-    assert.deepEqual(createChallengeSequence(() => 0), ["blink", "turn-left"]);
-    assert.deepEqual(createChallengeSequence(() => 0.99), ["turn-right", "blink"]);
+test("liveness uses an eye-blink challenge only", () => {
+    assert.deepEqual(createChallengeSequence(), ["blink"]);
 });
 
 test("face measurements estimate head roll from the eye line", () => {
@@ -53,7 +52,7 @@ test("no face and multiple faces never pass or consume the challenge timeout", (
 });
 
 test("challenge timeout starts when the first liveness challenge begins", () => {
-    const session = new LivenessSession({ random: () => 0, timeoutMs: 1000 });
+    const session = new LivenessSession({ timeoutMs: 1000 });
     let result;
     for (let now = 0; now <= 800; now += 100) {
         result = session.step(face(), now);
@@ -63,85 +62,29 @@ test("challenge timeout starts when the first liveness challenge begins", () => 
     assert.equal(session.step(face(), session.startedAt + 1001).state, "timeout");
 });
 
-test("head-turn challenge keeps sampling intentional motion without requiring a still face box", () => {
-    const session = new LivenessSession({ random: () => 0.99 });
-    prime(session);
-    assert.equal(session.challenge, "turn-right");
-
-    let now = 800;
-    for (let i = 0; i < 4; i += 1) {
-        session.step(face({
-            yaw: 0.12,
-            faceBox: { ...box, x: box.x + i * 0.05 }
-        }), now);
-        now += 100;
-    }
-    assert.equal(session.turnSeen, true);
-    for (let i = 0; i < 3; i += 1) {
-        session.step(face({ yaw: 0 }), now);
-        now += 100;
-    }
-    assert.equal(session.challenge, "blink");
-});
-
 test("blink needs open, closed and reopened eye observations", () => {
-    const session = new LivenessSession({ random: () => 0 });
+    const session = new LivenessSession();
     prime(session);
     for (let i = 0; i < 3; i += 1) session.step(face(), 800 + i * 100);
     session.step(face({ eyeAspect: 0.15 }), 1100);
     assert.equal(session.complete, false);
     for (let i = 0; i < 3; i += 1) session.step(face(), 1200 + i * 100);
-    assert.equal(session.challenge, "turn-left");
+    assert.equal(session.complete, true);
 });
 
 test("failed blink without reopening cannot pass", () => {
-    const session = new LivenessSession({ random: () => 0 });
+    const session = new LivenessSession();
     prime(session);
     for (let i = 0; i < 8; i += 1) session.step(face({ eyeAspect: 0.15 }), 800 + i * 100);
     assert.equal(session.complete, false);
 });
 
-for (const [name, direction] of [["left", -1], ["right", 1]]) {
-    test(`${name} turn requires sustained movement and return to forward`, () => {
-        const values = name === "left" ? [0, 0.99] : [0.99, 0.99];
-        const session = new LivenessSession({ random: () => values.shift() ?? 0.99 });
-        prime(session);
-        for (let i = 0; i < 4; i += 1) session.step(face({ yaw: direction * 0.12 }), 800 + i * 100);
-        assert.equal(session.complete, false);
-        for (let i = 0; i < 3; i += 1) session.step(face(), 1200 + i * 100);
-        assert.equal(session.challenge, "blink");
-    });
-}
-
-test("turn without returning forward does not complete the turn challenge", () => {
-    const session = new LivenessSession({ random: () => 0.99 });
+test("liveness passes after the required blink completes", () => {
+    const session = new LivenessSession();
     prime(session);
-    for (let i = 0; i < 8; i += 1) session.step(face({ yaw: 0.12 }), 800 + i * 100);
-    assert.equal(session.complete, false);
-    assert.equal(session.challenge, "turn-right");
-});
-
-test("capture becomes eligible only after both randomized challenges pass", () => {
-    const blinkFirst = new LivenessSession({ random: () => 0 });
-    prime(blinkFirst);
     for (const [time, eyeAspect] of [
         [800, 0.3], [900, 0.3], [1000, 0.3], [1100, 0.15],
         [1200, 0.3], [1300, 0.3], [1400, 0.3]
-    ]) blinkFirst.step(face({ eyeAspect }), time);
-    assert.equal(blinkFirst.complete, false);
-    blinkFirst.step(face(), 1500);
-    for (const time of [1600, 1700, 1800]) blinkFirst.step(face({ yaw: -0.12 }), time);
-    for (const time of [1900, 2000, 2100]) blinkFirst.step(face(), time);
-    assert.equal(blinkFirst.complete, true);
-
-    const turnFirst = new LivenessSession({ random: () => 0.99 });
-    prime(turnFirst);
-    for (const time of [800, 900, 1000]) turnFirst.step(face({ yaw: 0.12 }), time);
-    for (const time of [1100, 1200, 1300]) turnFirst.step(face(), time);
-    assert.equal(turnFirst.complete, false);
-    for (const [time, eyeAspect] of [
-        [1400, 0.3], [1500, 0.3], [1600, 0.3], [1700, 0.15],
-        [1800, 0.3], [1900, 0.3], [2000, 0.3]
-    ]) turnFirst.step(face({ eyeAspect }), time);
-    assert.equal(turnFirst.complete, true);
+    ]) session.step(face({ eyeAspect }), time);
+    assert.equal(session.complete, true);
 });

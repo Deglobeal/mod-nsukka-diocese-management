@@ -1,20 +1,15 @@
 const OPEN_EAR = 0.24;
 const CLOSED_EAR = 0.19;
-const TURN_THRESHOLD = 0.075;
-const RETURN_THRESHOLD = 0.035;
 const REQUIRED_STABLE_FRAMES = 3;
-export const FORWARD_YAW_TOLERANCE = RETURN_THRESHOLD;
+export const FORWARD_YAW_TOLERANCE = 0.035;
 
 export function isForwardFacing(yaw, baselineYaw) {
     return Number.isFinite(yaw) && Number.isFinite(baselineYaw) &&
         Math.abs(yaw - baselineYaw) <= FORWARD_YAW_TOLERANCE;
 }
 
-export function createChallengeSequence(random = Math.random) {
-    const turn = random() < 0.5 ? "left" : "right";
-    return random() < 0.5
-        ? ["blink", `turn-${turn}`]
-        : [`turn-${turn}`, "blink"];
+export function createChallengeSequence() {
+    return ["blink"];
 }
 
 export function eyeAspectRatio(landmarks, points) {
@@ -58,8 +53,8 @@ export function getFaceMeasurements(landmarks) {
 }
 
 export class LivenessSession {
-    constructor({ random = Math.random, timeoutMs = 30000 } = {}) {
-        this.sequence = createChallengeSequence(random);
+    constructor({ timeoutMs = 30000 } = {}) {
+        this.sequence = createChallengeSequence();
         this.index = 0;
         this.startedAt = null;
         this.timeoutMs = timeoutMs;
@@ -68,9 +63,6 @@ export class LivenessSession {
         this.closedFrames = 0;
         this.closedAt = null;
         this.reopenFrames = 0;
-        this.turnFrames = 0;
-        this.returnFrames = 0;
-        this.turnSeen = false;
         this.faceStableFrames = 0;
         this.lastFaceBox = null;
         this.state = "position";
@@ -89,9 +81,6 @@ export class LivenessSession {
         this.closedFrames = 0;
         this.closedAt = null;
         this.reopenFrames = 0;
-        this.turnFrames = 0;
-        this.returnFrames = 0;
-        this.turnSeen = false;
     }
 
     step({ faceCount, positioned, eyeAspect, yaw, faceBox }, now) {
@@ -147,16 +136,6 @@ export class LivenessSession {
                 this.reopenFrames += 1;
             }
             if (this.reopenFrames >= REQUIRED_STABLE_FRAMES) this.advance();
-        } else {
-            const direction = this.challenge === "turn-left" ? -1 : 1;
-            const delta = (yaw - this.forwardYaw) * direction;
-            if (!this.turnSeen && delta >= TURN_THRESHOLD) this.turnFrames += 1;
-            else if (!this.turnSeen) this.turnFrames = 0;
-            if (this.turnFrames >= REQUIRED_STABLE_FRAMES) this.turnSeen = true;
-            if (this.turnSeen && Math.abs(yaw - this.forwardYaw) <= RETURN_THRESHOLD) {
-                this.returnFrames += 1;
-            } else if (this.turnSeen) this.returnFrames = 0;
-            if (this.returnFrames >= REQUIRED_STABLE_FRAMES) this.advance();
         }
         return this.complete
             ? { state: "complete" }
