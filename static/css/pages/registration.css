@@ -1473,7 +1473,11 @@ body[data-mod-theme="command"] .registration-button:hover {
 
 @media (max-width: 560px) {
     .registration-page {
-        width: calc(100% - 1.5rem);
+        box-sizing: border-box;
+        width: 100%;
+        max-width: none;
+        margin-inline: 0;
+        padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
         margin-block: var(--space-3);
     }
 
@@ -1501,6 +1505,18 @@ body[data-mod-theme="command"] .registration-button:hover {
 
     .registration-checkbox-label {
         align-items: flex-start;
+        padding-block: var(--space-2);
+    }
+
+    .registration-card form button:not(.passport-camera-button) {
+        min-height: 42px;
+        padding-block: var(--space-2);
+        line-height: 1.2;
+    }
+
+    .registration-step-button,
+    .registration-step-navigation .registration-button {
+        min-height: 42px;
         padding-block: var(--space-2);
     }
 }
