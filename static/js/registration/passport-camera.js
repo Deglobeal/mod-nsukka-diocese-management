@@ -1,4 +1,4 @@
-import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passport-liveness.mjs?v=2";
+import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passport-liveness.mjs?v=3";
 import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
@@ -89,12 +89,6 @@ document.addEventListener("DOMContentLoaded", function () {
         faceStableSince = null;
         previousFaceBox = null;
         previousFaceGuidance = null;
-    }
-
-    function secureRandom() {
-        const value = new Uint32Array(1);
-        crypto.getRandomValues(value);
-        return value[0] / 0x100000000;
     }
 
     function updateLighting(timestamp, faceBox) {
@@ -414,18 +408,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         lastFaceGuidanceShown = null;
                         cameraStatus.textContent =
                             `Liveness check ${status.step} of ${status.total}: Blink naturally, then open your eyes.`;
-                    } else if (status.challenge === "turn-left") {
-                        lastFaceGuidanceShown = null;
-                        const screenSide = requestedFacingMode === "user" ? "right" : "left";
-                        cameraStatus.textContent =
-                            `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the ${screenSide} side of the screen, then face forward.`;
-                    } else if (status.challenge === "turn-right") {
-                        lastFaceGuidanceShown = null;
-                        const screenSide = requestedFacingMode === "user" ? "left" : "right";
-                        cameraStatus.textContent =
-                            `Liveness check ${status.step} of ${status.total}: Slowly turn your nose toward the ${screenSide} side of the screen, then face forward.`;
                     } else {
-                        cameraStatus.textContent = "Hold your face steady while checks begin…";
+                        cameraStatus.textContent = "Liveness check: Blink naturally, then open your eyes.";
                     }
                     faceScanFrame = requestAnimationFrame(scanForFace);
                     return;
@@ -563,7 +547,7 @@ document.addEventListener("DOMContentLoaded", function () {
             lightingAdequate = false;
             capturePhotoButton.disabled = true;
             if (!preserveLiveness) {
-                livenessSession = new LivenessSession({ random: secureRandom });
+                livenessSession = new LivenessSession();
                 livenessPassed = false;
                 glassesCheckPassed = false;
             }
