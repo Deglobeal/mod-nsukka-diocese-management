@@ -80,8 +80,8 @@ test("camera constraints use non-exact preferences and include broad fallbacks",
     assert.deepEqual(preferred.video.facingMode, { ideal: "environment" });
     assert.equal(preferred.audio, false);
     assert.equal(preferred.video.width.ideal, 720);
-    assert.equal(preferred.video.height.ideal, 1280);
-    assert.equal(preferred.video.aspectRatio.ideal, 9 / 16);
+    assert.equal(preferred.video.height.ideal, 900);
+    assert.equal(preferred.video.aspectRatio.ideal, 4 / 5);
     assert.deepEqual(loose.video.facingMode, { ideal: "environment" });
     assert.deepEqual(loose.video.width, { ideal: 640 });
     assert.deepEqual(facingOnly.video, { facingMode: "environment" });
@@ -104,9 +104,10 @@ test("camera selection prefers front wide and rear primary while rejecting secon
     assert.equal(selectPreferredCameraDevice(devices.slice(0, 1), "user", "front"), null);
 });
 
-test("zoom constraint skips fixed or unsupported zoom and caps at min plus 0.2", () => {
-    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1.8 }), 1.2);
-    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1.1 }), 1.1);
+test("zoom constraint uses only device minimum and skips fixed, unsupported, or already-minimum zoom", () => {
+    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1.8 }), 1);
+    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1.1 }), 1);
+    assert.equal(zoomConstraintTarget({ zoom: { min: 1, max: 4 } }, { zoom: 1 }), null);
     assert.equal(zoomConstraintTarget({ zoom: { min: 2, max: 2 } }), null);
     assert.equal(zoomConstraintTarget({}), null);
 });

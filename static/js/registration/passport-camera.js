@@ -7,8 +7,9 @@ import {
     nextFacingMode,
     passportCanvasRenderPlan,
     selectPreferredCameraDevice,
-    stopMediaTracks
-} from "./passport-framing.mjs?v=4";
+    stopMediaTracks,
+    zoomConstraintTarget
+} from "./passport-framing.mjs?v=5";
 import {
     AutoCaptureCountdown,
     CAPTURE_STABILITY_MS,
@@ -858,8 +859,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 video: {
                                     deviceId: { exact: preferredCamera.deviceId },
                                     width: { ideal: 720 },
-                                    height: { ideal: 1280 },
-                                    aspectRatio: { ideal: 9 / 16 }
+                                    height: { ideal: 900 },
+                                    aspectRatio: { ideal: 4 / 5 }
                                 }
                             });
                             if (startRequestId !== cameraStartRequestId) {
@@ -925,16 +926,8 @@ document.addEventListener("DOMContentLoaded", function () {
             } catch (capabilityError) {
                 // Capability reporting is optional and must not block camera use.
             }
-            const zoomRange = trackCapabilities.zoom;
             const currentZoom = trackSettings.zoom;
-            const zoomTarget = zoomRange && Number.isFinite(zoomRange.min) &&
-                Number.isFinite(zoomRange.max) && zoomRange.max > zoomRange.min
-                ? Math.max(zoomRange.min, Math.min(
-                    Number.isFinite(currentZoom) ? currentZoom : zoomRange.min,
-                    zoomRange.min + 0.2,
-                    zoomRange.max
-                ))
-                : null;
+            const zoomTarget = zoomConstraintTarget(trackCapabilities, trackSettings);
             if (zoomTarget !== null && activeVideoTrack && activeVideoTrack.applyConstraints &&
                 (!Number.isFinite(currentZoom) || Math.abs(currentZoom - zoomTarget) > 0.01)) {
                 try {
