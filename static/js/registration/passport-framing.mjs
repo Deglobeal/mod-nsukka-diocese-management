@@ -65,6 +65,13 @@ export function getPassportFaceGuidance(face, roll = 0, previous = null) {
     return "ready";
 }
 
+export function isFaceSafeDuringLivenessChallenge(face) {
+    if (!face) return false;
+    return face.height >= 0.25 && face.height <= 0.65 &&
+        face.x >= 0.02 && face.y >= 0.02 &&
+        face.x + face.width <= 0.98 && face.y + face.height <= 0.96;
+}
+
 export function nextFacingMode(current) {
     return current === "environment" ? "user" : "environment";
 }

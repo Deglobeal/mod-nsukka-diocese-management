@@ -44,12 +44,44 @@ test("face measurements estimate head roll from the eye line", () => {
     assert.ok(Math.abs(measurements.roll - Math.atan2(0.04, 0.2)) < 1e-12);
 });
 
-test("no face, multiple faces and timeout never pass", () => {
+test("no face and multiple faces never pass or consume the challenge timeout", () => {
     const session = new LivenessSession({ timeoutMs: 10 });
     assert.equal(session.step(face({ faceCount: 0 }), 0).state, "no-face");
     assert.equal(session.step(face({ faceCount: 2 }), 1).state, "multiple-faces");
-    assert.equal(session.step(face(), 11).state, "timeout");
+    assert.equal(session.step(face(), 1000).state, "position");
     assert.equal(session.complete, false);
+});
+
+test("challenge timeout starts when the first liveness challenge begins", () => {
+    const session = new LivenessSession({ random: () => 0, timeoutMs: 1000 });
+    let result;
+    for (let now = 0; now <= 800; now += 100) {
+        result = session.step(face(), now);
+    }
+    assert.equal(result.state, "challenge");
+    assert.ok(session.startedAt < 800);
+    assert.equal(session.step(face(), session.startedAt + 1001).state, "timeout");
+});
+
+test("head-turn challenge keeps sampling intentional motion without requiring a still face box", () => {
+    const session = new LivenessSession({ random: () => 0.99 });
+    prime(session);
+    assert.equal(session.challenge, "turn-right");
+
+    let now = 800;
+    for (let i = 0; i < 4; i += 1) {
+        session.step(face({
+            yaw: 0.12,
+            faceBox: { ...box, x: box.x + i * 0.05 }
+        }), now);
+        now += 100;
+    }
+    assert.equal(session.turnSeen, true);
+    for (let i = 0; i < 3; i += 1) {
+        session.step(face({ yaw: 0 }), now);
+        now += 100;
+    }
+    assert.equal(session.challenge, "blink");
 });
 
 test("blink needs open, closed and reopened eye observations", () => {

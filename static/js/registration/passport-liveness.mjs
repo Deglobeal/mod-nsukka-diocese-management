@@ -96,8 +96,7 @@ export class LivenessSession {
 
     step({ faceCount, positioned, eyeAspect, yaw, faceBox }, now) {
         if (this.complete) return { state: "complete" };
-        if (this.startedAt === null) this.startedAt = now;
-        if (now - this.startedAt > this.timeoutMs) {
+        if (this.startedAt !== null && now - this.startedAt > this.timeoutMs) {
             this.state = "timeout";
             return { state: this.state };
         }
@@ -116,19 +115,23 @@ export class LivenessSession {
             return { state: "position" };
         }
 
-        const stable = this.lastFaceBox && faceBox &&
-            Math.abs(faceBox.x - this.lastFaceBox.x) < 0.025 &&
-            Math.abs(faceBox.y - this.lastFaceBox.y) < 0.025 &&
-            Math.abs(faceBox.width - this.lastFaceBox.width) < 0.04 &&
-            Math.abs(faceBox.height - this.lastFaceBox.height) < 0.04;
-        this.lastFaceBox = faceBox;
-        this.faceStableFrames = stable ? this.faceStableFrames + 1 : 0;
-        if (this.faceStableFrames < REQUIRED_STABLE_FRAMES) {
-            return { state: "position" };
+        if (this.state === "position") {
+            const stable = this.lastFaceBox && faceBox &&
+                Math.abs(faceBox.x - this.lastFaceBox.x) < 0.04 &&
+                Math.abs(faceBox.y - this.lastFaceBox.y) < 0.04 &&
+                Math.abs(faceBox.width - this.lastFaceBox.width) < 0.06 &&
+                Math.abs(faceBox.height - this.lastFaceBox.height) < 0.06;
+            this.lastFaceBox = faceBox;
+            this.faceStableFrames = stable ? this.faceStableFrames + 1 : 0;
+            if (this.faceStableFrames < REQUIRED_STABLE_FRAMES) {
+                return { state: "position" };
+            }
         }
 
         if (this.state === "position") {
             this.state = "challenge";
+            // Allow applicants to find the frame before the challenge timer starts.
+            this.startedAt = now;
             this.forwardYaw = yaw;
             return { state: "challenge", challenge: this.challenge, step: this.index + 1, total: this.sequence.length };
         }
