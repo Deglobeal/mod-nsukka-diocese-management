@@ -22,6 +22,7 @@ def first_member_registration_ids(request):
     if not request.user.is_superuser:
         raise PermissionDenied
     message = ""
+    message_level = "success"
     generated_id = ""
     if request.method == "POST":
         action = request.POST.get("action")
@@ -46,8 +47,10 @@ def first_member_registration_ids(request):
                 message = "The unused ID was revoked."
             else:
                 message = "Choose a valid action."
+                message_level = "error"
         except (ValidationError, ValueError) as error:
             message = " ".join(getattr(error, "messages", [str(error)]))
+            message_level = "error"
     expire_available_ids()
     tokens = FirstMemberRegistrationToken.objects.select_related(
         "created_by", "redeemed_by", "redeemed_application", "revoked_by", "replaced_by"
@@ -60,7 +63,9 @@ def first_member_registration_ids(request):
         "attempts": FirstMemberRegistrationAttempt.objects.select_related("token", "application")[:100],
         "audit_events": FirstMemberRegistrationAuditEvent.objects.select_related("token", "actor", "member")[:100],
         "message": message,
+        "message_level": message_level,
         "generated_id": generated_id,
+        "members_exist": Member.objects.exists(),
         "available_token": available_token,
         "rejected_bootstrap_exists": not Member.objects.exists() and FirstMemberRegistrationToken.objects.filter(
             status=FirstMemberRegistrationToken.Status.REDEEMED,
