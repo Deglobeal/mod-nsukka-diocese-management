@@ -94,7 +94,7 @@
                                 <p id="passport-camera-indicator" class="passport-camera-indicator" aria-live="polite">Front camera</p>
                                 <details class="passport-capture-tips">
                                     <summary>Photo tips</summary>
-                                    <p>Face the camera. Keep your full head and chin inside the guide. Hold the phone at arm’s length and keep your head straight.</p>
+                                    <p>Face the camera. Keep your full head and chin inside the guide. Hold the phone at arm’s length and keep your head straight. Use a plain, evenly lit wall; background removal works best with a uniform backdrop.</p>
                                 </details>
                                 <details class="registration-camera-privacy">
                                     <summary>Camera privacy</summary>
@@ -115,7 +115,7 @@
                             </div>
                             <p id="passport-white-scan-status"
                                class="passport-white-scan-status" aria-live="polite">
-                                Your background will be changed to white after capture.
+                                Use a plain, evenly lit wall. Uniform backgrounds can be replaced with white.
                             </p>
                             <p id="passport-camera-status" class="registration-camera-status passport-camera-status" aria-live="polite">
                                 Camera ready when you are.
@@ -132,6 +132,15 @@
                                     <input type="checkbox" id="passport-auto-capture" checked>
                                     Auto capture after checks
                                 </label>
+                            </div>
+                            <div class="passport-photo-upload">
+                                <label for="{{ form.passport_photo.id_for_label }}">
+                                    Or choose a passport photo from this device
+                                </label>
+                                {{ form.passport_photo }}
+                                <p class="registration-help">
+                                    JPEG or PNG, up to 5 MB. Background processing happens on this device before the photo is sent for validation.
+                                </p>
                             </div>
                         </div>
                         <canvas id="passport-camera-canvas" hidden></canvas>
@@ -351,7 +360,7 @@
 
 
 
-<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=11"></script>
+<script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=12"></script>
 
 <script src="{% static 'js/registration/signature-camera.js' %}"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=3"></script>

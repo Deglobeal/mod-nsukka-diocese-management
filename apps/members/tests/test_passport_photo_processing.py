@@ -1,9 +1,4 @@
-import base64
-import builtins
-import os
-import tempfile
 from io import BytesIO
-from pathlib import Path
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -15,147 +10,113 @@ from apps.members.passport_photo_processing import process_passport_photo
 
 
 class PassportPhotoProcessingTests(SimpleTestCase):
-    def make_input_jpeg(self):
+    def make_image(self, *, format="JPEG", size=(120, 120), mode="RGB", exif=None):
         buffer = BytesIO()
-        image = Image.new("RGB", (120, 120), (80, 100, 120))
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((35, 20, 85, 100), fill=(180, 40, 40))
-        image.save(buffer, format="JPEG")
+        color = (80, 100, 120, 255) if mode == "RGBA" else (80, 100, 120)
+        image = Image.new(mode, size, color)
+        draw_color = (180, 40, 40, 255) if mode == "RGBA" else (180, 40, 40)
+        ImageDraw.Draw(image).rectangle(
+            (size[0] // 4, size[1] // 6, size[0] * 3 // 4, size[1] * 5 // 6),
+            fill=draw_color,
+        )
+        save_options = {"exif": exif} if exif else {}
+        image.save(buffer, format=format, **save_options)
         return buffer.getvalue()
 
-    def test_background_is_composited_to_white(self):
-        foreground = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(foreground)
-        draw.rectangle((35, 20, 85, 100), fill=(180, 40, 40, 255))
+    def assert_valid_jpeg(self, result, expected_size):
+        with Image.open(BytesIO(result)) as output:
+            self.assertEqual(output.format, "JPEG")
+            self.assertEqual(output.mode, "RGB")
+            self.assertEqual(output.size, expected_size)
+            output.verify()
+        self.assertLessEqual(len(result), 5 * 1024 * 1024)
 
-        with patch(
-            "apps.members.passport_photo_processing._predict_foreground_mask",
-            return_value=foreground.getchannel("A"),
-        ):
-            result = process_passport_photo(self.make_input_jpeg())
+    def test_empty_upload_is_rejected_without_error_logging(self):
+        with self.assertNoLogs(passport_processing.logger, level="ERROR"):
+            with self.assertRaisesRegex(ValidationError, "empty"):
+                process_passport_photo(b"")
 
-        with Image.open(BytesIO(result)) as processed:
-            self.assertEqual(processed.format, "JPEG")
-            self.assertEqual(processed.size, (120, 120))
-            self.assertEqual(processed.getpixel((5, 5)), (255, 255, 255))
+    def test_corrupted_image_bytes_are_rejected_without_traceback_logging(self):
+        with self.assertNoLogs(passport_processing.logger, level="ERROR"):
+            with self.assertRaisesRegex(ValidationError, "could not be read"):
+                process_passport_photo(b"not an image")
 
-            red, green, blue = processed.getpixel((60, 60))
-            self.assertGreater(red, 130)
-            self.assertLess(green, 90)
-            self.assertLess(blue, 90)
+    def test_truncated_jpeg_is_rejected_safely(self):
+        truncated = self.make_image()[:30]
+        with self.assertNoLogs(passport_processing.logger, level="ERROR"):
+            with self.assertRaises(ValidationError):
+                process_passport_photo(truncated)
 
-    def test_transparent_rembg_cutout_is_composited_to_opaque_white_jpeg(self):
-        foreground = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
-        ImageDraw.Draw(foreground).rectangle(
-            (35, 20, 85, 100), fill=(180, 40, 40, 255)
-        )
+    def test_unsupported_image_format_is_rejected(self):
+        with self.assertRaisesRegex(ValidationError, "JPEG or PNG"):
+            process_passport_photo(self.make_image(format="GIF"))
 
-        with (
-            patch(
-                "apps.members.passport_photo_processing._predict_foreground_mask",
-                return_value=foreground.getchannel("A"),
-            ),
-            patch("rembg.bg.decontaminate_cutout", return_value=foreground),
-        ):
-            result = process_passport_photo(self.make_input_jpeg())
+    def test_server_normalizes_jpeg_without_changing_its_background(self):
+        result = process_passport_photo(self.make_image(size=(240, 320)))
+        self.assert_valid_jpeg(result, (240, 320))
+        with Image.open(BytesIO(result)) as output:
+            background_pixel = output.getpixel((5, 5))
+            subject_pixel = output.getpixel((120, 160))
+            self.assertNotEqual(background_pixel, (255, 255, 255))
+            self.assertGreater(subject_pixel[0], subject_pixel[1] * 2)
+            self.assertGreater(subject_pixel[0], subject_pixel[2] * 2)
 
-        with Image.open(BytesIO(result)) as processed:
-            self.assertEqual(processed.format, "JPEG")
-            self.assertEqual(processed.mode, "RGB")
-            self.assertEqual(processed.getpixel((5, 5)), (255, 255, 255))
+    def test_valid_png_becomes_readable_jpeg_with_same_dimensions(self):
+        result = process_passport_photo(self.make_image(format="PNG", size=(180, 140)))
+        self.assert_valid_jpeg(result, (180, 140))
 
-    def test_unsupported_image_format_is_rejected_before_model_inference(self):
+    def test_transparent_png_is_composited_onto_white(self):
         buffer = BytesIO()
-        Image.new("RGB", (120, 120), "blue").save(buffer, format="GIF")
+        image = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
+        ImageDraw.Draw(image).rectangle((30, 20, 90, 100), fill=(180, 40, 40, 255))
+        image.save(buffer, format="PNG")
 
-        with patch(
-            "apps.members.passport_photo_processing._predict_foreground_mask"
-        ) as infer:
-            with self.assertRaisesRegex(ValidationError, "JPEG or PNG"):
-                process_passport_photo(buffer.getvalue())
-        infer.assert_not_called()
+        result = process_passport_photo(buffer.getvalue())
+        self.assert_valid_jpeg(result, (120, 120))
+        with Image.open(BytesIO(result)) as output:
+            self.assertEqual(output.getpixel((5, 5)), (255, 255, 255))
 
-    def test_empty_input_is_rejected(self):
-        with self.assertRaises(ValidationError):
-            process_passport_photo(b"")
+    def test_exif_orientation_is_applied_and_dimensions_follow_orientation(self):
+        exif = Image.Exif()
+        exif[274] = 6
+        result = process_passport_photo(
+            self.make_image(size=(160, 120), exif=exif.tobytes())
+        )
+        self.assert_valid_jpeg(result, (120, 160))
 
-    def test_invalid_image_is_rejected(self):
-        with self.assertRaises(ValidationError):
-            process_passport_photo(b"not an image")
+    def test_minimum_dimensions_are_enforced(self):
+        with self.assertRaisesRegex(ValidationError, "dimensions"):
+            process_passport_photo(self.make_image(size=(99, 100)))
 
-    def test_missing_model_returns_retryable_error_and_logs_diagnostics(self):
+    def test_maximum_dimensions_are_enforced_before_pixel_decode(self):
+        with self.assertRaisesRegex(ValidationError, "dimensions"):
+            process_passport_photo(self.make_image(size=(4001, 100)))
+
+    def test_dimension_limits_are_inclusive(self):
+        result = process_passport_photo(self.make_image(size=(100, 4000)))
+        self.assert_valid_jpeg(result, (100, 4000))
+
+    def test_decompression_bomb_warning_is_a_user_validation_error(self):
+        image_data = self.make_image(size=(120, 120))
+        with patch.object(Image, "MAX_IMAGE_PIXELS", 100):
+            with self.assertNoLogs(passport_processing.logger, level="ERROR"):
+                with self.assertRaisesRegex(ValidationError, "could not be read"):
+                    process_passport_photo(image_data)
+
+    def test_output_over_limit_is_rejected_without_resizing(self):
+        image_data = self.make_image(size=(120, 120))
+        with patch.object(passport_processing, "MAX_OUTPUT_BYTES", 1):
+            with self.assertRaisesRegex(ValidationError, "5 MB"):
+                process_passport_photo(image_data)
+
+    def test_invalid_generated_output_is_logged_but_details_are_hidden(self):
         with (
-            patch.object(passport_processing, "_session", None),
             patch.object(
                 passport_processing,
-                "_model_path",
-                side_effect=FileNotFoundError("model unavailable"),
+                "_encode_jpeg_within_limit",
+                return_value=b"not a jpeg",
             ),
             self.assertLogs(passport_processing.logger, level="ERROR"),
         ):
-            with self.assertRaisesRegex(
-                ValidationError, "temporarily unavailable.*retry"
-            ):
-                passport_processing._get_session()
-
-    def test_model_initialization_failure_returns_retryable_error(self):
-        with (
-            patch.object(passport_processing, "_session", None),
-            patch.object(passport_processing, "_model_path", return_value=Path("model.onnx")),
-            patch("onnxruntime.InferenceSession", side_effect=RuntimeError("bad model")),
-            self.assertLogs(passport_processing.logger, level="ERROR"),
-        ):
-            with self.assertRaisesRegex(
-                ValidationError, "temporarily unavailable.*retry"
-            ):
-                passport_processing._get_session()
-
-    def test_missing_rembg_dependency_is_not_treated_as_success(self):
-        original_import = builtins.__import__
-
-        def import_without_rembg(name, *args, **kwargs):
-            if name == "rembg.bg":
-                raise ModuleNotFoundError("No module named 'rembg'")
-            return original_import(name, *args, **kwargs)
-
-        mask = Image.new("L", (120, 120), 255)
-        with (
-            patch(
-                "apps.members.passport_photo_processing._predict_foreground_mask",
-                return_value=mask,
-            ),
-            patch("builtins.__import__", side_effect=import_without_rembg),
-            self.assertLogs(passport_processing.logger, level="ERROR"),
-        ):
-            with self.assertRaisesRegex(
-                ValidationError, "temporarily unavailable.*retry"
-            ):
-                process_passport_photo(self.make_input_jpeg())
-
-    def test_inference_exception_never_returns_original_photo(self):
-        with (
-            patch(
-                "apps.members.passport_photo_processing._predict_foreground_mask",
-                side_effect=RuntimeError("inference failed"),
-            ),
-            self.assertLogs(passport_processing.logger, level="ERROR"),
-        ):
-            with self.assertRaisesRegex(ValidationError, "original photograph was not accepted"):
-                process_passport_photo(self.make_input_jpeg())
-
-    def test_invalid_model_download_cleans_up_partial_temporary_file(self):
-        with tempfile.TemporaryDirectory() as directory:
-            temp_root = Path(directory)
-            with (
-                patch.dict(os.environ, {"U2NET_MODEL_PATH": str(temp_root / "configured.onnx")}),
-                patch.object(Path, "home", return_value=temp_root / "home"),
-                patch("apps.members.passport_photo_processing.tempfile.gettempdir", return_value=directory),
-                patch(
-                    "apps.members.passport_photo_processing.urllib.request.urlopen",
-                    return_value=BytesIO(b"invalid model bytes"),
-                ),
-            ):
-                with self.assertRaisesRegex(RuntimeError, "checksum"):
-                    passport_processing._model_path()
-
-            self.assertEqual(list(temp_root.glob("u2net-*.download")), [])
+            with self.assertRaisesRegex(ValidationError, "could not be prepared"):
+                process_passport_photo(self.make_image())

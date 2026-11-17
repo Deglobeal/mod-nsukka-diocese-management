@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import uuid
+import warnings
 
 from django.core.exceptions import ValidationError
 from django.utils.deconstruct import deconstructible
@@ -87,16 +88,29 @@ class PassportPhotoValidator:
             )
 
         try:
-            with Image.open(uploaded_file) as image:
-                if image.format not in {"JPEG", "PNG"}:
-                    raise ValidationError(
-                        "Upload a valid JPEG or PNG photograph."
-                    )
-                image.verify()
-        except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(uploaded_file) as image:
+                    if image.format not in {"JPEG", "PNG"}:
+                        raise ValidationError(
+                            "Upload a valid JPEG or PNG photograph."
+                        )
+                    width, height = image.size
+                    if width < 100 or height < 100 or width > 4000 or height > 4000:
+                        raise ValidationError(
+                            "Photographs must be between 100 and 4000 pixels in each dimension."
+                        )
+                    image.verify()
+        except (
+            UnidentifiedImageError,
+            OSError,
+            ValueError,
+            Image.DecompressionBombError,
+            Image.DecompressionBombWarning,
+        ):
             raise ValidationError(
                 "The uploaded file is not a valid, readable photograph."
-            )
+            ) from None
         finally:
             uploaded_file.seek(0)
 

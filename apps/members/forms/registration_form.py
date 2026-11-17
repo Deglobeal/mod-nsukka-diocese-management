@@ -190,7 +190,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             }),
             "passport_photo": forms.ClearableFileInput(attrs={
                 "accept": "image/jpeg,image/png",
-                "capture": "user",
             }),
             "signature_image": forms.ClearableFileInput(attrs={
                 "accept": "image/jpeg,image/png",

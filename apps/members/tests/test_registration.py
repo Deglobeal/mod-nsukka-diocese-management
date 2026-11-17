@@ -1113,7 +1113,7 @@ class MembershipRegistrationTests(TestCase):
         from apps.verification.validators import validate_passport_photo
 
         image_buffer = BytesIO()
-        Image.new("RGB", (20, 20), color="white").save(
+        Image.new("RGB", (120, 120), color="white").save(
             image_buffer,
             format="JPEG",
         )
