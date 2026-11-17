@@ -2,6 +2,7 @@ import { getFaceMeasurements, isForwardFacing, LivenessSession } from "./passpor
 import {
     cameraConstraintFallbacks,
     getPassportFaceGuidance,
+    isFaceSafeDuringLivenessChallenge,
     mapRectToCoverFrame,
     mirrorRectHorizontally,
     nextFacingMode,
@@ -9,7 +10,7 @@ import {
     selectPreferredCameraDevice,
     stopMediaTracks,
     zoomConstraintTarget
-} from "./passport-framing.mjs?v=5";
+} from "./passport-framing.mjs?v=6";
 import {
     AutoCaptureCountdown,
     CAPTURE_STABILITY_MS,
@@ -331,10 +332,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!previous) return false;
 
         return (
-            Math.abs(current.x - previous.x) < 0.025 &&
-            Math.abs(current.y - previous.y) < 0.025 &&
-            Math.abs(current.width - previous.width) < 0.04 &&
-            Math.abs(current.height - previous.height) < 0.04
+            Math.abs(current.x - previous.x) < 0.04 &&
+            Math.abs(current.y - previous.y) < 0.04 &&
+            Math.abs(current.width - previous.width) < 0.06 &&
+            Math.abs(current.height - previous.height) < 0.06
         );
     }
 
@@ -380,7 +381,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     } : null;
                     const status = livenessSession.step({
                         faceCount: faces.length,
-                        positioned,
+                        positioned: livenessSession.state === "challenge"
+                            ? isFaceSafeDuringLivenessChallenge(frameFaceBox)
+                            : positioned,
                         eyeAspect: measurements ? measurements.eyeAspect : null,
                         yaw: measurements ? measurements.yaw : null,
                         faceBox

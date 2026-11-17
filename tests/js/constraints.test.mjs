@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     cameraConstraintFallbacks,
+    isFaceSafeDuringLivenessChallenge,
     selectPreferredCameraDevice,
     zoomConstraintTarget
 } from "../../static/js/registration/passport-framing.mjs";
@@ -17,6 +18,12 @@ test("front and rear getUserMedia fallbacks prefer ideal settings then facing mo
         assert.equal(facingOnly.video.facingMode, facingMode);
         assert.equal(preferred.audio, false);
     }
+});
+
+test("liveness still requires the complete face to remain safely inside the frame", () => {
+    assert.equal(isFaceSafeDuringLivenessChallenge({ x: 0.2, y: 0.1, width: 0.5, height: 0.5 }), true);
+    assert.equal(isFaceSafeDuringLivenessChallenge({ x: -0.01, y: 0.1, width: 0.5, height: 0.5 }), false);
+    assert.equal(isFaceSafeDuringLivenessChallenge({ x: 0.2, y: 0.1, width: 0.5, height: 0.2 }), false);
 });
 
 test("camera chooser prefers front wide and rear main while rejecting telephoto and ultra-wide rear lenses", () => {
