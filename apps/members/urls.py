@@ -7,6 +7,7 @@ from apps.members.views.registration_pdf_view import membership_registration_pdf
 from apps.members.views.registration_view import (
     membership_registration,
     process_passport_photo_preview,
+    registration_csrf_token,
     registration_received,
     verify_registration_sponsor,
 )
@@ -18,6 +19,7 @@ urlpatterns = [
     path("communication-settings/", communication_settings, name="communication_settings"),
     path("register/", membership_registration, name="register"),
     path("register/photo/process/", process_passport_photo_preview, name="passport_photo_process"),
+    path("register/csrf-token/", registration_csrf_token, name="registration_csrf_token"),
     path(
         "register/sponsor/verify/",
         verify_registration_sponsor,

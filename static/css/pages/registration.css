@@ -839,6 +839,142 @@ body[data-mod-theme="command"] .registration-button:hover {
 
 
 /* Private handwritten signature pad */
+.registration-signature-camera {
+    display: grid;
+    gap: var(--space-3);
+    width: min(100%, 620px);
+    margin: var(--space-4) auto 0;
+    padding: clamp(12px, 2.5vw, 20px);
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: 18px;
+    background: var(--color-surface-muted, #f7f5fa);
+}
+
+.registration-signature-instructions {
+    display: grid;
+    gap: 6px;
+}
+
+.registration-signature-label {
+    color: var(--color-primary, #3657a7);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+.registration-signature-instructions p {
+    margin: 0;
+    color: var(--color-text-muted, #5e6470);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.registration-signature-camera-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border: 1px solid #303844;
+    border-radius: 13px;
+    background: #151a22;
+}
+
+.registration-signature-camera-frame video,
+.registration-signature-camera-frame img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+}
+
+.registration-signature-camera-frame video {
+    object-fit: cover;
+}
+
+.registration-signature-camera-frame video[hidden],
+.registration-signature-camera-frame img[hidden],
+.registration-signature-actions [hidden],
+.registration-signature-camera #signature-camera-error[hidden] {
+    display: none;
+}
+
+.registration-signature-camera-frame #signature-camera-placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    padding: 20px;
+    color: #f4f6f9;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.registration-signature-camera-frame #signature-camera-placeholder[hidden] {
+    display: none;
+}
+
+.registration-signature-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.registration-card .registration-signature-camera .registration-signature-button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.registration-signature-button-secondary {
+    border-color: var(--color-border, #cfc6df);
+    background: var(--color-surface, #fff);
+    color: var(--color-text, #202432);
+}
+
+.registration-signature-button-primary {
+    background: var(--color-primary, #3657a7);
+    color: #fff;
+}
+
+.registration-signature-button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+.registration-signature-button:focus-visible {
+    outline: 3px solid #78a7ff;
+    outline-offset: 2px;
+}
+
+.registration-signature-camera .registration-signature-upload-status,
+.registration-signature-camera .registration-camera-error {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border, #cfc6df);
+    border-radius: 10px;
+    background: var(--color-surface, #fff);
+    color: var(--color-text-muted, #5e6470);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.registration-signature-camera .registration-camera-error:not([hidden]) {
+    border-color: #e5b6b6;
+    background: #fff5f5;
+    color: #9b2525;
+}
+
 .registration-signature-pad {
     width: 100%;
     overflow: hidden;
@@ -947,37 +1083,6 @@ body[data-mod-theme="command"] .registration-button:hover {
     line-height: 1.3;
 }
 
-.passport-capture-tips {
-    color: #c0c7d2;
-    font-size: 12px;
-}
-
-.passport-capture-tips summary {
-    width: fit-content;
-    cursor: pointer;
-}
-
-.passport-capture-tips p {
-    margin: 5px 0 0;
-    line-height: 1.4;
-}
-
-.registration-camera-privacy {
-    color: #9ca6b4;
-    font-size: 12px;
-}
-
-.registration-camera-privacy summary {
-    width: fit-content;
-    cursor: pointer;
-}
-
-.registration-camera-privacy p {
-    max-width: 56ch;
-    margin: 6px 0 0;
-    line-height: 1.45;
-}
-
 .registration-passport-shell {
     display: flex;
     justify-content: center;
@@ -1054,20 +1159,14 @@ body[data-mod-theme="command"] .registration-button:hover {
     stroke: #8af4cf;
 }
 
-.registration-passport-square #passport-camera-placeholder {
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    display: grid;
-    place-items: center;
+.passport-capture-header #passport-camera-placeholder {
     margin: 0;
-    padding: 20px;
     color: #e6eaf0;
-    font-size: 14px;
-    text-align: center;
+    font-size: 13px;
+    line-height: 1.35;
 }
 
-.registration-passport-square #passport-camera-placeholder[hidden] {
+.passport-capture-header #passport-camera-placeholder[hidden] {
     display: none;
 }
 
@@ -1139,12 +1238,12 @@ body[data-mod-theme="command"] .registration-button:hover {
 }
 
 .passport-capture-card .passport-camera-button {
-    min-height: 48px;
-    padding: 10px 14px;
+    min-height: 44px;
+    padding: 7px 11px;
     border: 1px solid transparent;
-    border-radius: 14px;
+    border-radius: 11px;
     font: inherit;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
@@ -1172,10 +1271,10 @@ body[data-mod-theme="command"] .registration-button:hover {
 
 .passport-capture-card .passport-camera-button-primary {
     grid-column: 1 / -1;
-    min-height: 56px;
+    min-height: 48px;
     background: #6de0c2;
     color: #07130f;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .passport-capture-card .passport-camera-button-primary:hover:not(:disabled) {
@@ -1193,9 +1292,9 @@ body[data-mod-theme="command"] .registration-button:hover {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 42px;
-    padding: 6px 10px;
+    gap: 8px;
+    min-height: 36px;
+    padding: 4px 8px;
     border: 1px solid #303844;
     border-radius: 12px;
     color: #bfc8d4;
@@ -1273,14 +1372,12 @@ body[data-mod-theme="command"] .registration-button:hover {
         font-size: 11px;
     }
 
-    body.passport-camera-stage-open .passport-capture-tips,
-    body.passport-camera-stage-open .registration-camera-privacy {
+    body.passport-camera-stage-open .passport-capture-header > #passport-camera-placeholder,
+    body.passport-camera-stage-open .passport-capture-header > .passport-white-scan-status,
+    body.passport-camera-stage-open .passport-capture-header > .passport-camera-status,
+    body.passport-camera-stage-open .passport-capture-header > .passport-camera-countdown,
+    body.passport-camera-stage-open .passport-capture-header > .registration-camera-error {
         grid-column: 1 / -1;
-        font-size: 11px;
-    }
-
-    body.passport-camera-stage-open .registration-camera-privacy {
-        font-size: 11px;
     }
 
     body.passport-camera-stage-open .registration-passport-shell {
@@ -1308,23 +1405,14 @@ body[data-mod-theme="command"] .registration-button:hover {
     }
 
     body.passport-camera-stage-open .passport-camera-button {
-        min-height: 46px;
-        padding: 9px 10px;
-        font-size: 13px;
+        min-height: 40px;
+        padding: 6px 9px;
+        font-size: 12px;
     }
 
     body.passport-camera-stage-open .passport-camera-button-primary {
-        min-height: 54px;
-        font-size: 16px;
-    }
-
-    body.passport-camera-stage-open .passport-white-scan-status {
-        display: none;
-    }
-
-    body.passport-camera-stage-open .registration-camera-auto-capture {
-        min-height: 38px;
-        padding: 4px 8px;
+        min-height: 44px;
+        font-size: 14px;
     }
 
     body.passport-camera-stage-open .passport-white-scan-status,
@@ -1392,9 +1480,21 @@ body[data-mod-theme="command"] .registration-button:hover {
 }
 
 .registration-signature-preview {
-    display: block;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.registration-signature-preview-wrap {
     width: 100%;
     max-width: 520px;
+    margin-top: var(--space-3);
+}
+
+.registration-signature-preview-wrap img {
+    display: block;
+    width: 100%;
     max-height: 260px;
     object-fit: contain;
     object-position: left center;
@@ -1404,8 +1504,34 @@ body[data-mod-theme="command"] .registration-button:hover {
 }
 
 .registration-signature-upload-status {
-    margin-top: var(--space-2);
     font-size: var(--font-size-sm, 0.875rem);
+}
+
+@media (max-width: 520px) {
+    .registration-signature-camera {
+        gap: var(--space-2);
+        margin-top: var(--space-3);
+        padding: 12px;
+        border-radius: 14px;
+    }
+
+    .registration-signature-instructions p {
+        font-size: 13px;
+    }
+
+    .registration-signature-camera-frame {
+        aspect-ratio: 1 / 1;
+    }
+
+    .registration-signature-actions {
+        gap: 8px;
+    }
+
+    .registration-card .registration-signature-camera .registration-signature-button {
+        min-height: 42px;
+        padding-inline: 8px;
+        font-size: 13px;
+    }
 }
 
 /* Final responsive form and declaration controls. */

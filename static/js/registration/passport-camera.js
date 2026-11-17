@@ -40,11 +40,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const startCameraButton = document.getElementById("passport-camera-start");
     const cameraSwitchButton = document.getElementById("passport-camera-switch");
     const cameraIndicator = document.getElementById("passport-camera-indicator");
-    const capturePhotoButton = document.getElementById("passport-camera-capture");
     const retakePhotoButton = document.getElementById("passport-camera-retake");
     const cameraStatus = document.getElementById("passport-camera-status");
     const cameraError = document.getElementById("passport-camera-error");
-    const autoCaptureInput = document.getElementById("passport-auto-capture");
     const countdownStatus = document.getElementById("passport-capture-countdown");
     const registrationForm = document.querySelector(".registration-card form");
     let cameraStream = null;
@@ -155,7 +153,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (photoPlaceholder && (!photoPreview || photoPreview.hidden)) {
             photoPlaceholder.hidden = false;
         }
-        if (capturePhotoButton) capturePhotoButton.disabled = true;
         if (startCameraButton) startCameraButton.textContent = "Start camera";
         document.body.classList.remove("passport-camera-stage-open");
     }
@@ -259,7 +256,6 @@ document.addEventListener("DOMContentLoaded", function () {
         retakePhotoButton.hidden = true;
         photoPreview.hidden = true;
         cameraError.hidden = true;
-        capturePhotoButton.disabled = true;
         startCameraButton.disabled = true;
         if (photoFileInput) photoFileInput.disabled = true;
         registrationForm.querySelectorAll('button[type="submit"]').forEach((button) => {
@@ -366,7 +362,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     button.disabled = false;
                 });
                 if (sourceKind === "camera" && cameraStream) {
-                    capturePhotoButton.disabled = true;
                 }
             }
         }
@@ -618,9 +613,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     previousFaceBox = null;
                     latestCaptureEligible = false;
                     latestCaptureChecks = null;
-                    autoCaptureCountdown.update(false, autoCaptureInput.checked, timestamp);
+                    autoCaptureCountdown.update(false, true, timestamp);
                     countdownStatus.hidden = true;
-                    capturePhotoButton.disabled = true;
                     if (faceCount > 1) {
                         cameraStatus.textContent = "Only one person should be visible. Please try again.";
                     } else if (faceCount === 0) {
@@ -636,9 +630,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     faceStableSince = null;
                     latestCaptureEligible = false;
                     latestCaptureChecks = null;
-                    autoCaptureCountdown.update(false, autoCaptureInput.checked, timestamp);
+                    autoCaptureCountdown.update(false, true, timestamp);
                     countdownStatus.hidden = true;
-                    capturePhotoButton.disabled = true;
                     cameraStatus.textContent = "Perfect positioning. Hold still while the camera checks your position.";
                 } else {
                     if (faceStableSince === null) faceStableSince = timestamp;
@@ -654,17 +647,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         captureInProgress: photoCaptureInProgress
                     };
                     latestCaptureEligible = isCaptureEligible(latestCaptureChecks);
-                    capturePhotoButton.disabled = !latestCaptureEligible;
                     const countdown = autoCaptureCountdown.update(
                         latestCaptureEligible,
-                        autoCaptureInput.checked,
+                        true,
                         timestamp
                     );
 
                     if (countdown.state === "countdown") {
                         countdownStatus.hidden = false;
                         countdownStatus.textContent = `Automatic capture in ${countdown.seconds}… Keep facing forward and hold still.`;
-                        cameraStatus.textContent = "Checks passed. You can capture now or wait for automatic capture.";
+                        cameraStatus.textContent = "Checks passed. Keep facing forward for automatic capture.";
                     } else if (countdown.state === "capture") {
                         countdownStatus.hidden = false;
                         countdownStatus.textContent = "Capturing your passport photo…";
@@ -672,7 +664,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         return;
                     } else {
                         countdownStatus.hidden = true;
-                        cameraStatus.textContent = "Checks passed. Tap Capture photo when you are ready.";
+                        cameraStatus.textContent = "Checks passed. Automatic capture will begin shortly.";
                     }
                 }
             } catch (error) {
@@ -701,7 +693,6 @@ document.addEventListener("DOMContentLoaded", function () {
             lastFaceScanAt = 0;
             lastLightingCheckAt = -Infinity;
             lightingAdequate = false;
-            capturePhotoButton.disabled = true;
             if (!preserveLiveness) {
                 livenessSession = new LivenessSession();
                 livenessPassed = false;
@@ -794,7 +785,6 @@ document.addEventListener("DOMContentLoaded", function () {
         captureAttempts += 1;
         cameraError.hidden = true;
         photoCaptureInProgress = true;
-        capturePhotoButton.disabled = true;
         stopFaceScan();
 
         // Draw one source crop identical to the CSS cover preview.
@@ -1004,7 +994,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            capturePhotoButton.disabled = true;
             startCameraButton.textContent = "Close camera";
             if (cameraSwitchButton) cameraSwitchButton.disabled = false;
             document.body.classList.add("passport-camera-stage-open");
@@ -1076,8 +1065,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        capturePhotoButton.addEventListener("click", capturePhoto);
-
         if (photoFileInput) {
             photoFileInput.addEventListener("change", function () {
                 const file = photoFileInput.files && photoFileInput.files[0];
@@ -1095,7 +1082,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 retakePhotoButton.hidden = true;
                 photoFileInput.disabled = true;
                 startCameraButton.disabled = true;
-                capturePhotoButton.disabled = true;
                 registrationForm.querySelectorAll('button[type="submit"]').forEach((button) => {
                     button.disabled = true;
                 });
@@ -1193,16 +1179,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 cameraStatus.textContent =
                     "Camera paused after leaving this page. Tap Start camera to repeat the checks.";
                 startCameraButton.disabled = false;
-            }
-        });
-    }
-
-    if (autoCaptureInput) {
-        autoCaptureInput.addEventListener("change", function () {
-            autoCaptureCountdown.cancel();
-            countdownStatus.hidden = true;
-            if (!autoCaptureInput.checked && latestCaptureEligible) {
-                cameraStatus.textContent = "Checks passed. Automatic capture is off; tap Capture photo when ready.";
             }
         });
     }

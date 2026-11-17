@@ -2,7 +2,10 @@
 {% load i18n %}
 {% block content %}
 <h1>First Member Registration IDs</h1>
-{% if message %}<div class="messagelist"><div class="success">{{ message }}</div></div>{% endif %}
+{% if message %}
+  {% if message_level == 'error' %}<p class="errornote">{{ message }}</p>
+  {% else %}<div class="messagelist"><div class="success">{{ message }}</div></div>{% endif %}
+{% endif %}
 {% if generated_id %}
 <section class="module" aria-label="New ID">
   <h2>Copy this ID now</h2>
@@ -12,11 +15,15 @@
 {% endif %}
 <section class="module">
   <h2>Generate an ID</h2>
+  {% if members_exist %}
+  <p class="errornote">A member record already exists, so the first-member registration ID cannot be generated. Use an approved ACTIVE Member for the first Diocesan Chairman appointment.</p>
+  {% else %}
   <p>Each ID expires after 7 days. The full ID is shown only once after generation.</p>
   <form method="post">{% csrf_token %}<input type="hidden" name="action" value="generate"><button class="button default" type="submit">Generate new ID</button></form>
   {% if available_token %}<form method="post" style="margin-top:1em">{% csrf_token %}<input type="hidden" name="action" value="replace"><label>Replacement reason <textarea name="reason" required rows="2"></textarea></label><button class="button" type="submit">Revoke and replace current ID</button></form>{% endif %}
+  {% endif %}
 </section>
-{% if rejected_bootstrap_exists %}
+{% if rejected_bootstrap_exists and not members_exist %}
 <section class="module">
   <h2>Exceptional replacement after rejection</h2>
   <p>A rejected bootstrap application does not reopen its ID. A replacement requires an explicit reason.</p>

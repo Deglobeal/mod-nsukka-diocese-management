@@ -4,7 +4,10 @@ import hmac
 import secrets
 from datetime import timedelta
 from django.core import signing
+from django.middleware.csrf import get_token
 from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
 import binascii
 import warnings
@@ -45,6 +48,13 @@ PASSPORT_PREFIXES = {
     "data:image/jpeg;base64,": ("jpg", "JPEG"),
     "data:image/png;base64,": ("png", "PNG"),
 }
+
+
+@require_GET
+@ensure_csrf_cookie
+def registration_csrf_token(request):
+    """Return a current masked CSRF token for long-lived registration tabs."""
+    return JsonResponse({"csrfToken": get_token(request)})
 
 
 def _passport_photo_from_post(value):

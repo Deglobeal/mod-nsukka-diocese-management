@@ -364,6 +364,38 @@ document.addEventListener("DOMContentLoaded", function () {
     let verifiedRegistrationId = "";
     let sponsorLookupRequest = 0;
 
+    async function refreshRegistrationCsrfToken(csrfInput) {
+        let response;
+        try {
+            response = await fetch(sponsorVerifyButton.dataset.csrfRefreshUrl, {
+                method: "GET",
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: { "Accept": "application/json" }
+            });
+        } catch (_error) {
+            throw new Error(
+                "We couldn't refresh the registration security check. Check your connection and try again."
+            );
+        }
+
+        let payload;
+        try {
+            payload = await response.json();
+        } catch (_error) {
+            throw new Error(
+                "We couldn't refresh the registration security check. Reload the page and try again."
+            );
+        }
+        if (!response.ok || typeof payload.csrfToken !== "string" || !payload.csrfToken) {
+            throw new Error(
+                "We couldn't refresh the registration security check. Reload the page and try again."
+            );
+        }
+        if (csrfInput) csrfInput.value = payload.csrfToken;
+        return payload.csrfToken;
+    }
+
     function clearSponsorVerification() {
         verifiedRegistrationId = "";
         if (confirmationField) confirmationField.value = "";
@@ -402,24 +434,37 @@ document.addEventListener("DOMContentLoaded", function () {
                 const csrfInput = form.querySelector(
                     'input[name="csrfmiddlewaretoken"]'
                 );
-                const response = await fetch(
+                const sendVerification = (csrfToken) => fetch(
                     sponsorVerifyButton.dataset.lookupUrl,
                     {
                         method: "POST",
                         credentials: "same-origin",
                         headers: {
                             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                            "X-CSRFToken": csrfInput ? csrfInput.value : ""
+                            "X-CSRFToken": csrfToken
                         },
                         body: new URLSearchParams({
                             sponsor_membership_id: sponsorId
                         })
                     }
                 );
+                let csrfToken = await refreshRegistrationCsrfToken(csrfInput);
+                let response = await sendVerification(csrfToken);
+                if (response.status === 403) {
+                    // A login in another tab can rotate Django's CSRF secret
+                    // after this form was rendered. Refresh once and retry.
+                    csrfToken = await refreshRegistrationCsrfToken(csrfInput);
+                    response = await sendVerification(csrfToken);
+                }
                 let result;
                 try {
                     result = await response.json();
                 } catch (_error) {
+                    if (response.status === 403) {
+                        throw new Error(
+                            "The registration security check was rejected. Reload the page and try again."
+                        );
+                    }
                     throw new Error(
                         "We couldn't read the sponsor verification response. Try again."
                     );

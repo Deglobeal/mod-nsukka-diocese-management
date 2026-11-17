@@ -180,7 +180,7 @@ test("processor rejects out-of-range dimensions without loading the model", asyn
     assert.equal(modelLoads, 0);
 });
 
-test("camera flow and file picker share one processing path and block duplicate form submission", () => {
+test("camera processing uses automatic capture and blocks duplicate form submission", () => {
     const script = readFileSync(
         new URL("../../static/js/registration/passport-camera.js", import.meta.url),
         "utf8"
@@ -190,10 +190,12 @@ test("camera flow and file picker share one processing path and block duplicate 
         "utf8"
     );
     assert.match(script, /processPhotoSource\(photoCanvas, "camera"\)/);
-    assert.match(script, /processPhotoSource\(file, "upload"\)/);
+    assert.match(script, /autoCaptureCountdown\.update\([\s\S]*?true,[\s\S]*?timestamp\)/);
+    assert.match(script, /countdown\.state === "capture"[\s\S]*?capturePhoto\(\)/);
     assert.match(script, /if \(photoCaptureInProgress\) return/);
     assert.match(script, /if \(photoCaptureInProgress\) \{[\s\S]*?event\.preventDefault\(\)/);
-    assert.match(template, /for="\{\{ form\.passport_photo\.id_for_label \}\}"/);
+    assert.doesNotMatch(script, /passport-camera-capture|passport-auto-capture/);
+    assert.doesNotMatch(template, /passport-camera-capture|passport-auto-capture|passport-photo-upload/);
 });
 
 test("segmentation model URL is pinned to the versioned Google model path", () => {
