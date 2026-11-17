@@ -708,6 +708,32 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(response.json()["error"], "Background removal failed.")
         self.assertFalse(MembershipApplication.objects.exists())
 
+    def test_failed_photo_processing_does_not_revoke_existing_preview_token(self):
+        from django.core.exceptions import ValidationError
+
+        photo_data = self.valid_photo_data()
+        successful_preview = self.client.post(
+            reverse("members:passport_photo_process"),
+            {"passport_photo_data": photo_data},
+        )
+        self.assertEqual(successful_preview.status_code, 200)
+        token = PassportPhotoPreviewToken.objects.get()
+        self.assertIsNone(token.revoked_at)
+
+        self.mock_process_passport_photo.side_effect = ValidationError(
+            "Background removal is temporarily unavailable. Please retry."
+        )
+        failed_preview = self.client.post(
+            reverse("members:passport_photo_process"),
+            {"passport_photo_data": photo_data},
+        )
+
+        self.assertEqual(failed_preview.status_code, 400)
+        token.refresh_from_db()
+        self.assertIsNone(token.revoked_at)
+        self.assertIsNone(token.redeemed_at)
+        self.assertEqual(PassportPhotoPreviewToken.objects.count(), 1)
+
     def test_registration_rejects_missing_signature(self):
         data = self.valid_data()
         data.pop("signature_image")

@@ -1,6 +1,7 @@
 """Server-side passport background removal and white-background compositing."""
 
 import hashlib
+import logging
 import os
 import tempfile
 import urllib.request
@@ -19,6 +20,7 @@ _session_lock = Lock()
 MAX_OUTPUT_BYTES = 5 * 1024 * 1024
 MIN_DIMENSION = 100
 MAX_DIMENSION = 4000
+logger = logging.getLogger(__name__)
 
 
 def _model_path() -> Path:
@@ -101,9 +103,10 @@ def _get_session():
                         providers=["CPUExecutionProvider"],
                     )
                 except Exception as exc:
+                    logger.exception("Passport background-removal model initialization failed.")
                     raise ValidationError(
-                        "Passport photo processing is temporarily unavailable. "
-                        "Please try again later."
+                        "Passport photo background removal is temporarily unavailable. "
+                        "Please retry in a moment."
                     ) from exc
 
     return _session
@@ -208,6 +211,10 @@ def process_passport_photo(raw: bytes) -> bytes:
 
     try:
         with Image.open(BytesIO(raw)) as source:
+            if source.format not in {"JPEG", "PNG"}:
+                raise ValidationError(
+                    "Use a JPEG or PNG passport photograph, then retry."
+                )
             source.load()
             image = ImageOps.exif_transpose(source).convert("RGB")
 
@@ -284,11 +291,20 @@ def process_passport_photo(raw: bytes) -> bytes:
 
     except ValidationError:
         raise
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
+        logger.exception("Passport photograph input or output validation failed.")
         raise ValidationError(
             "The passport photograph could not be processed. Please retake it."
         ) from exc
-    except Exception as exc:
+    except ModuleNotFoundError as exc:
+        logger.exception("A required passport background-removal dependency is unavailable.")
         raise ValidationError(
-            "Background removal failed. Your unprocessed photograph was not accepted."
+            "Passport photo background removal is temporarily unavailable. "
+            "Please retry in a moment."
+        ) from exc
+    except Exception as exc:
+        logger.exception("Passport photograph background removal failed.")
+        raise ValidationError(
+            "Background removal failed. Your original photograph was not accepted. "
+            "Please retry."
         ) from exc
