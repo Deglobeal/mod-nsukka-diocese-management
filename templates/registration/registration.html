@@ -258,30 +258,18 @@
                     Applicant’s handwritten signature
                 </h2>
                 <p class="registration-section-description">
-                    Capture your signature with the camera. It will be cropped
-                    for review before submission and stored privately with your
-                    registration.
+                    Write your signature on clean white or light-brown paper using blue or black ink. Take a clear photograph using your camera. You will then crop the photograph on your phone to select the complete signature before uploading it. Ensure the entire signature is visible and avoid shadows, blur, filters and glare. JPEG only; maximum 2 MB. Your signature is stored privately and included in your registration PDF.
                 </p>
 
-                <div class="registration-signature-camera" aria-describedby="signature-camera-instructions">
-                    <div class="registration-signature-instructions" id="signature-camera-instructions">
-                        <span class="registration-signature-label">REQUIRED · MAXIMUM 2 MB</span>
-                        <p>Write on clean white or light-brown paper with blue or black ink. Keep the whole signature in view and use bright, even lighting.</p>
-                    </div>
+                <div class="registration-signature-camera">
+                    <div class="registration-signature-capture-panel" id="signature-capture-panel">
                     <div class="registration-signature-camera-frame">
                         <video id="signature-camera-video"
                                playsinline autoplay muted hidden></video>
-                        <img id="registration-signature-preview"
-                             class="registration-signature-preview"
-                             alt="Captured signature preview" hidden>
                         <p id="signature-camera-placeholder">
-                            Start the camera to capture your signature.
+                            Start the camera to photograph your complete signature.
                         </p>
                     </div>
-                    <canvas id="signature-camera-canvas" hidden></canvas>
-                    <input type="file" name="signature_image"
-                           id="id_signature_image"
-                           accept="image/jpeg" hidden>
                     <div class="registration-signature-actions">
                         <button type="button" id="signature-camera-start" class="registration-signature-button registration-signature-button-secondary">
                             Start camera
@@ -289,13 +277,46 @@
                         <button type="button" id="signature-camera-capture" class="registration-signature-button registration-signature-button-primary" disabled>
                             Capture signature
                         </button>
-                        <button type="button" id="signature-camera-retake" class="registration-signature-button registration-signature-button-secondary" hidden>
-                            Retake signature
-                        </button>
                     </div>
+                    </div>
+                    <section class="registration-signature-crop-editor" id="signature-crop-editor" aria-label="Manually crop your signature photograph" hidden>
+                        <p class="registration-signature-crop-help">Drag the box to move it. Drag a handle to resize it around your complete signature.</p>
+                        <div class="registration-signature-crop-viewport" id="signature-crop-viewport">
+                            <img id="signature-crop-source" class="registration-signature-crop-source" alt="Full captured photograph to crop">
+                            <div class="registration-signature-crop-overlay" id="signature-crop-overlay">
+                                <div class="registration-signature-crop-selection" id="signature-crop-selection" aria-label="Selected signature crop">
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-nw" data-crop-handle="nw" aria-label="Resize crop from top left"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-n" data-crop-handle="n" aria-label="Resize crop from top edge"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-ne" data-crop-handle="ne" aria-label="Resize crop from top right"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-e" data-crop-handle="e" aria-label="Resize crop from right edge"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-se" data-crop-handle="se" aria-label="Resize crop from bottom right"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-s" data-crop-handle="s" aria-label="Resize crop from bottom edge"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-sw" data-crop-handle="sw" aria-label="Resize crop from bottom left"></button>
+                                    <button type="button" class="signature-crop-handle signature-crop-handle-w" data-crop-handle="w" aria-label="Resize crop from left edge"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="registration-signature-actions">
+                            <button type="button" id="signature-crop-confirm" class="registration-signature-button registration-signature-button-primary">Use this crop</button>
+                            <button type="button" id="signature-crop-retake" class="registration-signature-button registration-signature-button-secondary">Retake photograph</button>
+                        </div>
+                    </section>
+                    <section class="registration-signature-review" id="signature-review" aria-label="Cropped signature preview" hidden>
+                        <img id="registration-signature-preview"
+                             class="registration-signature-preview"
+                             alt="Cropped signature preview">
+                        <div class="registration-signature-actions">
+                            <button type="button" id="signature-adjust-crop" class="registration-signature-button registration-signature-button-secondary">Adjust crop</button>
+                            <button type="button" id="signature-review-retake" class="registration-signature-button registration-signature-button-secondary">Retake photograph</button>
+                        </div>
+                    </section>
+                    <canvas id="signature-camera-canvas" hidden></canvas>
+                    <input type="file" name="signature_image"
+                           id="id_signature_image"
+                           accept="image/jpeg" hidden>
                     <p id="registration-signature-upload-status"
                        class="registration-signature-upload-status"
-                       role="status" aria-live="polite">Signature capture required.</p>
+                       role="status" aria-live="polite">Start the camera to capture your signature.</p>
                     <p id="signature-camera-error"
                        class="registration-camera-error" role="alert" hidden></p>
                     {% if form.signature_image.errors %}
@@ -335,6 +356,6 @@
 
 <script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=12"></script>
 
-<script src="{% static 'js/registration/signature-camera.js' %}"></script>
+<script type="module" src="{% static 'js/registration/signature-camera.js' %}?v=2"></script>
 <script src="{% static 'js/registration/registration-form.js' %}?v=4"></script>
 {% endblock %}

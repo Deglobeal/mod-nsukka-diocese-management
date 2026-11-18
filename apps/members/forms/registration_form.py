@@ -412,9 +412,9 @@ class MembershipRegistrationForm(forms.ModelForm):
         )
         self.fields["signature_image"].required = True
         self.fields["signature_image"].help_text = (
-            "Required. Upload a clear JPEG or PNG photo of your handwritten "
-            "signature on white or light-brown paper, using blue or black ink. "
-            "Maximum size 2 MB. Stored privately."
+            "Required. Capture and manually crop a clear camera photograph of "
+            "your handwritten signature. JPEG only; maximum size 2 MB. "
+            "Stored privately."
         )
 
         self.fields["sex"].widget = forms.Select(

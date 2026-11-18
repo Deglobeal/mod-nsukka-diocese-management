@@ -12,7 +12,7 @@ from apps.verification.validators import (
 
 
 class SignatureImageValidatorTests(SimpleTestCase):
-    def make_png(self):
+    def make_jpeg(self):
         buffer = BytesIO()
         image = Image.new("RGB", (240, 80), color=(250, 248, 240))
         draw = ImageDraw.Draw(image)
@@ -22,22 +22,30 @@ class SignatureImageValidatorTests(SimpleTestCase):
             fill=(20, 45, 120),
             width=4,
         )
-        image.save(buffer, format="PNG")
+        image.save(buffer, format="JPEG", quality=90)
         return buffer.getvalue()
 
     def upload(self, name, content):
         return SimpleUploadedFile(
             name,
             content,
-            content_type="image/png",
+            content_type="image/jpeg",
         )
 
-    def test_accepts_valid_png_signature(self):
-        upload = self.upload("signature.png", self.make_png())
+    def test_accepts_valid_jpeg_signature(self):
+        upload = self.upload("signature.jpg", self.make_jpeg())
         validate_signature_image(upload)
 
-    def test_rejects_mismatched_png_contents(self):
-        upload = self.upload("signature.png", b"not a real PNG image")
+    def test_rejects_png_signature(self):
+        upload = self.upload("signature.png", b"\x89PNG\r\n\x1a\n")
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Upload a JPEG signature image.",
+        ):
+            validate_signature_image(upload)
+
+    def test_rejects_mismatched_jpeg_contents(self):
+        upload = self.upload("signature.jpg", b"not a real JPEG image")
 
         with self.assertRaisesMessage(
             ValidationError,
@@ -50,13 +58,13 @@ class SignatureImageValidatorTests(SimpleTestCase):
 
         with self.assertRaisesMessage(
             ValidationError,
-            "Upload a JPEG or PNG signature image.",
+            "Upload a JPEG signature image.",
         ):
             validate_signature_image(upload)
 
     def test_rejects_image_larger_than_two_mb(self):
         content = b"x" * (MAX_SIGNATURE_IMAGE_SIZE + 1)
-        upload = self.upload("signature.png", content)
+        upload = self.upload("signature.jpg", content)
 
         with self.assertRaisesMessage(
             ValidationError,
@@ -64,9 +72,9 @@ class SignatureImageValidatorTests(SimpleTestCase):
         ):
             validate_signature_image(upload)
 
-    def test_rejects_corrupt_png_with_valid_header(self):
-        content = b"\x89PNG\r\n\x1a\n" + b"corrupt-image-data"
-        upload = self.upload("signature.png", content)
+    def test_rejects_corrupt_jpeg_with_valid_header(self):
+        content = b"\xff\xd8\xff" + b"corrupt-image-data"
+        upload = self.upload("signature.jpg", content)
 
         with self.assertRaisesMessage(
             ValidationError,
