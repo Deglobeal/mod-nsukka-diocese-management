@@ -1,4 +1,5 @@
 import base64
+import re
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
@@ -226,6 +227,30 @@ class MembershipRegistrationTests(TestCase):
             response,
             'data-lga-data-url="/static/data/nigeria-lgas.json"',
         )
+
+    def test_registration_checkboxes_share_accessible_checkbox_markup(self):
+        response = self.client.get(reverse("members:register"))
+
+        for field_id in (
+            "id_declaration_accepted",
+            "id_verification_consent",
+            "id_medical_confidentiality_acknowledged",
+        ):
+            with self.subTest(field_id=field_id):
+                self.assertContains(
+                    response,
+                    f'<input type="checkbox" name="{field_id.removeprefix("id_")}" class="registration-checkbox"',
+                    html=False,
+                )
+                self.assertContains(
+                    response,
+                    f'<label class="registration-checkbox-label" for="{field_id}">',
+                    html=False,
+                )
+                self.assertNotRegex(
+                    response.content.decode(),
+                    rf'<input type="checkbox"[^>]*id="{field_id}"[^>]*checked',
+                )
 
     def test_contact_relationships_reject_unknown_values_through_direct_post(self):
         cases = (
@@ -492,12 +517,20 @@ class MembershipRegistrationTests(TestCase):
         )
         _token, raw_id = issue_registration_id(actor=admin)
         data = self.valid_data(sponsor_membership_id=raw_id)
-        with patch(
-            "apps.members.views.registration_view.MembershipApplication.save",
-            side_effect=RuntimeError("simulated database failure"),
-        ):
-            response = self.client.post(reverse("members:register"), data)
+        with self.assertLogs(
+            "apps.members.views.registration_view", level="ERROR"
+        ) as captured_logs:
+            with patch(
+                "apps.members.views.registration_view.MembershipApplication.save",
+                side_effect=RuntimeError("simulated database failure"),
+            ):
+                response = self.client.post(reverse("members:register"), data)
         self.assertEqual(response.status_code, 500)
+        logged_traceback = "\n".join(captured_logs.output)
+        self.assertIn("RuntimeError: simulated database failure", logged_traceback)
+        self.assertRegex(logged_traceback, r"reference=[0-9a-f]{32}")
+        self.assertIn("stage=membership_application_save_and_private_file_storage", logged_traceback)
+        self.assertIn("path=/members/register/", logged_traceback)
         self.assertIsNotNone(find_available_registration_id(raw_id))
         self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
 
@@ -668,6 +701,38 @@ class MembershipRegistrationTests(TestCase):
                 sponsor_verification=verification
             ).count(),
             1,
+        )
+
+    def test_unexpected_save_failure_is_logged_with_safe_reference(self):
+        data = self.valid_data()
+        with (
+            patch.object(
+                MembershipApplication,
+                "save",
+                side_effect=RuntimeError("sensitive applicant detail"),
+            ),
+            patch("apps.members.views.registration_view.logger.exception") as log_error,
+        ):
+            response = self.client.post(reverse("members:register"), data)
+
+        self.assertEqual(response.status_code, 500)
+        page = response.content.decode()
+        self.assertIn("securely save your registration", page)
+        self.assertRegex(page, r"Reference: [0-9a-f]{32}")
+        self.assertNotIn("sensitive applicant detail", page)
+        self.assertFalse(
+            MembershipApplication.objects.filter(email="ada@example.com").exists()
+        )
+        log_error.assert_called_once()
+        log_args = log_error.call_args
+        self.assertEqual(
+            log_args.kwargs["extra"]["registration_stage"],
+            "membership_application_save_and_private_file_storage",
+        )
+        self.assertEqual(log_args.kwargs["extra"]["request_path"], "/members/register/")
+        self.assertEqual(
+            log_args.kwargs["extra"]["registration_reference"],
+            re.search(r"Reference: ([0-9a-f]{32})", page).group(1),
         )
 
     def test_registration_rejects_unknown_sponsor_without_saving(self):

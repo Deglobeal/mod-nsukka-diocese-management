@@ -455,7 +455,10 @@ class MembershipRegistrationForm(forms.ModelForm):
             if name in optional_fields:
                 field.required = False
 
-            field.widget.attrs.setdefault("class", "registration-input")
+            if isinstance(field, forms.BooleanField):
+                field.widget.attrs["class"] = "registration-checkbox"
+            else:
+                field.widget.attrs.setdefault("class", "registration-input")
 
         for name in (
             "first_name",
@@ -478,11 +481,6 @@ class MembershipRegistrationForm(forms.ModelForm):
             self.fields[name].required = True
 
         self.fields["email"].required = False
-
-        for name in ("declaration_accepted", "verification_consent"):
-            self.fields[name].widget.attrs["class"] = (
-                "registration-checkbox"
-            )
 
     def clean(self):
         cleaned_data = super().clean()

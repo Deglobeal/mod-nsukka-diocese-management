@@ -1,7 +1,9 @@
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
+import uuid
 from datetime import timedelta
 from django.core import signing
 from django.middleware.csrf import get_token
@@ -44,6 +46,7 @@ from apps.verification.models import MembershipApplication
 
 
 MAX_PASSPORT_PHOTO_BYTES = 5 * 1024 * 1024
+logger = logging.getLogger(__name__)
 PASSPORT_PREFIXES = {
     "data:image/jpeg;base64,": ("jpg", "JPEG"),
     "data:image/png;base64,": ("png", "PNG"),
@@ -237,9 +240,12 @@ def verify_registration_sponsor(request):
 @require_http_methods(["GET", "POST"])
 def membership_registration(request):
     if request.method == "POST":
+        registration_reference = uuid.uuid4().hex
+        registration_stage = "registration_request_received"
         # Passport photographs must still come from the camera capture.
         photo_data = request.POST.get("passport_photo_data", "")
         photo_token = request.POST.get("passport_photo_token", "")
+        registration_stage = "passport_photo_upload_and_preview_validation"
         preview_nonce = None
         uploaded_files = request.FILES.copy()
         uploaded_files.pop("passport_photo", None)
@@ -314,6 +320,7 @@ def membership_registration(request):
                 photo_error = error
 
         form = MembershipRegistrationForm(request.POST, uploaded_files)
+        registration_stage = "form_and_uploaded_file_validation"
         form_is_valid = form.is_valid()
         registration_id = (request.POST.get("sponsor_membership_id") or "").strip()
 
@@ -328,6 +335,7 @@ def membership_registration(request):
         sponsor_contact = None
         confirmation = None
         if form_is_valid and photo_data and not photo_error:
+            registration_stage = "registration_id_confirmation_validation"
             try:
                 confirmation = read_registration_confirmation(
                     registration_id,
@@ -354,7 +362,9 @@ def membership_registration(request):
                 application.sponsor_membership_id = ""
 
             try:
+                registration_stage = "database_transaction_start"
                 with transaction.atomic():
+                    registration_stage = "passport_preview_token_lock"
                     preview_token = (
                         PassportPhotoPreviewToken.objects.select_for_update()
                         .filter(
@@ -381,18 +391,25 @@ def membership_registration(request):
                             "Please capture and accept your photograph again."
                         )
                     if confirmation["kind"] == "first_member_bootstrap":
+                        registration_stage = "bootstrap_registration_id_revalidation"
                         revalidate_bootstrap_confirmation(
                             raw_id=registration_id,
                             payload=confirmation,
                         )
                     # The ModelForm assigns the validated signature upload.
                     # The model field retains its private storage and random path.
+                    registration_stage = (
+                        "membership_application_save_and_private_file_storage"
+                    )
                     application.save()
+                    registration_stage = "passport_preview_token_redemption"
                     preview_token.redeemed_at = timezone.now()
                     preview_token.save(update_fields=("redeemed_at",))
                     if confirmation["kind"] == "first_member_bootstrap":
+                        registration_stage = "first_member_registration_id_redemption"
                         redeem_registration_id(raw_id=registration_id, application=application)
                     else:
+                        registration_stage = "sponsor_verification_and_notification_creation"
                         create_sponsor_verification_and_sms(
                             application=application,
                             sponsor_contact=sponsor_contact,
@@ -451,6 +468,18 @@ def membership_registration(request):
                     },
                 )
             except Exception:
+                logger.exception(
+                    "Unexpected membership registration failure "
+                    "reference=%s stage=%s path=%s",
+                    registration_reference,
+                    registration_stage,
+                    request.path,
+                    extra={
+                        "registration_reference": registration_reference,
+                        "registration_stage": registration_stage,
+                        "request_path": request.path,
+                    },
+                )
                 # Database transactions cannot roll back filesystem writes.
                 for image_field in (
                     application.signature_image,
@@ -472,7 +501,8 @@ def membership_registration(request):
                 form.add_error(
                     None,
                     "We couldn't securely save your registration. "
-                    "Please try again.",
+                    "Please try again. Reference: "
+                    f"{registration_reference}.",
                 )
                 return render(
                     request,
@@ -485,20 +515,54 @@ def membership_registration(request):
                     status=500,
                 )
 
-            # Permit PDF downloads only from the submitting browser session.
-            request.session.cycle_key()
-            allowed_ids = request.session.get(
-                "registration_application_ids", []
-            )
-            if application.pk not in allowed_ids:
-                allowed_ids.append(application.pk)
-            request.session["registration_application_ids"] = allowed_ids
-            request.session.modified = True
+            # The application is committed at this point. Diagnose a session
+            # or response failure separately so the applicant is not told to
+            # repeat a registration that may already have been saved.
+            try:
+                registration_stage = "post_commit_session_rotation"
+                request.session.cycle_key()
+                allowed_ids = request.session.get(
+                    "registration_application_ids", []
+                )
+                if application.pk not in allowed_ids:
+                    allowed_ids.append(application.pk)
+                request.session["registration_application_ids"] = allowed_ids
+                request.session.modified = True
 
-            return redirect(
-                "members:registration_received",
-                application_id=application.pk,
-            )
+                registration_stage = "registration_response_creation"
+                return redirect(
+                    "members:registration_received",
+                    application_id=application.pk,
+                )
+            except Exception:
+                logger.exception(
+                    "Membership registration saved but confirmation response failed "
+                    "reference=%s stage=%s path=%s",
+                    registration_reference,
+                    registration_stage,
+                    request.path,
+                    extra={
+                        "registration_reference": registration_reference,
+                        "registration_stage": registration_stage,
+                        "request_path": request.path,
+                    },
+                )
+                form.add_error(
+                    None,
+                    "Your registration may have been saved, but we could not "
+                    "prepare its confirmation. Please contact the Diocese "
+                    f"with reference {registration_reference} before trying again.",
+                )
+                return render(
+                    request,
+                    "registration/registration.html",
+                    {
+                        "form": form,
+                        "passport_photo_data": photo_data,
+                        "passport_photo_token": "",
+                    },
+                    status=500,
+                )
 
         if (
             registration_id
