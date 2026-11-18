@@ -143,11 +143,11 @@ class MembershipRegistrationTests(TestCase):
             fill=(20, 45, 120),
             width=4,
         )
-        image.save(buffer, format="PNG")
+        image.save(buffer, format="JPEG", quality=90)
         return SimpleUploadedFile(
-            "registration-signature.png",
+            "registration-signature.jpg",
             buffer.getvalue(),
-            content_type="image/png",
+            content_type="image/jpeg",
         )
 
     def valid_data(self, **overrides):
@@ -741,7 +741,7 @@ class MembershipRegistrationTests(TestCase):
         response = self.client.post(reverse("members:register"), data)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Applicant's Handwritten Signature")
+        self.assertContains(response, "Applicant’s handwritten signature")
         self.assertContains(response, "This field is required.")
         self.assertFalse(
             MembershipApplication.objects.filter(email="ada@example.com").exists()

@@ -918,6 +918,94 @@ body[data-mod-theme="command"] .registration-button:hover {
     display: none;
 }
 
+.registration-signature-crop-editor,
+.registration-signature-review {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.registration-signature-crop-editor[hidden],
+.registration-signature-review[hidden],
+.registration-signature-capture-panel[hidden] {
+    display: none;
+}
+
+.registration-signature-crop-help {
+    margin: 0;
+    color: var(--color-text-muted, #5e6470);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.registration-signature-crop-viewport {
+    position: relative;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #151a22;
+    line-height: 0;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.registration-signature-crop-source {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: min(58dvh, 560px);
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.registration-signature-crop-overlay {
+    position: absolute;
+    inset: 0;
+    touch-action: none;
+}
+
+.registration-signature-crop-selection {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid #65e4c1;
+    box-shadow: 0 0 0 9999px rgb(5 9 14 / 58%);
+    cursor: move;
+    touch-action: none;
+}
+
+.signature-crop-handle {
+    position: absolute;
+    z-index: 1;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #1c9d7e;
+    box-shadow: 0 1px 5px rgb(0 0 0 / 40%);
+    cursor: grab;
+    touch-action: none;
+}
+
+.signature-crop-handle:active {
+    cursor: grabbing;
+}
+
+.signature-crop-handle-nw { top: 0; left: 0; transform: translate(-50%, -50%); }
+.signature-crop-handle-n { top: 0; left: 50%; width: 44px; height: 26px; border-radius: 14px; transform: translate(-50%, -50%); }
+.signature-crop-handle-ne { top: 0; right: 0; transform: translate(50%, -50%); }
+.signature-crop-handle-e { top: 50%; right: 0; width: 26px; height: 44px; border-radius: 14px; transform: translate(50%, -50%); }
+.signature-crop-handle-se { right: 0; bottom: 0; transform: translate(50%, 50%); }
+.signature-crop-handle-s { bottom: 0; left: 50%; width: 44px; height: 26px; border-radius: 14px; transform: translate(-50%, 50%); }
+.signature-crop-handle-sw { bottom: 0; left: 0; transform: translate(-50%, 50%); }
+.signature-crop-handle-w { top: 50%; left: 0; width: 26px; height: 44px; border-radius: 14px; transform: translate(-50%, -50%); }
+
 .registration-signature-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -936,23 +1024,23 @@ body[data-mod-theme="command"] .registration-button:hover {
     cursor: pointer;
 }
 
-.registration-signature-button-secondary {
+.registration-card .registration-signature-camera .registration-signature-button-secondary {
     border-color: var(--color-border, #cfc6df);
     background: var(--color-surface, #fff);
     color: var(--color-text, #202432);
 }
 
-.registration-signature-button-primary {
+.registration-card .registration-signature-camera .registration-signature-button-primary {
     background: var(--color-primary, #3657a7);
     color: #fff;
 }
 
-.registration-signature-button:disabled {
+.registration-card .registration-signature-camera .registration-signature-button:disabled {
     cursor: not-allowed;
     opacity: .55;
 }
 
-.registration-signature-button:focus-visible {
+.registration-card .registration-signature-camera .registration-signature-button:focus-visible {
     outline: 3px solid #78a7ff;
     outline-offset: 2px;
 }
@@ -990,14 +1078,6 @@ body[data-mod-theme="command"] .registration-button:hover {
     background: #fff;
     cursor: crosshair;
     touch-action: none;
-}
-
-.registration-signature-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-    margin-top: var(--space-2);
 }
 
 .registration-signature-clear {
@@ -1480,8 +1560,12 @@ body[data-mod-theme="command"] .registration-button:hover {
 }
 
 .registration-signature-preview {
+    display: block;
+    width: 100%;
+    max-height: min(58dvh, 560px);
     object-fit: contain;
     object-position: center;
+    border: 1px solid var(--color-border, #cfc6df);
     border-radius: 12px;
     background: #fff;
 }

@@ -137,18 +137,14 @@ class SignatureImageValidator:
             raise ValidationError("Signature images must not exceed 2 MB.")
 
         extension = Path(uploaded_file.name).suffix.lower()
-        if extension not in {".jpg", ".jpeg", ".png"}:
-            raise ValidationError("Upload a JPEG or PNG signature image.")
+        if extension not in {".jpg", ".jpeg"}:
+            raise ValidationError("Upload a JPEG signature image.")
 
         uploaded_file.seek(0)
         header = uploaded_file.read(16)
         uploaded_file.seek(0)
 
-        valid_signature = (
-            header.startswith(b"\xff\xd8\xff")
-            if extension in {".jpg", ".jpeg"}
-            else header.startswith(b"\x89PNG\r\n\x1a\n")
-        )
+        valid_signature = header.startswith(b"\xff\xd8\xff")
         if not valid_signature:
             raise ValidationError(
                 "The signature contents do not match the file extension."
@@ -156,9 +152,9 @@ class SignatureImageValidator:
 
         try:
             with Image.open(uploaded_file) as image:
-                if image.format not in {"JPEG", "PNG"}:
+                if image.format != "JPEG":
                     raise ValidationError(
-                        "Upload a valid JPEG or PNG signature image."
+                        "Upload a valid JPEG signature image."
                     )
                 image.verify()
         except (
