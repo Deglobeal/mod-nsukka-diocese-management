@@ -1,5 +1,6 @@
 import base64
 import re
+import zlib
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
@@ -12,7 +13,7 @@ from django.urls import reverse
 from PIL import Image
 from django.utils import timezone
 
-from apps.identity_cards.models import MembershipIdentity
+from apps.identity_cards.models import MembershipIdentity, ParishChaplainAppointment
 from apps.members.forms.registration_form import (
     NIGERIA_LGAS,
     MembershipRegistrationForm,
@@ -33,6 +34,29 @@ from apps.members.models import FirstMemberRegistrationToken
 from apps.notifications.models import SMSNotification, SponsorVerification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication
+from apps.members.views.registration_pdf_view import (
+    PASSPORT_FRAME_HEIGHT,
+    PASSPORT_FRAME_PIXEL_SIZE,
+    PASSPORT_FRAME_WIDTH,
+    _fit_passport_photo_to_frame,
+)
+
+
+def _pdf_decoded_stream_text(content):
+    decoded = []
+    for match in re.finditer(rb"stream\r?\n(.*?)endstream", content, re.S):
+        stream = match.group(1)
+        try:
+            stream = zlib.decompress(stream)
+        except zlib.error:
+            try:
+                ascii85 = base64.a85decode(stream.rstrip()[:-2], adobe=False)
+                stream = zlib.decompress(ascii85)
+            except (ValueError, zlib.error):
+                continue
+        if b" Tj" in stream and b"\x00" not in stream:
+            decoded.append(stream)
+    return b"\n".join(decoded).decode("latin-1", errors="ignore")
 
 
 class MembershipRegistrationTests(TestCase):
@@ -87,6 +111,45 @@ class MembershipRegistrationTests(TestCase):
             content_type="image/jpeg",
         )
 
+    def test_pdf_passport_cover_crop_fills_frame_and_preserves_subject_proportions(self):
+        from PIL import ImageDraw
+
+        source = Image.new("RGB", (200, 300), (20, 90, 40))
+        ImageDraw.Draw(source).ellipse((60, 60, 140, 140), fill=(220, 20, 20))
+        original = BytesIO()
+        source.save(original, format="JPEG", quality=100)
+        original_bytes = original.getvalue()
+
+        fitted_bytes = _fit_passport_photo_to_frame(original_bytes)
+        with Image.open(BytesIO(fitted_bytes)) as fitted:
+            self.assertEqual(fitted.format, "JPEG")
+            self.assertEqual(fitted.size, PASSPORT_FRAME_PIXEL_SIZE)
+            self.assertEqual(fitted.mode, "RGB")
+            for point in (
+                (0, 0),
+                (fitted.width - 1, 0),
+                (0, fitted.height - 1),
+                (fitted.width - 1, fitted.height - 1),
+            ):
+                red, green, blue = fitted.getpixel(point)
+                self.assertLess(red, 70)
+                self.assertGreater(green, 60)
+                self.assertLess(blue, 80)
+            fitted_rgb = fitted.convert("RGB")
+            red_pixels = [
+                (x, y)
+                for y in range(fitted.height)
+                for x in range(fitted.width)
+                if fitted_rgb.getpixel((x, y))[0] > 160
+                and fitted_rgb.getpixel((x, y))[1] < 80
+            ]
+            red_width = max(x for x, _ in red_pixels) - min(x for x, _ in red_pixels)
+            red_height = max(y for _, y in red_pixels) - min(y for _, y in red_pixels)
+            self.assertAlmostEqual(red_width / red_height, 1, delta=0.08)
+
+        self.assertEqual(original.getvalue(), original_bytes)
+        self.assertAlmostEqual(PASSPORT_FRAME_WIDTH, 35 * 72 / 25.4)
+        self.assertAlmostEqual(PASSPORT_FRAME_HEIGHT, 40 * 72 / 25.4)
     @classmethod
     def setUpTestData(cls):
         Rank.objects.get_or_create(name="Major")
@@ -130,6 +193,17 @@ class MembershipRegistrationTests(TestCase):
             member=cls.sponsor,
             official_membership_id="MOD-TEST-0001",
             uniform_id="SP000001",
+        )
+        from django.contrib.auth import get_user_model
+        cls.chaplain_appointing_user = get_user_model().objects.create_superuser(
+            username="registration-test-chairman",
+            email="chairman@example.com",
+            password="test-only-password",
+        )
+        ParishChaplainAppointment.objects.create(
+            parish=cls.parish,
+            member=cls.sponsor,
+            appointed_by=cls.chaplain_appointing_user,
         )
 
     def valid_signature_upload(self):
@@ -204,6 +278,7 @@ class MembershipRegistrationTests(TestCase):
         return data
 
     def remove_fixture_sponsor(self):
+        ParishChaplainAppointment.objects.filter(member=self.sponsor).delete()
         MembershipIdentity.objects.filter(member=self.sponsor).delete()
         MemberProfile.objects.filter(member=self.sponsor).delete()
         Member.objects.filter(pk=self.sponsor.pk).delete()
@@ -646,6 +721,7 @@ class MembershipRegistrationTests(TestCase):
         application = MembershipApplication.objects.get(
             email="ada@example.com"
         )
+        self.assertTrue(application.passport_photo, "The registration must retain the applicant's passport photograph.")
 
         self.assertRedirects(
             response,
@@ -869,7 +945,10 @@ class MembershipRegistrationTests(TestCase):
         application = MembershipApplication.objects.get(
             email="ada@example.com"
         )
-
+        self.assertTrue(
+            application.passport_photo,
+            "The PDF's source application must retain the passport photograph.",
+        )
         application.refresh_from_db()
         self.assertEqual(application.baptized_catholic, "yes")
         self.assertEqual(application.confirmed, "yes")
@@ -889,7 +968,6 @@ class MembershipRegistrationTests(TestCase):
                 kwargs={"application_id": application.pk},
             )
         )
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF-"))
@@ -898,9 +976,34 @@ class MembershipRegistrationTests(TestCase):
             3,
             "The PDF should embed both letterhead logos and the applicant signature.",
         )
+        self.assertRegex(
+            response.content.decode("latin-1"),
+            r"/ca\s+(?:0?\.075)",
+            "The official logo watermark should use its historical 7.5% opacity.",
+        )
+        from apps.members.pdf_design import application_reference
+        self.assertIn(application_reference(application), _pdf_decoded_stream_text(response.content))
+        pdf_text = _pdf_decoded_stream_text(response.content)
+        page_count = len(re.findall(rb"/Type\s*/Page\b", response.content))
+        self.assertEqual(page_count, 2)
+        for heading in (
+            "SECTION A: PARISH CHAPLAIN'S ENDORSEMENT",
+            "SECTION B: DEANERY CHAIRMAN'S ENDORSEMENT",
+            "SECTION C: DIOCESAN ENDORSEMENT",
+        ):
+            self.assertIn(heading, pdf_text)
+        self.assertEqual(pdf_text.count("Signature"), 3)
+        self.assertEqual(pdf_text.count("Full Name"), 3)
+        self.assertGreaterEqual(pdf_text.count("Date"), 4)
+        self.assertIn("Example Next of Kin", pdf_text)
+        self.assertIn("Second Contact", pdf_text)
+        self.assertIn("CONFIDENTIAL MEDICAL DETAILS", pdf_text)
+        self.assertIn("Accuracy declaration accepted", pdf_text)
+        self.assertIn("Applicant's handwritten signature", pdf_text)
+        self.assertNotIn("Reviewing officer", pdf_text)
         self.assertIn("private, no-store", response["Cache-Control"])
         self.assertIn(
-            f"MOD-Membership-Application-{application.pk}.pdf",
+            f"MOD-Membership-Application-{application.public_reference.replace('/', '-')}.pdf",
             response["Content-Disposition"],
         )
 
@@ -911,21 +1014,108 @@ class MembershipRegistrationTests(TestCase):
             parish=self.parish,
         )
 
-        response = self.client.get(
-            reverse(
-                "members:registration_pdf",
-                kwargs={"application_id": application.pk},
-            )
-        )
+        for route_name in (
+            "members:registration_pdf",
+            "members:registration_chaplain_letter_pdf",
+            "members:registration_society_letter_pdf",
+        ):
+            with self.subTest(route_name=route_name):
+                response = self.client.get(
+                    reverse(route_name, kwargs={"application_id": application.pk})
+                )
+                self.assertEqual(response.status_code, 404)
 
-        self.assertEqual(response.status_code, 404)
+    def test_three_registration_documents_share_reference_and_keep_offline_fields_blank(self):
+        data = self.valid_data()
+        self.assertFalse({
+            "church_society_name",
+            "society_representative_name",
+        }.intersection(data))
+        response = self.client.post(reverse("members:register"), data)
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(email="ada@example.com")
+        application_count = MembershipApplication.objects.count()
+
+        success = self.client.get(response["Location"])
+        from apps.members.pdf_design import application_reference
+        reference = application_reference(application)
+        self.assertContains(success, reference)
+        self.assertContains(success, reverse(
+            "members:registration_pdf",
+            kwargs={"application_id": application.pk},
+        ))
+        self.assertContains(success, reverse(
+            "members:registration_chaplain_letter_pdf",
+            kwargs={"application_id": application.pk},
+        ))
+        self.assertContains(success, reverse(
+            "members:registration_society_letter_pdf",
+            kwargs={"application_id": application.pk},
+        ))
+
+        document_urls = (
+            reverse("members:registration_pdf", kwargs={"application_id": application.pk}),
+            reverse("members:registration_chaplain_letter_pdf", kwargs={"application_id": application.pk}),
+            reverse("members:registration_society_letter_pdf", kwargs={"application_id": application.pk}),
+        )
+        decoded_documents = []
+        for url in document_urls:
+            pdf = self.client.get(url)
+            self.assertEqual(pdf.status_code, 200)
+            self.assertEqual(pdf["Content-Type"], "application/pdf")
+            self.assertTrue(pdf.content.startswith(b"%PDF-"))
+            self.assertIn("private, no-store", pdf["Cache-Control"])
+            decoded = _pdf_decoded_stream_text(pdf.content)
+            self.assertIn(reference, decoded)
+            self.assertRegex(
+                pdf.content.decode("latin-1"),
+                r"/ca\s+(?:0?\.075)",
+            )
+            decoded_documents.append(decoded)
+
+        self.assertIn("Ada Chinwe Okafor", decoded_documents[1])
+        self.assertIn("Registration Test Parish", decoded_documents[1])
+        self.assertIn("Registration Test Deanery", decoded_documents[1])
+        self.assertIn("[ ] RECOMMEND", decoded_documents[1])
+        self.assertIn("FOR OFFICIAL USE ONLY", decoded_documents[1])
+        self.assertIn("John Sponsor", decoded_documents[1])
+        self.assertIn("MOD-TEST-0001", decoded_documents[1])
+        self.assertIn("To the best of my knowledge, the information verified above is accurate.", decoded_documents[1])
+        for approved_text in (
+            "I have reviewed the applicant's provided information and made reasonable enquiries",
+            "identified through, the stated Catholic parish community",
+            "aims, principles, discipline, values, and responsibilities expected of members",
+            "uphold the teachings of the Catholic Church, Christian values",
+            "[ ] DO NOT RECOMMEND",
+            "does not constitute final",
+            "membership approval or confer membership status on the applicant",
+            "Final consideration and approval remain subject to the established",
+            "Deanery and Diocesan verification and approval procedures",
+        ):
+            self.assertIn(approved_text, decoded_documents[1])
+        self.assertNotIn("pending user submission", decoded_documents[1])
+        self.assertIn("Ada Chinwe Okafor", decoded_documents[2])
+        self.assertIn("Name of Society / Organization", decoded_documents[2])
+        self.assertIn("Name of Representative", decoded_documents[2])
+        self.assertIn("FOR OFFICIAL USE ONLY", decoded_documents[2])
+        self.assertIn("We confirm that the above-named applicant is known to our Church Society", decoded_documents[2])
+        self.assertIn("We therefore recommend the applicant for further consideration by the appropriate authorities of the Man of Order and Discipline", decoded_documents[2])
+        self.assertIn("Movement of Nigeria.", decoded_documents[2])
+        self.assertNotIn("pending user submission", decoded_documents[2])
+
+        reprint = self.client.get(document_urls[2])
+        self.assertEqual(reprint.status_code, 200)
+        self.assertIn(reference, _pdf_decoded_stream_text(reprint.content))
+        self.assertEqual(MembershipApplication.objects.count(), application_count)
+
+        self.assertNotIn("church_society_name", MembershipRegistrationForm().fields)
+        self.assertNotIn("society_representative_name", MembershipRegistrationForm().fields)
 
     def test_station_from_another_parish_is_rejected(self):
         response = self.client.post(
             reverse("members:register"),
             self.valid_data(station=str(self.other_station.pk)),
         )
-
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
@@ -936,6 +1126,23 @@ class MembershipRegistrationTests(TestCase):
                 email="ada@example.com"
             ).exists()
         )
+
+    def test_regular_registration_is_blocked_without_verified_parish_chaplain(self):
+        ParishChaplainAppointment.objects.filter(parish=self.parish).delete()
+        response = self.client.post(reverse("members:register"), self.valid_data())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "does not yet have a verified, appointed Parish Chaplain")
+        self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+
+    def test_patron_registration_is_also_blocked_without_verified_parish_chaplain(self):
+        ParishChaplainAppointment.objects.filter(parish=self.parish).delete()
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(category=MembershipApplication.Category.PATRON),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "does not yet have a verified, appointed Parish Chaplain")
+        self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
 
     def test_required_fields_are_validated(self):
         response = self.client.post(

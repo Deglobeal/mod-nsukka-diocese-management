@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -36,8 +37,13 @@ from apps.chairman.selectors.command_dashboard import (
     get_station_directory,
 )
 from apps.verification.models import MembershipApplication, MembershipReview
-from apps.members.models import Rank
-from django.core.exceptions import ValidationError
+from apps.identity_cards.models import (
+    OfficeAppointment,
+    ParishChaplainAppointment,
+    ReservedOffice,
+)
+from apps.identity_cards.services.parish_chaplain import appoint_parish_chaplain
+from apps.members.models import Member, MemberAccount, Rank
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
 )
@@ -129,6 +135,95 @@ def _directory_parameters(request):
         "search_query": request.GET.get("q", "").strip()[:100],
         "page_number": request.GET.get("page", 1),
     }
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def manage_parish_chaplain_appointments(request):
+    """Chairman-only appointment page for Parish Chaplains."""
+    current = OfficeAppointment.objects.filter(
+        reserved_office__office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+        reserved_office__is_active=True,
+        ended_at__isnull=True,
+        member__status=Member.Status.ACTIVE,
+    ).select_related("reserved_office", "member")
+    current = [
+        item for item in current
+        if MemberAccount.objects.filter(
+            member=item.member, user=request.user, is_active=True
+        ).exists()
+    ]
+    if not current:
+        raise PermissionDenied(
+            "Only the currently appointed Diocesan Chairman can manage Parish Chaplains."
+        )
+    diocese_ids = tuple({item.reserved_office.diocese_id for item in current})
+    parishes = Parish.objects.filter(
+        deanery__diocese_id__in=diocese_ids
+    ).select_related("deanery")
+    form_error = ""
+    selected_parish_value = (
+        request.POST.get("parish")
+        if request.method == "POST"
+        else request.GET.get("parish")
+    )
+    try:
+        selected_parish_id = int(selected_parish_value) if selected_parish_value else None
+    except (ValueError, TypeError):
+        selected_parish_id = None
+    members = Member.objects.none()
+    if selected_parish_id and parishes.filter(pk=selected_parish_id).exists():
+        members = Member.objects.filter(
+            parish_id=selected_parish_id,
+            status=Member.Status.ACTIVE,
+            membership_identity__isnull=False,
+        ).order_by("last_name", "first_name")
+    if request.method == "POST":
+        try:
+            parish_id = int(selected_parish_id)
+            member_id = int(request.POST.get("member", ""))
+            appointment = appoint_parish_chaplain(
+                actor=request.user,
+                parish_id=parish_id,
+                member_id=member_id,
+                notes=request.POST.get("notes", "").strip()[:2000],
+            )
+        except (
+            TypeError, ValueError, Parish.DoesNotExist, Member.DoesNotExist,
+            ValidationError,
+        ) as error:
+            form_error = (
+                "; ".join(error.messages)
+                if isinstance(error, ValidationError)
+                else "Choose a valid Parish and active Member."
+            )
+        else:
+            messages.success(
+                request,
+                f"{appointment.member.full_name} was appointed Parish Chaplain "
+                f"for {appointment.parish.name}.",
+            )
+            return redirect(
+                f"{reverse('chairman:parish-chaplains')}?parish={appointment.parish_id}"
+            )
+    appointments = ParishChaplainAppointment.objects.filter(
+        parish__deanery__diocese_id__in=diocese_ids,
+        ended_at__isnull=True,
+    ).select_related("parish", "parish__deanery", "member", "member__membership_identity")
+    return _render_chairman_page(
+        request,
+        diocese_ids=diocese_ids,
+        section="parishes",
+        template="chairman/parish_chaplains.html",
+        data={
+            "parishes": parishes,
+            "members": members,
+            "appointments": appointments,
+            "selected_parish_id": str(selected_parish_id or ""),
+            "form_error": form_error,
+            "active_path": "parish-chaplains",
+        },
+    )
 
 
 @login_required

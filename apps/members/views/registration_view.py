@@ -25,6 +25,7 @@ from django.views.decorators.http import require_http_methods
 from PIL import Image, UnidentifiedImageError
 
 from apps.members.forms import MembershipRegistrationForm
+from apps.members.pdf_design import application_reference
 from apps.members.passport_photo_processing import process_passport_photo
 from apps.members.models import FirstMemberRegistrationAttempt
 from apps.members.models import PassportPhotoPreviewToken
@@ -350,6 +351,21 @@ def membership_registration(request):
                 form.add_error("sponsor_membership_id", error)
 
         if (
+            confirmation
+            and confirmation.get("kind") == "ordinary_sponsor"
+            and form.cleaned_data.get("category")
+            in (MembershipApplication.Category.REGULAR_MEMBER, MembershipApplication.Category.PATRON)
+        ):
+            from apps.identity_cards.services.parish_chaplain import get_verified_parish_chaplain
+            if not get_verified_parish_chaplain(form.cleaned_data["parish"]):
+                form.add_error(
+                    "parish",
+                    "This Parish does not yet have a verified, appointed Parish Chaplain. "
+                    "Please contact your Diocese before submitting this application.",
+                )
+                form_is_valid = False
+
+        if (
             form_is_valid and photo_data and not photo_error and confirmation
             and (sponsor_contact or confirmation.get("kind") == "first_member_bootstrap")
         ):
@@ -618,5 +634,8 @@ def registration_received(request, application_id):
     return render(
         request,
         "registration/registration_received.html",
-        {"application": application},
+        {
+            "application": application,
+            "application_reference": application_reference(application),
+        },
     )

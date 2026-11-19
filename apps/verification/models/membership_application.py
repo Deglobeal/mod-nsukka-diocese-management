@@ -64,6 +64,14 @@ class MembershipApplication(models.Model):
         blank=True,
         default="",
     )
+    public_reference = models.CharField(
+        max_length=32,
+        unique=True,
+        blank=True,
+        default="",
+        editable=False,
+        help_text="Stable public application reference; distinct from a Membership ID.",
+    )
 
     # Additional applicant information. Optional at this stage so
     # existing applications remain valid while the form is expanded.
@@ -232,6 +240,12 @@ class MembershipApplication(models.Model):
         ordering = ["-submitted_at"]
         verbose_name = "Membership Application"
         verbose_name_plural = "Membership Applications"
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(public_reference=""),
+                name="membership_application_reference_nonempty",
+            ),
+        ]
 
     def _validate_contact_details(self):
         errors = contact_validation_errors(self.__dict__)
@@ -255,6 +269,11 @@ class MembershipApplication(models.Model):
         update_fields = kwargs.get("update_fields")
         if update_fields is None or self.CONTACT_FIELDS.intersection(update_fields):
             self._validate_contact_details()
+        if self._state.adding and not self.public_reference:
+            from apps.verification.services.application_reference import (
+                save_application_with_public_reference,
+            )
+            return save_application_with_public_reference(self, args, kwargs)
         return super().save(*args, **kwargs)
 
     @property

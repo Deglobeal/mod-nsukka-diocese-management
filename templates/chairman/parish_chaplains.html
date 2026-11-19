@@ -1,0 +1,48 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+<section class="chairman-panel" aria-labelledby="parish-chaplains-heading">
+    <header class="chairman-panel__heading">
+        <div>
+            <p class="chairman-panel__eyebrow">OFFICE APPOINTMENTS</p>
+            <h2 id="parish-chaplains-heading">Parish Chaplains</h2>
+            <p>Appoint an existing ACTIVE Member with an official Membership ID to their own Parish.</p>
+        </div>
+    </header>
+    {% if form_error %}<p class="chairman-form-errors" role="alert">{{ form_error }}</p>{% endif %}
+    <form class="chairman-organization-form" method="post">
+        {% csrf_token %}
+        <div class="chairman-form-field">
+            <label for="parish">Parish</label>
+            <select name="parish" id="parish" required onchange="this.form.method='get';this.form.submit()">
+                <option value="">Select Parish</option>
+                {% for parish in parishes %}
+                <option value="{{ parish.pk }}" {% if selected_parish_id == parish.pk|stringformat:'s' %}selected{% endif %}>{{ parish.name }} — {{ parish.deanery.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="chairman-form-field">
+            <label for="member">ACTIVE Parish Member</label>
+            <select name="member" id="member" required>
+                <option value="">Select verified Member</option>
+                {% for member in members %}
+                <option value="{{ member.pk }}">{{ member.full_name }} — {{ member.membership_identity.official_membership_id }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="chairman-form-field">
+            <label for="notes">Appointment notes (optional)</label>
+            <textarea id="notes" name="notes" maxlength="2000" rows="3"></textarea>
+        </div>
+        <div class="chairman-form-actions">
+            <button class="chairman-primary-button" type="submit">Appoint Parish Chaplain</button>
+        </div>
+    </form>
+    <h3>Current appointments</h3>
+    <ul>
+        {% for appointment in appointments %}
+        <li>{{ appointment.parish.name }} — {{ appointment.member.full_name }} — {{ appointment.member.membership_identity.official_membership_id }}</li>
+        {% empty %}<li>No current Parish Chaplain appointments.</li>{% endfor %}
+    </ul>
+</section>
+{% endblock %}

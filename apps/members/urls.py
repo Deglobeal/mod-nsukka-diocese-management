@@ -4,6 +4,10 @@ from apps.members.views.member_dashboard_view import member_dashboard
 from apps.members.views.communication_settings_view import communication_settings
 
 from apps.members.views.registration_pdf_view import membership_registration_pdf
+from apps.members.views.registration_letter_pdf_view import (
+    church_society_recommendation_letter_pdf,
+    parish_chaplain_recommendation_letter_pdf,
+)
 from apps.members.views.registration_view import (
     membership_registration,
     process_passport_photo_preview,
@@ -29,6 +33,16 @@ urlpatterns = [
         "register/received/<int:application_id>/pdf/",
         membership_registration_pdf,
         name="registration_pdf",
+    ),
+    path(
+        "register/received/<int:application_id>/chaplain-letter.pdf/",
+        parish_chaplain_recommendation_letter_pdf,
+        name="registration_chaplain_letter_pdf",
+    ),
+    path(
+        "register/received/<int:application_id>/society-letter.pdf/",
+        church_society_recommendation_letter_pdf,
+        name="registration_society_letter_pdf",
     ),
     path(
         "register/received/<int:application_id>/",
