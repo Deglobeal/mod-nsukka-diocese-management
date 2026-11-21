@@ -66,7 +66,35 @@ class OfficeAppointment(models.Model):
                     "Only an active member can hold a reserved office."
                 )
 
-            if (
+            if self.reserved_office_id and self.member.parish_id is None:
+                from apps.organizations.models import Diocese
+                from apps.verification.models import MembershipApplication
+
+                is_approved_unassigned_category = (
+                    MembershipApplication.objects.filter(
+                        member=self.member,
+                        stage=MembershipApplication.Stage.APPROVED,
+                        category__in=(
+                            MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+                        ),
+                    ).exists()
+                )
+                member_diocese_id = (
+                    self.member.deanery.diocese_id
+                    if self.member.deanery_id
+                    else Diocese.objects.filter(code="036")
+                    .values_list("pk", flat=True)
+                    .first()
+                )
+                if (
+                    not is_approved_unassigned_category
+                    or member_diocese_id != self.reserved_office.diocese_id
+                ):
+                    errors["member"] = (
+                        "The member must belong to the Diocese that owns "
+                        "this reserved office."
+                    )
+            elif (
                 self.reserved_office_id
                 and self.member.parish.deanery.diocese_id
                 != self.reserved_office.diocese_id

@@ -53,7 +53,7 @@
                                     <span class="chairman-muted">Not allocated</span>
                                 {% endif %}
                             </td>
-                            <td>{{ member.parish.name }}</td>
+                            <td>{% if member.parish_id %}{{ member.parish.name }}{% elif member.deanery_id %}{{ member.deanery.name }} (no Parish){% else %}Diocesan / unassigned{% endif %}</td>
                             <td>{% if member.station %}{{ member.station.name }}{% else %}Not assigned{% endif %}</td>
                             <td><span class="chairman-status-tag chairman-status-tag--{{ member.status }}">{{ member.get_status_display }}</span></td>
                         </tr>

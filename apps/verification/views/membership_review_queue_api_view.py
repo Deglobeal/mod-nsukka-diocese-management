@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.organizations.models import Diocese
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
 )
@@ -31,6 +32,17 @@ class MembershipReviewQueueAPIView(APIView):
 
             if parish is None and member is not None:
                 parish = member.parish
+            deanery = (
+                parish.deanery
+                if parish
+                else application.deanery
+                or (member.deanery if member is not None else None)
+            )
+            diocese = (
+                deanery.diocese
+                if deanery
+                else Diocese.objects.filter(code="036").first()
+            )
 
             results.append({
                 "application_id": application.pk,
@@ -42,16 +54,10 @@ class MembershipReviewQueueAPIView(APIView):
                 "member_status": member.status if member else None,
                 "parish_id": parish.pk if parish else None,
                 "parish_name": parish.name if parish else None,
-                "deanery_id": parish.deanery_id if parish else None,
-                "deanery_name": (
-                    parish.deanery.name if parish else None
-                ),
-                "diocese_id": (
-                    parish.deanery.diocese_id if parish else None
-                ),
-                "diocese_name": (
-                    parish.deanery.diocese.name if parish else None
-                ),
+                "deanery_id": deanery.pk if deanery else None,
+                "deanery_name": deanery.name if deanery else None,
+                "diocese_id": diocese.pk if diocese else None,
+                "diocese_name": diocese.name if diocese else None,
             })
 
         return paginator.get_paginated_response(results)

@@ -1,26 +1,90 @@
 from io import BytesIO
-from pathlib import Path
 from xml.sax.saxutils import escape
 
-from django.conf import settings
-from django.http import Http404, HttpResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 
+from PIL import Image as PillowImage
+from PIL import ImageOps
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     Image,
+    KeepTogether,
     Paragraph,
-    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
 )
 
+from apps.members.pdf_design import (
+    application_reference,
+    mod_letterhead,
+    mod_pdf_document,
+    mod_pdf_page_callback,
+    mod_pdf_response,
+    mod_pdf_styles,
+)
 from apps.verification.models import MembershipApplication
+
+
+PASSPORT_FRAME_WIDTH = 35 * mm
+PASSPORT_FRAME_HEIGHT = 40 * mm
+PASSPORT_RENDER_DPI = 300
+PASSPORT_FRAME_PIXEL_SIZE = (
+    round(PASSPORT_FRAME_WIDTH / 72 * PASSPORT_RENDER_DPI),
+    round(PASSPORT_FRAME_HEIGHT / 72 * PASSPORT_RENDER_DPI),
+)
+
+
+def _fit_passport_photo_to_frame(image_bytes):
+    """Cover-crop a rendering copy to the PDF frame without altering storage."""
+    with PillowImage.open(BytesIO(image_bytes)) as source:
+        oriented = ImageOps.exif_transpose(source)
+        if "A" in oriented.getbands() or "transparency" in oriented.info:
+            rgba = oriented.convert("RGBA")
+            background = PillowImage.new("RGB", rgba.size, "white")
+            background.paste(rgba, mask=rgba.getchannel("A"))
+            oriented = background
+        else:
+            oriented = oriented.convert("RGB")
+        fitted = ImageOps.fit(
+            oriented,
+            PASSPORT_FRAME_PIXEL_SIZE,
+            method=PillowImage.Resampling.LANCZOS,
+            centering=(0.5, 0.36),
+        )
+        result = BytesIO()
+        fitted.save(result, format="JPEG", quality=94, optimize=True)
+        return result.getvalue()
+
+
+def _endorsement_section(title, styles):
+    rows = [[
+        _paragraph(label, styles["CellLabel"])
+        for label in ("Signature", "Full Name", "Date")
+    ], ["", "", ""]]
+    section = Table(
+        rows,
+        colWidths=[64 * mm, 78 * mm, 36 * mm],
+        rowHeights=[7 * mm, 16 * mm],
+    )
+    section.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1ECFA")),
+        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#CFC6DF")),
+        ("LINEBELOW", (0, 1), (-1, 1), 0.6, colors.HexColor("#8D82A2")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+    return KeepTogether([
+        Paragraph(escape(title), styles["SectionHeading"]),
+        section,
+        Spacer(1, 1 * mm),
+    ])
 
 
 def _display(application, field_name):
@@ -52,148 +116,23 @@ def _build_membership_registration_pdf(
     attachment=True,
 ):
     buffer = BytesIO()
-    document = SimpleDocTemplate(
+    reference = application_reference(application)
+    document = mod_pdf_document(
         buffer,
-        pagesize=A4,
-        rightMargin=16 * mm,
-        leftMargin=16 * mm,
-        topMargin=13 * mm,
-        bottomMargin=18 * mm,
-        title=f"M.O.D. Membership Registration — {application.pk}",
-        author="M.O.D. Nsukka Diocese",
+        title=f"M.O.D. Membership Registration — {reference}",
         subject="Membership registration application",
     )
 
-    styles = getSampleStyleSheet()
+    styles = mod_pdf_styles()
     styles.add(ParagraphStyle(
-        name="Letterhead",
-        parent=styles["Title"],
-        fontName="Helvetica-Bold",
-        fontSize=13,
-        leading=16,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor("#2E1065"),
-        spaceAfter=2,
-    ))
-    styles.add(ParagraphStyle(
-        name="LetterheadSub",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8,
+        name="RegistrationSectionHeading",
+        parent=styles["SectionHeading"],
+        fontSize=8.5,
         leading=10,
-        alignment=TA_CENTER,
+        spaceBefore=2,
+        spaceAfter=1,
     ))
-    styles.add(ParagraphStyle(
-        name="DocumentTitle",
-        parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=12,
-        leading=15,
-        alignment=TA_CENTER,
-        textColor=colors.HexColor("#2E1065"),
-        spaceBefore=8,
-        spaceAfter=8,
-    ))
-    styles.add(ParagraphStyle(
-        name="SectionHeading",
-        parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#2E1065"),
-        spaceBefore=5,
-        spaceAfter=2,
-    ))
-    styles.add(ParagraphStyle(
-        name="CellLabel",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=7.5,
-        leading=10,
-    ))
-    styles.add(ParagraphStyle(
-        name="CellValue",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8,
-        leading=9,
-        wordWrap="CJK",
-    ))
-    styles.add(ParagraphStyle(
-        name="Notice",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=8,
-        leading=11,
-        alignment=TA_LEFT,
-        textColor=colors.HexColor("#2E1065"),
-    ))
-
-    story = []
-
-    branding_dir = (
-        Path(settings.BASE_DIR)
-        / "static"
-        / "images"
-        / "branding"
-    )
-    mod_logo_path = branding_dir / "mainmodlogo.jpg"
-    nigeria_coat_path = branding_dir / "nigeria-coat-of-arms.png"
-
-    # Keep both emblems at the same visual height.
-    logo_size = 21 * mm
-    mod_logo = (
-        Image(str(mod_logo_path), width=logo_size, height=logo_size)
-        if mod_logo_path.is_file()
-        else Paragraph("M.O.D.", styles["Letterhead"])
-    )
-    nigeria_coat = (
-        Image(str(nigeria_coat_path), width=logo_size, height=logo_size)
-        if nigeria_coat_path.is_file()
-        else Paragraph("NIGERIA", styles["LetterheadSub"])
-    )
-
-    header_text = [
-        Paragraph("M.O.D. NSUKKA DIOCESE", styles["Letterhead"]),
-        Paragraph(
-            "MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA",
-            styles["LetterheadSub"],
-        ),
-        Spacer(1, 2),
-        Paragraph(
-            "MEMBERSHIP REGISTRATION FORM",
-            styles["DocumentTitle"],
-        ),
-    ]
-
-    header = Table(
-        [[mod_logo, header_text, nigeria_coat]],
-        colWidths=[25 * mm, 128 * mm, 25 * mm],
-    )
-    header.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (0, 0), "LEFT"),
-        ("ALIGN", (1, 0), (1, 0), "CENTER"),
-        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LINEBELOW", (0, 0), (-1, -1), 1.5,
-         colors.HexColor("#008751")),
-    ]))
-    story.append(header)
-
-    # A narrow gold rule beneath the green header rule.
-    accent_rule = Table([[""]], colWidths=[178 * mm], rowHeights=[1.2 * mm])
-    accent_rule.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E6B800")),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.extend([accent_rule, Spacer(1, 5)])
+    story = mod_letterhead(styles, title="MEMBERSHIP REGISTRATION FORM")
 
     # The passport photo sits to the left of the application metadata,
     # keeping the reference and submission details on the same header row.
@@ -203,10 +142,9 @@ def _build_membership_registration_pdf(
             with application.passport_photo.open("rb") as photo_file:
                 passport_photo_bytes = photo_file.read()
             passport_photo_flowable = Image(
-                BytesIO(passport_photo_bytes),
-                width=28 * mm,
-                height=34 * mm,
-                kind="proportional",
+                BytesIO(_fit_passport_photo_to_frame(passport_photo_bytes)),
+                width=PASSPORT_FRAME_WIDTH,
+                height=PASSPORT_FRAME_HEIGHT,
             )
         except (OSError, ValueError):
             passport_photo_flowable = "Photo unavailable"
@@ -214,7 +152,7 @@ def _build_membership_registration_pdf(
     metadata = [
         [
             _paragraph("Application reference", styles["CellLabel"]),
-            _paragraph(f"MOD-APP-{application.pk:06d}", styles["CellValue"]),
+            _paragraph(reference, styles["CellValue"]),
             _paragraph("Date submitted", styles["CellLabel"]),
             _paragraph(
                 application.submitted_at.strftime("%d %B %Y, %H:%M"),
@@ -231,7 +169,9 @@ def _build_membership_registration_pdf(
 
     meta_table = Table(
         metadata,
-        colWidths=[25 * mm, 36 * mm, 23 * mm, 55 * mm],
+        # Public refs are opaque, 24-character values; reserve enough width
+        # to keep the full reference together on one line.
+        colWidths=[25 * mm, 49 * mm, 23 * mm, 42 * mm],
     )
     meta_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1ECFA")),
@@ -255,6 +195,11 @@ def _build_membership_registration_pdf(
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        # The passport image fills its existing 35 × 40 mm frame exactly.
+        ("LEFTPADDING", (0, 0), (0, 0), 0),
+        ("RIGHTPADDING", (0, 0), (0, 0), 0),
+        ("TOPPADDING", (0, 0), (0, 0), 0),
+        ("BOTTOMPADDING", (0, 0), (0, 0), 0),
     ]))
     story.extend([header_table, Spacer(1, 5)])
 
@@ -293,7 +238,7 @@ def _build_membership_registration_pdf(
                 ),
             ],
         ]
-        story.append(Paragraph("ISSUED MEMBERSHIP IDENTIFIERS", styles["SectionHeading"]))
+        story.append(Paragraph("ISSUED MEMBERSHIP IDENTIFIERS", styles["RegistrationSectionHeading"]))
         story.append(Table(identifier_rows, colWidths=[59 * mm, 115 * mm]))
 
     sections = [
@@ -382,14 +327,17 @@ def _build_membership_registration_pdf(
                     }
                 ]
 
-        story.append(Paragraph(escape(heading), styles["SectionHeading"]))
+        story.append(Paragraph(escape(heading), styles["RegistrationSectionHeading"]))
         rows = []
         for label, field_name in fields:
             if field_name is None:
                 if label == "Deanery":
                     value = (
                         application.parish.deanery.name
-                        if application.parish_id else "Not provided"
+                        if application.parish_id
+                        else application.deanery.name
+                        if application.deanery_id
+                        else "Not provided"
                     )
                 elif label == "Parish":
                     value = application.parish.name if application.parish_id else "Not provided"
@@ -418,20 +366,20 @@ def _build_membership_registration_pdf(
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 4),
             ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
         ]))
         story.append(table)
 
     story.extend([
-        Spacer(1, 8),
+        Spacer(1, 4),
         Paragraph(
             "IMPORTANT: This document confirms receipt of an application only. "
             "It is not proof of membership, identity verification, or approval. "
             "The application remains subject to the Diocese's review process.",
             styles["Notice"],
         ),
-        Spacer(1, 8),
+        Spacer(1, 4),
     ])
 
     signature_flowable = "Signature not available"
@@ -459,7 +407,6 @@ def _build_membership_registration_pdf(
                 ),
             ],
             ["Applicant's handwritten signature", ""],
-            ["Reviewing officer: ______________________________", "Date: __________________"],
         ],
         colWidths=[120 * mm, 54 * mm],
     )
@@ -470,33 +417,10 @@ def _build_membership_registration_pdf(
     ]))
     story.append(signatures)
 
-    def footer(canvas, doc):
-        canvas.saveState()
-
-        # Military-inspired Nigerian green and gold page-edge accents.
-        canvas.setFillColor(colors.HexColor("#008751"))
-        canvas.rect(3 * mm, 0, 1.5 * mm, A4[1], stroke=0, fill=1)
-        canvas.setFillColor(colors.HexColor("#E6B800"))
-        canvas.rect(5.2 * mm, 0, 1.2 * mm, A4[1], stroke=0, fill=1)
-
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(colors.HexColor("#666666"))
-        canvas.drawString(
-            16 * mm,
-            9 * mm,
-            f"M.O.D. Nsukka Diocese | Application MOD-APP-{application.pk:06d}",
-        )
-        canvas.drawRightString(
-            A4[0] - 16 * mm,
-            9 * mm,
-            f"Page {doc.page}",
-        )
-        canvas.restoreState()
-
     if include_approvals:
         from apps.verification.models import MembershipReview
 
-        story.append(Paragraph("APPROVAL HISTORY", styles["SectionHeading"]))
+        story.append(Paragraph("APPROVAL HISTORY", styles["RegistrationSectionHeading"]))
         approval_rows = [[
             _paragraph("Review level", styles["CellLabel"]),
             _paragraph("Decision", styles["CellLabel"]),
@@ -535,22 +459,29 @@ def _build_membership_registration_pdf(
         ]))
         story.append(approvals_table)
 
-    document.build(story, onFirstPage=footer, onLaterPages=footer)
+    story.append(Paragraph("PHYSICAL ENDORSEMENTS", styles["RegistrationSectionHeading"]))
+    story.extend([
+        _endorsement_section("SECTION A: PARISH CHAPLAIN'S ENDORSEMENT", styles),
+        _endorsement_section("SECTION B: DEANERY CHAIRMAN'S ENDORSEMENT", styles),
+        _endorsement_section("SECTION C: DIOCESAN ENDORSEMENT", styles),
+    ])
 
-    response = HttpResponse(
+    page_design = mod_pdf_page_callback(reference)
+    document.build(story, onFirstPage=page_design, onLaterPages=page_design)
+
+    return mod_pdf_response(
         buffer.getvalue(),
-        content_type="application/pdf",
+        filename=f"MOD-Membership-Application-{reference.replace('/', '-')}.pdf",
+        attachment=attachment,
     )
-    disposition = "attachment" if attachment else "inline"
-    response["Content-Disposition"] = (
-        f'{disposition}; filename="MOD-Membership-Application-{application.pk}.pdf"'
-    )
-    response["Cache-Control"] = "private, no-store"
-    response["X-Content-Type-Options"] = "nosniff"
-    return response
 
 
 def membership_registration_pdf(request, application_id):
+    application = _get_session_registration_application(request, application_id)
+    return _build_membership_registration_pdf(application)
+
+
+def _get_session_registration_application(request, application_id):
     allowed_ids = request.session.get("registration_application_ids", [])
     if application_id not in allowed_ids:
         raise Http404("Registration document not found.")
@@ -560,7 +491,9 @@ def membership_registration_pdf(request, application_id):
             "parish",
             "station",
             "parish__deanery",
+            "deanery",
+            "deanery__diocese",
         ),
         pk=application_id,
     )
-    return _build_membership_registration_pdf(application)
+    return application

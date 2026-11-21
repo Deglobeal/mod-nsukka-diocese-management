@@ -32,6 +32,17 @@ class MembershipApplication(models.Model):
         REGULAR_MEMBER = "regular_member", "Regular Member"
         PATRON = "patron", "Patron"
         CHAPLAIN = "chaplain", "Chaplain"
+        SISTER_ADVISORS_ANIMATORS = (
+            "sister_advisors_animators",
+            "Sister Advisors/Animators",
+        )
+        RELIGIOUS = "religious", "Religious"
+
+    CATEGORIES_WITH_OPTIONAL_ORGANIZATION = frozenset({
+        Category.CHAPLAIN,
+        Category.SISTER_ADVISORS_ANIMATORS,
+        Category.RELIGIOUS,
+    })
 
     class Stage(models.TextChoices):
         PARISH_REVIEW = "parish_review", "Parish Review"
@@ -63,6 +74,14 @@ class MembershipApplication(models.Model):
         choices=Category.choices,
         blank=True,
         default="",
+    )
+    public_reference = models.CharField(
+        max_length=32,
+        unique=True,
+        blank=True,
+        default="",
+        editable=False,
+        help_text="Stable public application reference; distinct from a Membership ID.",
     )
 
     # Additional applicant information. Optional at this stage so
@@ -205,6 +224,13 @@ class MembershipApplication(models.Model):
         null=True,
         blank=True,
     )
+    deanery = models.ForeignKey(
+        "organizations.Deanery",
+        on_delete=models.PROTECT,
+        related_name="membership_applications_without_parish",
+        null=True,
+        blank=True,
+    )
     station = models.ForeignKey(
         "organizations.Station",
         on_delete=models.PROTECT,
@@ -232,6 +258,12 @@ class MembershipApplication(models.Model):
         ordering = ["-submitted_at"]
         verbose_name = "Membership Application"
         verbose_name_plural = "Membership Applications"
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(public_reference=""),
+                name="membership_application_reference_nonempty",
+            ),
+        ]
 
     def _validate_contact_details(self):
         errors = contact_validation_errors(self.__dict__)
@@ -250,11 +282,45 @@ class MembershipApplication(models.Model):
     def clean(self):
         super().clean()
         self._validate_contact_details()
+        self._validate_category_sex()
+        if self.parish_id:
+            if self.deanery_id and self.parish.deanery_id != self.deanery_id:
+                raise ValidationError({
+                    "deanery": "The selected Deanery must contain this Parish."
+                })
+            self.deanery_id = self.parish.deanery_id
+        if self.station_id and self.parish_id is None:
+            raise ValidationError({
+                "station": "A Station can only be selected with a Parish."
+            })
+
+    def _validate_category_sex(self):
+        if (
+            self.category == self.Category.SISTER_ADVISORS_ANIMATORS
+            and self.sex != "Female"
+        ):
+            raise ValidationError({
+                "sex": (
+                    "Sister Advisors/Animators must be female. "
+                    "Select Female to continue."
+                )
+            })
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")
         if update_fields is None or self.CONTACT_FIELDS.intersection(update_fields):
             self._validate_contact_details()
+        if (
+            self._state.adding
+            or update_fields is None
+            or {"category", "sex"}.intersection(update_fields)
+        ):
+            self._validate_category_sex()
+        if self._state.adding and not self.public_reference:
+            from apps.verification.services.application_reference import (
+                save_application_with_public_reference,
+            )
+            return save_application_with_public_reference(self, args, kwargs)
         return super().save(*args, **kwargs)
 
     @property

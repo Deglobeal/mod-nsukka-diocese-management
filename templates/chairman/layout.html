@@ -55,6 +55,9 @@
             <a class="chairman-nav__link{% if active_section == 'parishes' %} is-active{% endif %}"
                href="{% url 'chairman:parishes' %}"
                {% if active_section == "parishes" %}aria-current="page"{% endif %}>Parishes</a>
+            <a class="chairman-nav__link{% if active_path == 'parish-chaplains' %} is-active{% endif %}"
+               href="{% url 'chairman:parish-chaplains' %}"
+               {% if active_path == "parish-chaplains" %}aria-current="page"{% endif %}>Parish Chaplains</a>
             <a class="chairman-nav__link{% if active_section == 'stations' %} is-active{% endif %}"
                href="{% url 'chairman:stations' %}"
                {% if active_section == "stations" %}aria-current="page"{% endif %}>Stations</a>

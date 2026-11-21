@@ -6,6 +6,8 @@ from django.db import IntegrityError, transaction
 
 from apps.accounts.models import OfficeAssignment
 from apps.members.models import Member, MemberAccount
+from apps.organizations.models import Diocese
+from apps.verification.models import MembershipApplication
 
 
 def link_member_account(*, actor, user_id, member_id):
@@ -25,7 +27,7 @@ def link_member_account(*, actor, user_id, member_id):
             target_user = User.objects.select_for_update().get(pk=user_id)
             member = (
                 Member.objects.select_for_update()
-                .select_related("parish__deanery__diocese")
+                .select_related("parish__deanery__diocese", "deanery__diocese")
                 .get(pk=member_id)
             )
     except (User.DoesNotExist, Member.DoesNotExist):
@@ -47,33 +49,59 @@ def link_member_account(*, actor, user_id, member_id):
         is_active=True,
     ).select_related("diocese", "deanery", "parish")
 
-    member_parish = member.parish
-    member_deanery = member_parish.deanery
-    member_diocese_id = member_deanery.diocese_id
-
     authorized = False
 
-    for assignment in assignments:
-        if assignment.diocese_id != member_diocese_id:
-            continue
+    if member.parish_id is None:
+        has_approved_unassigned_category = MembershipApplication.objects.filter(
+            member=member,
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=(
+                MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+            ),
+        ).exists()
+        diocese = (
+            member.deanery.diocese
+            if member.deanery_id
+            else Diocese.objects.filter(code="036").first()
+        )
+        if has_approved_unassigned_category and diocese:
+            authorized = assignments.filter(
+                role=OfficeAssignment.Role.DIOCESE_ADMIN,
+                diocese=diocese,
+                deanery__isnull=True,
+                parish__isnull=True,
+            ).exists()
+        if not has_approved_unassigned_category:
+            raise ValidationError(
+                "A Parish assignment is required unless this member was "
+                "approved in an unassigned Diocesan category."
+            )
+    else:
+        member_parish = member.parish
+        member_deanery = member_parish.deanery
+        member_diocese_id = member_deanery.diocese_id
 
-        if assignment.role == OfficeAssignment.Role.DIOCESE_ADMIN:
-            authorized = True
-            break
+        for assignment in assignments:
+            if assignment.diocese_id != member_diocese_id:
+                continue
 
-        if (
-            assignment.role == OfficeAssignment.Role.DEANERY_ADMIN
-            and assignment.deanery_id == member_deanery.pk
-        ):
-            authorized = True
-            break
+            if assignment.role == OfficeAssignment.Role.DIOCESE_ADMIN:
+                authorized = True
+                break
 
-        if (
-            assignment.role == OfficeAssignment.Role.PARISH_ADMIN
-            and assignment.parish_id == member_parish.pk
-        ):
-            authorized = True
-            break
+            if (
+                assignment.role == OfficeAssignment.Role.DEANERY_ADMIN
+                and assignment.deanery_id == member_deanery.pk
+            ):
+                authorized = True
+                break
+
+            if (
+                assignment.role == OfficeAssignment.Role.PARISH_ADMIN
+                and assignment.parish_id == member_parish.pk
+            ):
+                authorized = True
+                break
 
     if not authorized:
         raise PermissionDenied(

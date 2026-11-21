@@ -19,6 +19,15 @@ class Member(models.Model):
         "organizations.Parish",
         on_delete=models.PROTECT,
         related_name="members",
+        null=True,
+        blank=True,
+    )
+    deanery = models.ForeignKey(
+        "organizations.Deanery",
+        on_delete=models.PROTECT,
+        related_name="members_without_parish",
+        null=True,
+        blank=True,
     )
     station = models.ForeignKey(
         "organizations.Station",
@@ -55,6 +64,17 @@ class Member(models.Model):
                         )
                     }
                 )
+        elif self.station_id and self.parish_id is None:
+            raise ValidationError({
+                "station": "A member cannot have a Station without a Parish."
+            })
+
+        if self.parish_id:
+            if self.deanery_id and self.parish.deanery_id != self.deanery_id:
+                raise ValidationError({
+                    "deanery": "The selected Deanery must contain this Parish."
+                })
+            self.deanery_id = self.parish.deanery_id
 
     @property
     def full_name(self):

@@ -46,6 +46,12 @@
                             {{ application.parish.name }}
                         {% elif application.member and application.member.parish %}
                             {{ application.member.parish.name }}
+                        {% elif application.deanery %}
+                            {{ application.deanery.name }} (no Parish)
+                        {% elif application.member and application.member.deanery %}
+                            {{ application.member.deanery.name }} (no Parish)
+                        {% elif application.category == 'chaplain' or application.category == 'sister_advisors_animators' or application.category == 'religious' %}
+                            Diocese-level (no Parish or Deanery assigned)
                         {% else %}
                             Not assigned
                         {% endif %}

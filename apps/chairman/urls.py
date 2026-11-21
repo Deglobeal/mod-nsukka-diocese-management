@@ -15,6 +15,7 @@ from apps.chairman.views.command_dashboard_view import (
     station_detail,
     station_directory,
     manage_ranks,
+    manage_parish_chaplain_appointments,
 )
 from apps.verification.views.membership_application_detail_view import (
     membership_application_detail,
@@ -25,6 +26,7 @@ app_name = "chairman"
 urlpatterns = [
     path("", command_dashboard, name="dashboard"),
     path("ranks/", manage_ranks, name="manage-ranks"),
+    path("parish-chaplains/", manage_parish_chaplain_appointments, name="parish-chaplains"),
     path(
         "applications/<int:application_id>/",
         membership_application_detail,
