@@ -168,6 +168,23 @@ document.addEventListener("DOMContentLoaded", function () {
         "id_emergency_contact_2_name"
     ];
 
+    const categoryField = document.getElementById("id_category");
+    const sexField = document.getElementById("id_sex");
+    const sisterAdvisorRequirement = document.getElementById(
+        "sister-advisor-sex-requirement"
+    );
+    const optionalOrganizationHelp = document.getElementById(
+        "optional-organization-fields-help"
+    );
+    const sisterAdvisorCategory = "sister_advisors_animators";
+    const optionalOrganizationCategories = new Set([
+        "chaplain",
+        sisterAdvisorCategory,
+        "religious"
+    ]);
+    const sisterAdvisorSexMessage =
+        "Sister Advisors/Animators must be female. Select Female in the Sex field in Section 1 to continue.";
+
     function validateCustomField(field) {
         if (!field) return true;
 
@@ -195,8 +212,70 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        if (
+            categoryField &&
+            sexField &&
+            categoryField.value === sisterAdvisorCategory &&
+            sexField.value !== "Female" &&
+            (field === categoryField || field === sexField)
+        ) {
+            message = sisterAdvisorSexMessage;
+        }
+
         field.setCustomValidity(message);
         return !message;
+    }
+
+    function updateSisterAdvisorSexRequirement() {
+        const applies = Boolean(
+            categoryField &&
+            categoryField.value === sisterAdvisorCategory
+        );
+        if (sexField) sexField.required = applies;
+        if (sisterAdvisorRequirement) {
+            sisterAdvisorRequirement.hidden = !applies;
+        }
+        if (categoryField) validateCustomField(categoryField);
+        if (sexField) validateCustomField(sexField);
+    }
+
+    if (categoryField && sexField) {
+        categoryField.addEventListener("change", updateSisterAdvisorSexRequirement);
+        sexField.addEventListener("change", updateSisterAdvisorSexRequirement);
+        updateSisterAdvisorSexRequirement();
+    }
+
+    function updateOrganizationFieldRequirements() {
+        const optional = Boolean(
+            categoryField &&
+            optionalOrganizationCategories.has(categoryField.value)
+        );
+        if (deanery) deanery.required = !optional;
+        if (parish) parish.required = !optional;
+        if (optionalOrganizationHelp) {
+            optionalOrganizationHelp.hidden = !optional;
+        }
+        if (deanery) validateCustomField(deanery);
+    }
+
+    if (categoryField) {
+        categoryField.addEventListener(
+            "change",
+            updateOrganizationFieldRequirements
+        );
+        if (deanery) {
+            deanery.addEventListener(
+                "change",
+                updateOrganizationFieldRequirements
+            );
+        }
+        if (parish) {
+            parish.addEventListener(
+                "change",
+                updateOrganizationFieldRequirements
+            );
+        }
+        updateOrganizationFieldRequirements();
     }
 
     function validateSection(section, focusInvalid = true) {

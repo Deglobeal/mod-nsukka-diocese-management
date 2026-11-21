@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import MembershipCard
 from apps.members.models import Member
+from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
 
 
@@ -30,7 +31,27 @@ def _authorize_issuer(*, issuer, member):
     if issuer is None or not getattr(issuer, "is_authenticated", False):
         raise PermissionDenied("An authenticated issuer is required.")
 
-    diocese_id = member.parish.deanery.diocese_id
+    if member.parish_id is None:
+        has_approved_unassigned_category = MembershipApplication.objects.filter(
+            member=member,
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=(
+                MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+            ),
+        ).exists()
+        diocese = (
+            member.deanery.diocese
+            if member.deanery_id
+            else Diocese.objects.filter(code="036").first()
+        )
+        if not has_approved_unassigned_category or diocese is None:
+            raise ValidationError(
+                "A Parish assignment is required unless the member has an "
+                "approved unassigned Diocesan category."
+            )
+        diocese_id = diocese.pk
+    else:
+        diocese_id = member.parish.deanery.diocese_id
 
     authorized = OfficeAssignment.objects.filter(
         user=issuer,
@@ -66,7 +87,7 @@ def issue_membership_card(*, member_id, issuer, official_membership_id):
     try:
         member = (
             Member.objects.select_for_update()
-            .select_related("parish__deanery__diocese")
+            .select_related("parish__deanery__diocese", "deanery__diocese")
             .get(pk=member_id)
         )
     except Member.DoesNotExist:

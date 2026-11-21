@@ -36,6 +36,7 @@ class MembershipVerificationAPIView(APIView):
             MembershipCard.objects
             .select_related(
                 "member__parish__deanery__diocese",
+                "member__deanery__diocese",
                 "member__station",
             )
             .filter(
@@ -49,6 +50,7 @@ class MembershipVerificationAPIView(APIView):
                 MembershipCard.objects
                 .select_related(
                     "member__parish__deanery__diocese",
+                    "member__deanery__diocese",
                     "member__station",
                 )
                 .filter(uniform_id=identifier.upper())
@@ -69,7 +71,14 @@ class MembershipVerificationAPIView(APIView):
                 "official_membership_id": card.official_membership_id,
                 "uniform_id": card.uniform_id,
                 "name": member.full_name,
-                "parish": member.parish.name,
+                "parish": member.parish.name if member.parish_id else None,
+                "deanery": (
+                    member.parish.deanery.name
+                    if member.parish_id
+                    else member.deanery.name
+                    if member.deanery_id
+                    else None
+                ),
                 "station": (
                     member.station.name if member.station_id else None
                 ),

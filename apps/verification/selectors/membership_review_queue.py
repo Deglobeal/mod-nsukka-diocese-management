@@ -1,6 +1,7 @@
 from django.db.models import Q
 
 from apps.accounts.models import OfficeAssignment
+from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
 
 
@@ -55,13 +56,32 @@ def get_membership_review_queue(*, user):
 
         elif assignment.role == OfficeAssignment.Role.DIOCESE_ADMIN:
             if assignment.diocese_id:
+                unassigned_category_applications = Q(pk__in=[])
+                if Diocese.objects.filter(
+                    pk=assignment.diocese_id,
+                    code="036",
+                ).exists():
+                    unassigned_category_applications = Q(
+                        parish__isnull=True,
+                        deanery__isnull=True,
+                        member__parish__isnull=True,
+                        member__deanery__isnull=True,
+                        category__in=(
+                            MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+                        ),
+                    )
                 scoped_querysets.append(
                     queryset.filter(
-                        Q(stage=MembershipApplication.Stage.DIOCESE_REVIEW),
-                        Q(parish__deanery__diocese_id=assignment.diocese_id)
-                        | Q(
-                            parish__isnull=True,
-                            member__parish__deanery__diocese_id=assignment.diocese_id,
+                        Q(stage=MembershipApplication.Stage.DIOCESE_REVIEW)
+                        & (
+                            Q(parish__deanery__diocese_id=assignment.diocese_id)
+                            | Q(deanery__diocese_id=assignment.diocese_id)
+                            | Q(
+                                parish__isnull=True,
+                                member__parish__deanery__diocese_id=assignment.diocese_id,
+                            )
+                            | Q(member__parish__isnull=True, member__deanery__diocese_id=assignment.diocese_id)
+                            | unassigned_category_applications
                         ),
                     )
                 )
@@ -82,6 +102,8 @@ def get_membership_review_queue(*, user):
             "member__parish",
             "member__parish__deanery",
             "member__parish__deanery__diocese",
+            "deanery__diocese",
+            "member__deanery__diocese",
         )
         .distinct()
         .order_by("-submitted_at")

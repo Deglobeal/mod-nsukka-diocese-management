@@ -1,4 +1,4 @@
-from django.db.models import Exists, OuterRef, Subquery
+from django.db.models import Exists, OuterRef, Q, Subquery
 
 from apps.identity_cards.models import MembershipCard
 from apps.members.models import Member
@@ -17,12 +17,22 @@ def eligible_members_for_card_issuance(*, diocese):
         member_id=OuterRef("pk")
     )
 
+    member_scope = Q(parish__deanery__diocese=diocese) | Q(
+        deanery__diocese=diocese
+    )
+    if diocese.code == "036":
+        unassigned_category_members = MembershipApplication.objects.filter(
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION,
+            member__parish__isnull=True,
+            member__deanery__isnull=True,
+            member_id__isnull=False,
+        ).values("member_id")
+        member_scope |= Q(pk__in=unassigned_category_members)
+
     return (
         Member.objects
-        .filter(
-            status=Member.Status.ACTIVE,
-            parish__deanery__diocese=diocese,
-        )
+        .filter(status=Member.Status.ACTIVE)
         .annotate(
             latest_application_stage=Subquery(
                 latest_application.values("stage")[:1]
@@ -37,6 +47,8 @@ def eligible_members_for_card_issuance(*, diocese):
             latest_application_final_decision_at__isnull=False,
             has_membership_card=False,
         )
-        .select_related("parish", "parish__deanery")
+        .filter(member_scope)
+        .distinct()
+        .select_related("parish", "parish__deanery", "deanery")
         .order_by("last_name", "first_name", "pk")
     )

@@ -29,9 +29,11 @@ def get_authorized_evidence_application(*, application_id, user):
             "parish",
             "parish__deanery",
             "parish__deanery__diocese",
+            "deanery__diocese",
             "member__parish",
             "member__parish__deanery",
             "member__parish__deanery__diocese",
+            "member__deanery__diocese",
         )
         .filter(pk=application_id)
         .first()

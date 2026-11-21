@@ -350,6 +350,8 @@ class MembershipRegistrationForm(forms.ModelForm):
             "matron": "Patron / Matron",
             "chaplain": "Chaplain",
             "chapline": "Chaplain",
+            "sister_advisors_animators": "Sister Advisors/Animators",
+            "religious": "Religious",
         }
         self.fields["category"].choices = [
             (value, category_labels.get(str(value).strip().lower(), label))
@@ -381,8 +383,14 @@ class MembershipRegistrationForm(forms.ModelForm):
         selected_deanery = None
         if self.is_bound:
             selected_deanery = self.data.get("deanery")
-        elif self.instance.pk and self.instance.parish_id:
-            selected_deanery = self.instance.parish.deanery_id
+        elif self.instance.pk:
+            selected_deanery = (
+                self.instance.deanery_id
+                or (
+                    self.instance.parish.deanery_id
+                    if self.instance.parish_id else None
+                )
+            )
 
         if selected_deanery:
             parishes = parishes.filter(deanery_id=selected_deanery)
@@ -417,12 +425,17 @@ class MembershipRegistrationForm(forms.ModelForm):
             "Stored privately."
         )
 
-        self.fields["sex"].widget = forms.Select(
+        self.fields["sex"] = forms.ChoiceField(
+            label="Sex",
             choices=[
                 ("", "Select sex"),
                 ("Male", "Male"),
                 ("Female", "Female"),
-            ]
+            ],
+            required=False,
+        )
+        self.fields["sex"].help_text = (
+            "Applicants registering as Sister Advisors/Animators must select Female."
         )
 
         optional_fields = {
@@ -479,6 +492,17 @@ class MembershipRegistrationForm(forms.ModelForm):
             "emergency_contact_2_phone",
         ):
             self.fields[name].required = True
+
+        selected_category = (
+            self.data.get("category", "")
+            if self.is_bound
+            else self.initial.get("category") or self.instance.category
+        )
+        organization_is_optional = selected_category in (
+            MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+        )
+        self.fields["deanery"].required = not organization_is_optional
+        self.fields["parish"].required = not organization_is_optional
 
         self.fields["email"].required = False
 
@@ -618,6 +642,21 @@ class MembershipRegistrationForm(forms.ModelForm):
         deanery = cleaned_data.get("deanery")
         parish = cleaned_data.get("parish")
         station = cleaned_data.get("station")
+        organization_is_optional = cleaned_data.get("category") in (
+            MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+        )
+
+        if parish and not deanery:
+            # Parish affiliation implies its Deanery when the applicant leaves
+            # the higher-level selector blank.
+            cleaned_data["deanery"] = parish.deanery
+            deanery = parish.deanery
+
+        if organization_is_optional and station and not parish:
+            self.add_error(
+                "station",
+                "A station can only be selected when a Parish is selected.",
+            )
         admission_date = cleaned_data.get("admission_date")
         admission_year = cleaned_data.get("admission_year")
         date_of_birth = cleaned_data.get("date_of_birth")

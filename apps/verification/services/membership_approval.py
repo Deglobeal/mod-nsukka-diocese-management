@@ -36,12 +36,20 @@ def _record_review_audit_event(*, application, reviewer, review_level, decision)
         parish = application.member.parish
 
     if parish is None:
-        raise ValidationError(
-            "Cannot record the review audit event without an assigned parish."
-        )
-
-    deanery = parish.deanery
-    diocese = deanery.diocese
+        if (
+            application.category
+            not in MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+        ):
+            raise ValidationError(
+                "A Parish is required to record this review audit event."
+            )
+        deanery = application.deanery
+        if deanery is None and application.member_id:
+            deanery = application.member.deanery
+        diocese = deanery.diocese if deanery else Diocese.objects.get(code="036")
+    else:
+        deanery = parish.deanery
+        diocese = deanery.diocese
 
     actor_name = reviewer.get_full_name().strip() or reviewer.get_username()
 
@@ -90,7 +98,10 @@ def _find_possible_duplicate_member(application):
     applicant_phone = _normalized_phone(application.phone_number)
 
     candidates = (
-        Member.objects.filter(parish_id=application.parish_id)
+        Member.objects.filter(
+            parish_id=application.parish_id,
+            deanery_id=application.deanery_id,
+        )
         .prefetch_related("membership_applications")
         .order_by("pk")
     )
@@ -249,8 +260,17 @@ def record_membership_review(
     if application.stage == MembershipApplication.Stage.APPROVED:
         if application.parish is None and application.member_id:
             application.parish = application.member.parish
+        if application.deanery is None:
+            if application.parish_id:
+                application.deanery = application.parish.deanery
+            elif application.member_id:
+                application.deanery = application.member.deanery
 
-        if application.parish is None:
+        if (
+            application.parish is None
+            and application.category
+            not in MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+        ):
             raise ValidationError(
                 "Cannot approve an application without an assigned parish."
             )
@@ -269,7 +289,8 @@ def record_membership_review(
         if application.member_id:
             member = application.member
             member.status = Member.Status.ACTIVE
-            member.save(update_fields=["status", "updated_at"])
+            member.deanery = application.deanery
+            member.save(update_fields=["status", "deanery", "updated_at"])
         else:
             # Serialize all first-member creation against bootstrap redemption
             # and against other simultaneous approvals.
@@ -308,6 +329,7 @@ def record_membership_review(
                 middle_name=application.middle_name,
                 last_name=application.last_name,
                 parish=application.parish,
+                deanery=application.deanery,
                 station=application.station,
                 status=Member.Status.ACTIVE,
             )
@@ -327,6 +349,7 @@ def record_membership_review(
             update_fields=[
                 "member",
                 "parish",
+                "deanery",
                 "stage",
                 "final_decision_at",
                 "final_decision_reason",

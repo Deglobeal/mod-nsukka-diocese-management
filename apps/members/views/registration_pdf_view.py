@@ -334,7 +334,10 @@ def _build_membership_registration_pdf(
                 if label == "Deanery":
                     value = (
                         application.parish.deanery.name
-                        if application.parish_id else "Not provided"
+                        if application.parish_id
+                        else application.deanery.name
+                        if application.deanery_id
+                        else "Not provided"
                     )
                 elif label == "Parish":
                     value = application.parish.name if application.parish_id else "Not provided"
@@ -488,6 +491,8 @@ def _get_session_registration_application(request, application_id):
             "parish",
             "station",
             "parish__deanery",
+            "deanery",
+            "deanery__diocese",
         ),
         pk=application_id,
     )

@@ -15,6 +15,8 @@ def _reference_candidate(application):
     diocese_code = (
         application.parish.deanery.diocese.code
         if application.parish_id
+        else application.deanery.diocese.code
+        if application.deanery_id
         else ""
     )
     if not diocese_code:

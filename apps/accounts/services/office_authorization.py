@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied
 
 from apps.accounts.models import OfficeAssignment
+from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
 
 
@@ -64,9 +65,37 @@ def authorize_membership_reviewer(*, user, application, review_level):
         parish = application.member.parish
 
     if parish is None:
-        raise PermissionDenied(
-            "This application has no parish assigned for review."
+        if (
+            application.stage != MembershipApplication.Stage.DIOCESE_REVIEW
+            or application.category
+            not in MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+            or review_level != "diocese"
+        ):
+            raise PermissionDenied(
+                "This application has no Parish for local review."
+            )
+        deanery = application.deanery
+        if deanery is None and application.member_id:
+            deanery = application.member.deanery
+        diocese = (
+            deanery.diocese
+            if deanery
+            else Diocese.objects.filter(code="036").first()
         )
+        if diocese is None:
+            raise PermissionDenied(
+                "The Nsukka Diocese is not available for this review."
+            )
+        if not OfficeAssignment.objects.filter(
+            user=user,
+            role=OfficeAssignment.Role.DIOCESE_ADMIN,
+            diocese=diocese,
+            is_active=True,
+        ).exists():
+            raise PermissionDenied(
+                "An active Diocesan Chairman assignment is required."
+            )
+        return True
 
     assignments = OfficeAssignment.objects.filter(
         user=user,

@@ -19,6 +19,7 @@ from apps.members.forms.registration_form import (
     MembershipRegistrationForm,
 )
 from apps.members.models import (
+    ApplicationDocumentAccessToken,
     Member,
     MemberProfile,
     PassportPhotoPreviewToken,
@@ -31,7 +32,14 @@ from apps.members.services.first_member_registration import (
     revoke_registration_id,
 )
 from apps.members.models import FirstMemberRegistrationToken
-from apps.notifications.models import SMSNotification, SponsorVerification
+from apps.notifications.models import (
+    SMSNotification,
+    SponsorVerification,
+    WhatsAppNotification,
+)
+from apps.notifications.services.whatsapp_consent import WHATSAPP_CONSENT_VERSION
+from apps.members.pdf_design import application_reference
+from apps.members.services.application_document_access import hash_document_token
 from apps.organizations.models import Diocese, Deanery, Parish, Station
 from apps.verification.models import MembershipApplication
 from apps.members.views.registration_pdf_view import (
@@ -778,6 +786,57 @@ class MembershipRegistrationTests(TestCase):
             ).count(),
             1,
         )
+        applicant_sms = SMSNotification.objects.get(
+            idempotency_key=f"registration:{application.pk}:sms"
+        )
+        access = ApplicationDocumentAccessToken.objects.get(
+            application=application
+        )
+        self.assertIn(application_reference(application), applicant_sms.message)
+        self.assertIn("Status: UNDER REVIEW.", applicant_sms.message)
+        token_match = re.search(
+            r"/members/register/documents/([A-Za-z0-9_-]{43})/",
+            applicant_sms.message,
+        )
+        self.assertIsNotNone(token_match)
+        self.assertEqual(access.token_hash, hash_document_token(token_match.group(1)))
+        self.assertEqual(applicant_sms.status, SMSNotification.Status.QUEUED)
+        self.assertFalse(WhatsAppNotification.objects.exists())
+
+    def test_successful_registration_queues_whatsapp_only_with_saved_applicant_consent(
+        self,
+    ):
+        consent_member = Member.objects.create(
+            first_name="Ada",
+            last_name="Okafor",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MemberProfile.objects.create(
+            member=consent_member,
+            email="ada@example.com",
+            phone_number="08012345678",
+            whatsapp_opted_in_at=timezone.now(),
+            whatsapp_consent_phone="+2348012345678",
+            whatsapp_consent_version=WHATSAPP_CONSENT_VERSION,
+        )
+        response = self.client.post(
+            reverse("members:register"),
+            self.valid_data(station="", sponsor_additional_phone="08011112222"),
+        )
+        self.assertEqual(response.status_code, 302)
+        application = MembershipApplication.objects.get(email="ada@example.com")
+        sms = SMSNotification.objects.get(
+            idempotency_key=f"registration:{application.pk}:sms"
+        )
+        whatsapp = WhatsAppNotification.objects.get(
+            idempotency_key=f"registration:{application.pk}:whatsapp"
+        )
+        self.assertIn(application_reference(application), whatsapp.message)
+        self.assertIn("Application Status: UNDER REVIEW.", whatsapp.message)
+        sms_url = re.search(r"https?://\S+", sms.message).group(0)
+        whatsapp_url = re.search(r"https?://\S+", whatsapp.message).group(0)
+        self.assertEqual(sms_url, whatsapp_url)
 
     def test_unexpected_save_failure_is_logged_with_safe_reference(self):
         data = self.valid_data()

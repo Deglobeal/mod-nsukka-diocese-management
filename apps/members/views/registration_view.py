@@ -43,6 +43,9 @@ from apps.members.services.registration_id_verification import (
 from apps.notifications.services.sponsor_verification import (
     create_sponsor_verification_and_sms,
 )
+from apps.notifications.services.registration_notifications import (
+    queue_registration_notifications,
+)
 from apps.verification.models import MembershipApplication
 
 
@@ -354,10 +357,16 @@ def membership_registration(request):
             confirmation
             and confirmation.get("kind") == "ordinary_sponsor"
             and form.cleaned_data.get("category")
-            in (MembershipApplication.Category.REGULAR_MEMBER, MembershipApplication.Category.PATRON)
+            in {
+                MembershipApplication.Category.REGULAR_MEMBER,
+                MembershipApplication.Category.PATRON,
+                MembershipApplication.Category.SISTER_ADVISORS_ANIMATORS,
+                MembershipApplication.Category.RELIGIOUS,
+            }
         ):
+            parish = form.cleaned_data.get("parish")
             from apps.identity_cards.services.parish_chaplain import get_verified_parish_chaplain
-            if not get_verified_parish_chaplain(form.cleaned_data["parish"]):
+            if parish and not get_verified_parish_chaplain(parish):
                 form.add_error(
                     "parish",
                     "This Parish does not yet have a verified, appointed Parish Chaplain. "
@@ -370,7 +379,15 @@ def membership_registration(request):
             and (sponsor_contact or confirmation.get("kind") == "first_member_bootstrap")
         ):
             application = form.save(commit=False)
-            application.stage = MembershipApplication.Stage.PARISH_REVIEW
+            application.stage = (
+                MembershipApplication.Stage.DIOCESE_REVIEW
+                if (
+                    application.category
+                    in MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+                    and application.parish_id is None
+                )
+                else MembershipApplication.Stage.PARISH_REVIEW
+            )
             application.member = None
             if confirmation["kind"] == "first_member_bootstrap":
                 # The one-time secret belongs only in the verification request;
@@ -431,6 +448,11 @@ def membership_registration(request):
                             sponsor_contact=sponsor_contact,
                             request=request,
                         )
+                    registration_stage = "applicant_registration_notifications"
+                    queue_registration_notifications(
+                        application=application,
+                        request=request,
+                    )
             except PassportPreviewTokenError as error:
                 for image_field in (
                     application.signature_image,

@@ -150,7 +150,13 @@ def _build_letter_pdf(application, *, kind):
     )
     styles = mod_pdf_styles()
     story = mod_letterhead(styles, title=title, header_lines=header_lines)
-    deanery = application.parish.deanery.name if application.parish_id else ""
+    deanery = (
+        application.parish.deanery.name
+        if application.parish_id
+        else application.deanery.name
+        if application.deanery_id
+        else ""
+    )
     chaplain = get_verified_parish_chaplain(application.parish) if application.parish_id and not is_society else None
     story.extend([_metadata_table(application, styles, society_letter=is_society), Spacer(1, 3 * mm)])
     story.extend([

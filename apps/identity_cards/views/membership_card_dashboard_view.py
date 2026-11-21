@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from apps.accounts.models import OfficeAssignment
@@ -8,6 +9,7 @@ from apps.identity_cards.forms.membership_card_issuance_form import (
     MembershipCardIssuanceForm,
 )
 from apps.identity_cards.models import MembershipCard
+from apps.verification.models import MembershipApplication
 from apps.identity_cards.selectors.membership_card_dashboard import (
     eligible_members_for_card_issuance,
 )
@@ -80,14 +82,27 @@ def membership_card_dashboard(request):
                 )
                 return redirect("identity_cards_web:dashboard")
 
+    card_scope = Q(member__parish__deanery__diocese=diocese) | Q(
+        member__deanery__diocese=diocese
+    )
+    if diocese.code == "036":
+        unassigned_member_ids = MembershipApplication.objects.filter(
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION,
+            member__parish__isnull=True,
+            member__deanery__isnull=True,
+            member_id__isnull=False,
+        ).values("member_id")
+        card_scope |= Q(member_id__in=unassigned_member_ids)
+
     cards = (
-        MembershipCard.objects.filter(
-            member__parish__deanery__diocese=diocese
-        )
+        MembershipCard.objects.filter(card_scope)
+        .distinct()
         .select_related(
             "member",
             "member__parish",
             "member__parish__deanery",
+            "member__deanery",
             "issued_by",
         )
         .order_by("-issued_at", "official_membership_id")
