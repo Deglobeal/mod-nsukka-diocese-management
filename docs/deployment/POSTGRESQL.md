@@ -46,8 +46,10 @@ Copy `.env.example` to `.env` and set these PostgreSQL connection values:
 | `TEST_DB_PORT` | PostgreSQL test service port; defaults to `5432` |
 | `TEST_DB_SSLMODE` | SSL mode for the isolated test service |
 
-Production may use `DATABASE_URL` (`postgres://` or `postgresql://`) instead of
-the `DB_*` values. The URL is validated and rejected if it names another engine.
+Production may use `DATABASE_URL_UNPOOLED` or `DATABASE_URL`
+(`postgres://` or `postgresql://`) instead of the `DB_*` values. The unpooled
+URL is preferred when both are present, which suits short-lived serverless
+connections. The URL is validated and rejected if it names another engine.
 Never set production `DATABASE_URL` as a test connection: tests exclusively
 read `TEST_DB_*` values, and their database name is required to have the `test_`
 prefix.
@@ -135,8 +137,8 @@ for serverless deployments unless the provider explicitly supports persistent
 connections.
 
 Web processes, `manage.py` commands, notification outbox workers, and scheduled
-tasks share the same Django database settings. Keep `DJANGO_SETTINGS_MODULE`
-consistent with the environment (`config.settings.development` locally and
-`config.settings.production` in deployment). Test commands are routed to
+tasks share the same Django database settings. Vercel entry points and default
+management commands select `config.settings.production`; local development uses
+`config.settings.development`. Test commands are routed to
 `config.settings.test` automatically unless an explicit `--settings` option is
 provided.

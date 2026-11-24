@@ -31,9 +31,15 @@ def _postgres_settings_from_url(url, *, variable_name):
 
 def postgres_database_config(*, prefix="DB_", url_variable="DATABASE_URL", allow_url=True):
     """Return a PostgreSQL connection or fail with the missing variable names."""
-    url = os.getenv(url_variable, "").strip() if allow_url and url_variable else ""
-    if url:
-        return _postgres_settings_from_url(url, variable_name=url_variable)
+    if allow_url and url_variable:
+        # Vercel Postgres commonly provides the unpooled URL separately. Prefer
+        # it for Django's short-lived serverless connections, while retaining
+        # DATABASE_URL as the standard fallback.
+        url_variables = tuple(dict.fromkeys(("DATABASE_URL_UNPOOLED", url_variable)))
+        for variable_name in url_variables:
+            url = os.getenv(variable_name, "").strip()
+            if url:
+                return _postgres_settings_from_url(url, variable_name=variable_name)
 
     names = ("NAME", "USER", "PASSWORD", "HOST")
     missing = [f"{prefix}{name}" for name in names if f"{prefix}{name}" not in os.environ]

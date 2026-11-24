@@ -22,6 +22,20 @@ class PostgreSQLSettingsTests(SimpleTestCase):
             ):
                 postgres_database_config()
 
+    def test_unpooled_database_url_is_used_when_standard_url_is_absent(self):
+        values = {
+            "DATABASE_URL_UNPOOLED": (
+                "postgresql://app:secret@db.example/mod_nsukka?sslmode=require"
+            ),
+        }
+        with patch.dict(os.environ, values, clear=True):
+            config = postgres_database_config()
+
+        self.assertEqual(config["ENGINE"], "django.db.backends.postgresql")
+        self.assertEqual(config["NAME"], "mod_nsukka")
+        self.assertEqual(config["HOST"], "db.example")
+        self.assertEqual(config["OPTIONS"]["sslmode"], "require")
+
     def test_test_settings_use_dedicated_test_database_values(self):
         values = {
             "DATABASE_URL": "postgresql://production:secret@prod.example/prod",
