@@ -178,7 +178,7 @@ class SuperuserGlobalRegisterAndApprovalTests(TestCase):
         self.assertEqual(application.member.status, Member.Status.ACTIVE)
         self.assertEqual(
             application.member.membership_identity.official_membership_id,
-            "MOD036/GRA001/GRA043/000001",
+            "MOD036/GRA001/GRA043/000100",
         )
         self.assertEqual(len(application.member.membership_identity.uniform_id), 8)
         self.assertEqual(application.reviews.count(), 1)
@@ -186,7 +186,7 @@ class SuperuserGlobalRegisterAndApprovalTests(TestCase):
         self.assertEqual(record.original_stage, MembershipApplication.Stage.DEANERY_REVIEW)
         self.assertEqual(record.reason, "Administrative override after file review.")
         self.assertEqual(record.official_membership_id,
-                         "MOD036/GRA001/GRA043/000001")
+                         "MOD036/GRA001/GRA043/000100")
         self.assertEqual(MemberProfile.objects.get(member=application.member).email,
                          "angela@example.test")
         self.assertTrue(AuditEvent.objects.filter(

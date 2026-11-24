@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from .database import postgres_database_config
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
@@ -107,16 +108,16 @@ TEMPLATES = [{
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+_database_prefix = (
+    "TEST_DB_"
+    if os.getenv("DJANGO_SETTINGS_MODULE") == "config.settings.test"
+    else "DB_"
+)
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "mod_nsukka"),
-        "USER": os.getenv("DB_USER", "mod_app"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
-    }
+    "default": postgres_database_config(
+        prefix=_database_prefix,
+        allow_url=_database_prefix != "TEST_DB_",
+    )
 }
 
 LANGUAGE_CODE = "en-ng"
