@@ -6,7 +6,6 @@ from django.shortcuts import get_object_or_404
 
 from PIL import Image as PillowImage
 from PIL import ImageOps
-from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
@@ -19,6 +18,9 @@ from reportlab.platypus import (
 )
 
 from apps.members.pdf_design import (
+    MOD_BORDER,
+    MOD_GOLD,
+    MOD_IVORY,
     application_reference,
     mod_letterhead,
     mod_pdf_document,
@@ -71,9 +73,9 @@ def _endorsement_section(title, styles):
         rowHeights=[7 * mm, 16 * mm],
     )
     section.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1ECFA")),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#CFC6DF")),
-        ("LINEBELOW", (0, 1), (-1, 1), 0.6, colors.HexColor("#8D82A2")),
+        ("BACKGROUND", (0, 0), (-1, 0), MOD_IVORY),
+        ("GRID", (0, 0), (-1, -1), 0.35, MOD_BORDER),
+        ("LINEBELOW", (0, 1), (-1, 1), 0.6, MOD_GOLD),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 5),
@@ -121,9 +123,10 @@ def _build_membership_registration_pdf(
         buffer,
         title=f"M.O.D. Membership Registration — {reference}",
         subject="Membership registration application",
+        refined_letterhead=True,
     )
 
-    styles = mod_pdf_styles()
+    styles = mod_pdf_styles(refined_letterhead=True)
     styles.add(ParagraphStyle(
         name="RegistrationSectionHeading",
         parent=styles["SectionHeading"],
@@ -132,7 +135,9 @@ def _build_membership_registration_pdf(
         spaceBefore=2,
         spaceAfter=1,
     ))
-    story = mod_letterhead(styles, title="MEMBERSHIP REGISTRATION FORM")
+    story = mod_letterhead(
+        styles, title="MEMBERSHIP REGISTRATION FORM", refined=True
+    )
 
     # The passport photo sits to the left of the application metadata,
     # keeping the reference and submission details on the same header row.
@@ -174,9 +179,9 @@ def _build_membership_registration_pdf(
         colWidths=[25 * mm, 49 * mm, 23 * mm, 42 * mm],
     )
     meta_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F1ECFA")),
-        ("BACKGROUND", (2, 0), (2, -1), colors.HexColor("#F1ECFA")),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#CFC6DF")),
+        ("BACKGROUND", (0, 0), (0, -1), MOD_IVORY),
+        ("BACKGROUND", (2, 0), (2, -1), MOD_IVORY),
+        ("GRID", (0, 0), (-1, -1), 0.35, MOD_BORDER),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
@@ -190,7 +195,7 @@ def _build_membership_registration_pdf(
     )
     header_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOX", (0, 0), (0, 0), 0.5, colors.HexColor("#CFC6DF")),
+        ("BOX", (0, 0), (0, 0), 0.5, MOD_BORDER),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
@@ -361,8 +366,8 @@ def _build_membership_registration_pdf(
 
         table = Table(rows, colWidths=[59 * mm, 115 * mm], repeatRows=0)
         table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#D8D3E1")),
-            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#F8F6FB")),
+            ("GRID", (0, 0), (-1, -1), 0.3, MOD_BORDER),
+            ("BACKGROUND", (0, 0), (0, -1), MOD_IVORY),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 4),
             ("RIGHTPADDING", (0, 0), (-1, -1), 4),
@@ -413,7 +418,7 @@ def _build_membership_registration_pdf(
     signatures.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("LINEABOVE", (0, 0), (-1, -1), 0.35, colors.HexColor("#CFC6DF")),
+        ("LINEABOVE", (0, 0), (-1, -1), 0.35, MOD_BORDER),
     ]))
     story.append(signatures)
 
@@ -452,8 +457,8 @@ def _build_membership_registration_pdf(
             repeatRows=1,
         )
         approvals_table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#D8D3E1")),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F1ECFA")),
+            ("GRID", (0, 0), (-1, -1), 0.3, MOD_BORDER),
+            ("BACKGROUND", (0, 0), (-1, 0), MOD_IVORY),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("FONTSIZE", (0, 0), (-1, -1), 7),
         ]))
@@ -466,7 +471,7 @@ def _build_membership_registration_pdf(
         _endorsement_section("SECTION C: DIOCESAN ENDORSEMENT", styles),
     ])
 
-    page_design = mod_pdf_page_callback(reference)
+    page_design = mod_pdf_page_callback(reference, refined=True)
     document.build(story, onFirstPage=page_design, onLaterPages=page_design)
 
     return mod_pdf_response(

@@ -1,4 +1,5 @@
-M.O.D. NSUKKA DIOCESE — MEMBERSHIP APPLICATION APPROVED
+{% include "notifications/email/_institutional_header.txt" %}
+MEMBERSHIP APPLICATION APPROVED
 
 Dear {{ applicant_name }},
 
@@ -15,5 +16,4 @@ Please follow the instructions provided by the Diocese for accessing your member
 
 We welcome you to M.O.D. Nsukka Diocese.
 
-M.O.D. Nsukka Diocese
-Membership Management System
+{{ institutional.diocese }}

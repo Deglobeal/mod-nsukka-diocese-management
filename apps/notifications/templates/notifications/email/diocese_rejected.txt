@@ -1,4 +1,5 @@
-M.O.D. NSUKKA DIOCESE — MEMBERSHIP APPLICATION DECISION
+{% include "notifications/email/_institutional_header.txt" %}
+MEMBERSHIP APPLICATION DECISION
 
 Dear {{ applicant_name }},
 

@@ -1,4 +1,4 @@
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background-color:#F7F8F5;border:1px solid #E4E9E4;border-left:4px solid {{ email_gold }};">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background-color:{{ institutional.colors.ivory }};border:1px solid {{ institutional.colors.gold }};border-left:4px solid {{ email_gold }};">
   {% if applicant_name %}<tr><td style="padding:9px 14px;color:{{ email_muted }};font-size:13px;width:42%;">Applicant</td><td style="padding:9px 14px;color:{{ email_text }};font-size:13px;font-weight:bold;">{{ applicant_name }}</td></tr>{% endif %}
   {% if application_reference %}<tr><td style="padding:9px 14px;color:{{ email_muted }};font-size:13px;">Application reference</td><td style="padding:9px 14px;color:{{ email_green }};font-size:13px;font-weight:bold;">{{ application_reference }}</td></tr>{% endif %}
   {% if parish_name %}<tr><td style="padding:9px 14px;color:{{ email_muted }};font-size:13px;">Parish</td><td style="padding:9px 14px;color:{{ email_text }};font-size:13px;">{{ parish_name }}</td></tr>{% endif %}

@@ -1,6 +1,4 @@
-M.O.D. NSUKKA DIOCESE
-MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA
-MEMBERSHIP MANAGEMENT SYSTEM
+{% include "notifications/email/_institutional_header.txt" %}
 
 Your Sponsorship Confirmation Is Required
 

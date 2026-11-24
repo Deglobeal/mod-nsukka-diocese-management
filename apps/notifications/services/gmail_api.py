@@ -2,6 +2,7 @@
 
 import base64
 import json
+import mimetypes
 import os
 import stat
 from email.message import EmailMessage
@@ -12,8 +13,14 @@ from httplib2 import HttpLib2Error
 from django.conf import settings
 from django.template.loader import render_to_string
 
+from apps.core.services.institutional_branding import (
+    INSTITUTIONAL_BRANDING,
+    institutional_branding_context,
+)
 
-LOGO_CID = "mod-nsukka-diocese-logo"
+
+LOGO_CID = "mod-logo"
+COAT_CID = "nigeria-coat-of-arms"
 
 
 class GmailSendError(Exception):
@@ -133,20 +140,27 @@ def _load_credentials():
         ) from exc
 
 
-def _logo_bytes():
-    logo = Path(settings.BASE_DIR) / "static" / "images" / "branding" / "mainmodlogo.jpg"
+def _branding_image(asset_key):
+    image = Path(settings.BASE_DIR) / INSTITUTIONAL_BRANDING["assets"][asset_key]
     try:
-        return logo.read_bytes()
+        content = image.read_bytes()
     except OSError as exc:
         raise GmailConfigurationError(
-            "The approved M.O.D. email crest is unavailable."
+            "An institutional email image is unavailable."
         ) from exc
+    content_type, _encoding = mimetypes.guess_type(image.name)
+    if not content_type or not content_type.startswith("image/"):
+        raise GmailConfigurationError(
+            "An institutional email image has an unsupported file type."
+        )
+    return content, content_type, image.name
 
 
 def build_mime_message(*, notification, attachments=()):
     """Render plain/HTML alternatives, add the CID crest and PDF attachments."""
-    context = dict(notification.template_context)
+    context = {**institutional_branding_context(), **notification.template_context}
     context["logo_cid"] = LOGO_CID
+    context["coat_cid"] = COAT_CID
     name = notification.kind
     plain_body = render_to_string(f"notifications/email/{name}.txt", context)
     html_body = render_to_string(f"notifications/email/{name}.html", context)
@@ -161,11 +175,20 @@ def build_mime_message(*, notification, attachments=()):
     message.set_content(plain_body)
     message.add_alternative(html_body, subtype="html")
     html_part = message.get_payload()[-1]
-    html_part.add_related(
-        _logo_bytes(), maintype="image", subtype="jpeg",
-        cid=f"<{LOGO_CID}>", filename="mod-nsukka-diocese-crest.jpg",
-        disposition="inline",
-    )
+    for asset_key, content_id in (
+        ("mod_logo", LOGO_CID),
+        ("nigeria_coat", COAT_CID),
+    ):
+        content, content_type, filename = _branding_image(asset_key)
+        maintype, subtype = content_type.split("/", 1)
+        html_part.add_related(
+            content,
+            maintype=maintype,
+            subtype=subtype,
+            cid=f"<{content_id}>",
+            filename=filename,
+            disposition="inline",
+        )
 
     for filename, content, content_type in attachments:
         maintype, subtype = content_type.split("/", 1)
