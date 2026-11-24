@@ -1,0 +1,16 @@
+M.O.D. NSUKKA DIOCESE — DEANERY VERIFICATION COMPLETED
+
+Dear {{ applicant_name }},
+
+Your membership application has successfully passed the Deanery verification stage.
+
+Applicant: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+{% if deanery_name %}Deanery: {{ deanery_name }}{% endif %}
+Verification Stage: Deanery
+Status: Successfully verified
+
+Your application has progressed to Diocesan verification. Final membership approval is still pending the Diocese's decision.
+
+M.O.D. Nsukka Diocese
+Membership Management System

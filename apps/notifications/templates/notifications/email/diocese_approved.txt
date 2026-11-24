@@ -1,0 +1,19 @@
+M.O.D. NSUKKA DIOCESE — MEMBERSHIP APPLICATION APPROVED
+
+Dear {{ applicant_name }},
+
+Your membership application has completed the required verification process and has been approved by M.O.D. Nsukka Diocese.
+
+Member: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+{% if membership_id %}Official Membership ID: {{ membership_id }}{% endif %}
+{% if parish_name %}Parish: {{ parish_name }}{% endif %}
+{% if deanery_name %}Deanery: {{ deanery_name }}{% endif %}
+Final Status: APPROVED
+
+Please follow the instructions provided by the Diocese for accessing your membership records, membership card, and other applicable services. Keep your official Membership ID safe for identification and verification.
+
+We welcome you to M.O.D. Nsukka Diocese.
+
+M.O.D. Nsukka Diocese
+Membership Management System

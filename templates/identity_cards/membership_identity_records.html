@@ -51,17 +51,22 @@
                     </div>
                     <div>
                         <dt>Deanery</dt>
-                        <dd>{{ identity.member.parish.deanery.name }}</dd>
+                        <dd>{% if identity.member.parish %}{{ identity.member.parish.deanery.name }}{% elif identity.member.deanery %}{{ identity.member.deanery.name }}{% else %}Direct Diocese{% endif %}</dd>
                     </div>
                     <div>
                         <dt>Parish</dt>
-                        <dd>{{ identity.member.parish.name }}</dd>
+                        <dd>{% if identity.member.parish %}{{ identity.member.parish.name }}{% else %}Not assigned{% endif %}</dd>
                     </div>
                     <div>
                         <dt>Allocated on</dt>
                         <dd>{{ identity.allocated_at|date:"j M Y, H:i" }}</dd>
                     </div>
                 </dl>
+                <p>
+                    <a href="{% url 'api:identity_cards:download-membership-identity-qr' identity.pk %}">
+                        Download verification QR
+                    </a>
+                </p>
             </article>
         {% empty %}
             <div class="review-empty">

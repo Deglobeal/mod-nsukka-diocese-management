@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
 from apps.organizations.models import Diocese
@@ -23,6 +24,11 @@ def get_membership_review_queue(*, user):
             MembershipApplication.Stage.DEANERY_REVIEW,
             MembershipApplication.Stage.DIOCESE_REVIEW,
         ]
+    )
+    queryset = queryset.exclude(
+        correction_requests__submitted_at__isnull=True,
+        correction_requests__revoked_at__isnull=True,
+        correction_requests__expires_at__gt=timezone.now(),
     )
 
     scoped_querysets = []

@@ -1,0 +1,32 @@
+M.O.D. NSUKKA DIOCESE
+MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA
+MEMBERSHIP MANAGEMENT SYSTEM
+
+Your Registration Has Been Successfully Submitted
+
+Dear {{ applicant_name }},
+
+Thank you for choosing to register with the Man of Order and Discipline Movement of Nigeria (M.O.D.), Nsukka Diocese. Your membership registration has been successfully received.
+
+APPLICATION DETAILS
+Applicant: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+{% if parish_name %}Parish: {{ parish_name }}{% endif %}
+{% if deanery_name %}Deanery: {{ deanery_name }}{% endif %}
+Status: Awaiting verification
+
+YOUR REGISTRATION DOCUMENT
+Your complete registration document is attached as MOD_COMPLETE_REGISTRATION_{{ application_reference }}.pdf. It contains your registration form and generated Parish documents, including the Church Society/Organization letter where applicable. Please keep it for your records.
+
+NEXT STEPS
+1. Parish verification.
+2. Deanery verification.
+3. Diocesan verification and final decision.
+
+Submission does not mean final membership approval. We will send follow-up email notifications as your application progresses.
+
+Thank you for your interest in M.O.D. Nsukka Diocese.
+
+M.O.D. Nsukka Diocese
+Membership Management System
+Automated notification from the M.O.D. Nsukka Diocese Membership Management System.

@@ -24,7 +24,7 @@
         <div class="member-section-heading">
             <div>
                 <h2 id="lookup-heading">Find your membership record</h2>
-                <p>Enter both identifiers printed on your issued membership card.</p>
+                <p>Enter your official membership ID and Uniform ID.</p>
             </div>
         </div>
 
@@ -73,7 +73,7 @@
         </form>
     </section>
 
-    {% if card and member %}
+    {% if identity_record and member %}
         <section class="member-identity-card"
                  aria-labelledby="member-name">
             <div class="member-identity-mark" aria-hidden="true">
@@ -85,8 +85,8 @@
                 <h2 id="member-name">{{ member.full_name }}</h2>
                 <p>{{ parish_name }} · {{ station_name }}</p>
                 <p>{{ deanery_name }} · {{ diocese_name }}</p>
-                <p>Official ID: {{ card.official_membership_id }}</p>
-                <p>Uniform ID: {{ card.uniform_id }}</p>
+                <p>Official ID: {{ identity_record.official_membership_id }}</p>
+                <p>Uniform ID: {{ identity_record.uniform_id }}</p>
             </div>
 
             <span class="member-status member-status-{{ member.status|slugify }}">

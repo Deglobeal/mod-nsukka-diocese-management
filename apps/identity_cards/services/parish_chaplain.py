@@ -52,7 +52,11 @@ def appoint_parish_chaplain(*, actor, parish_id, member_id, notes=""):
         raise PermissionDenied("There is no active Diocesan Chairman authorized to appoint a Parish Chaplain.")
     if not MemberAccount.objects.filter(member=current_chairman.member, user=actor, is_active=True).exists():
         raise PermissionDenied("Only the currently appointed Diocesan Chairman can appoint a Parish Chaplain.")
-    member = Member.objects.select_for_update().select_related("parish").get(pk=member_id)
+    member = (
+        Member.objects.select_for_update(of=("self",))
+        .select_related("parish")
+        .get(pk=member_id)
+    )
     if member.status != Member.Status.ACTIVE or member.parish_id != parish.pk:
         raise ValidationError("Appoint an ACTIVE Member belonging to this exact Parish.")
     if not hasattr(member, "membership_identity"):

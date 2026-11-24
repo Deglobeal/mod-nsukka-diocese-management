@@ -43,6 +43,9 @@ from apps.identity_cards.models import (
     ReservedOffice,
 )
 from apps.identity_cards.services.parish_chaplain import appoint_parish_chaplain
+from apps.identity_cards.services.chairman_activation import (
+    start_transition_on_dashboard_login,
+)
 from apps.members.models import Member, MemberAccount, Rank
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
@@ -316,6 +319,7 @@ def create_organization(request, organization_type):
 @require_http_methods(["GET", "POST"])
 def command_dashboard(request):
     diocese_ids = authorize_diocese_chairman(user=request.user)
+    transition = start_transition_on_dashboard_login(user=request.user)
     if request.method == "POST":
         return membership_review_dashboard(
             request,
@@ -341,6 +345,17 @@ def command_dashboard(request):
             "show_organization_creation_actions": True,
             "applications": applications,
             "pending_count": applications.count(),
+            "chairman_transition": transition,
+            "chairman_transition_tasks": (
+                transition.transition_tasks.all() if transition else ()
+            ),
+            "chairman_transition_task_count": (
+                transition.transition_tasks.count() if transition else 0
+            ),
+            "chairman_transition_completed_count": (
+                transition.transition_tasks.filter(completed_at__isnull=False).count()
+                if transition else 0
+            ),
             "decision_choices": MembershipReview.Decision.choices,
             "ranks": Rank.objects.all(),
         },

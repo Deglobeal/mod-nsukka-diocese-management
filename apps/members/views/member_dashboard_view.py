@@ -3,7 +3,8 @@
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
 
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.organizations.models import Diocese
 
 
 @never_cache
@@ -11,6 +12,7 @@ def member_dashboard(request):
     """Verify both issued membership identifiers and show basic identity data."""
     error_message = ""
     card = None
+    identity = None
 
     if request.method == "POST":
         official_id = request.POST.get(
@@ -37,6 +39,21 @@ def member_dashboard(request):
             )
 
             if card is None:
+                identity = (
+                    MembershipIdentity.objects
+                    .select_related(
+                        "member__parish__deanery__diocese",
+                        "member__deanery__diocese",
+                        "member__station",
+                    )
+                    .filter(
+                        official_membership_id=official_id,
+                        uniform_id=uniform_id,
+                    )
+                    .first()
+                )
+
+            if card is None and identity is None:
                 error_message = (
                     "The supplied identifiers could not be verified. "
                     "Check both values and try again."
@@ -45,23 +62,29 @@ def member_dashboard(request):
     context = {
         "error_message": error_message,
         "card": card,
+        "identity": identity,
     }
 
-    if card is not None:
-        member = card.member
+    if card is not None or identity is not None:
+        member = card.member if card is not None else identity.member
         parish = member.parish
         deanery = getattr(parish, "deanery", None)
+        if deanery is None:
+            deanery = member.deanery
         diocese = getattr(deanery, "diocese", None)
+        if diocese is None:
+            diocese = Diocese.objects.filter(code="036").first()
 
         context.update({
             "member": member,
+            "identity_record": card if card is not None else identity,
             "parish_name": str(parish) if parish else "Not assigned",
             "station_name": (
                 str(member.station) if member.station_id
                 else "Not assigned"
             ),
             "deanery_name": (
-                str(deanery) if deanery else "Not available"
+                str(deanery) if deanery else "Direct Diocese"
             ),
             "diocese_name": (
                 str(diocese) if diocese else "Not available"

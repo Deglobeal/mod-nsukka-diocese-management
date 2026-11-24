@@ -1,0 +1,16 @@
+{% extends "notifications/email/base.html" %}
+{% block title %}Registration successfully submitted | M.O.D. Nsukka Diocese{% endblock %}
+{% block content %}
+<div style="display:inline-block;padding:6px 10px;background:#EEF3F7;color:#38566B;font-size:11px;font-weight:bold;letter-spacing:.5px;">INFORMATION · AWAITING VERIFICATION</div>
+<h1 style="margin:16px 0;color:{{ email_green }};font-size:23px;line-height:1.3;">Your Registration Has Been Successfully Submitted</h1>
+<p style="font-size:15px;line-height:1.7;">Dear {{ applicant_name }},</p>
+<p style="font-size:15px;line-height:1.7;">Thank you for choosing to register with the Man of Order and Discipline Movement of Nigeria (M.O.D.), Nsukka Diocese. We are pleased to confirm that your membership registration has been successfully received.</p>
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">YOUR APPLICATION DETAILS</h2>
+{% include "notifications/email/_application_details.html" with application_status="Awaiting verification" %}
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">YOUR REGISTRATION DOCUMENT</h2>
+<p style="font-size:14px;line-height:1.7;">Your complete registration document is attached as <strong>MOD_COMPLETE_REGISTRATION_{{ application_reference }}.pdf</strong>. It contains your registration form and the generated Parish documents, including the Church Society/Organization letter where applicable. Please keep it for your records.</p>
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">WHAT HAPPENS NEXT?</h2>
+<ol style="padding-left:22px;font-size:14px;line-height:1.8;"><li>Parish verification.</li><li>Deanery verification.</li><li>Diocesan verification and final decision.</li></ol>
+<p style="font-size:14px;line-height:1.7;">Registration submission does not mean final membership approval. We will send follow-up email notifications as your application successfully progresses through each stage.</p>
+<p style="font-size:14px;line-height:1.7;">Thank you for your interest in M.O.D. Nsukka Diocese.</p>
+{% endblock %}

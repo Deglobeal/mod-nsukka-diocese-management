@@ -33,6 +33,7 @@ from apps.members.services.first_member_registration import (
 )
 from apps.members.models import FirstMemberRegistrationToken
 from apps.notifications.models import (
+    EmailNotification,
     SMSNotification,
     SponsorVerification,
     WhatsAppNotification,
@@ -555,6 +556,7 @@ class MembershipRegistrationTests(TestCase):
             "Verify the ID before submitting your registration.",
         )
         self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+        self.assertFalse(EmailNotification.objects.exists())
 
     def test_registration_confirmation_is_bound_to_submitted_id(self):
         data = self.valid_data()
@@ -567,6 +569,7 @@ class MembershipRegistrationTests(TestCase):
             "The verified ID changed. Verify the ID again before submitting.",
         )
         self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+        self.assertFalse(EmailNotification.objects.exists())
 
     def test_bootstrap_registration_redeems_only_after_application_creation(self):
         self.remove_fixture_sponsor()
@@ -588,8 +591,20 @@ class MembershipRegistrationTests(TestCase):
         self.assertEqual(token.status, FirstMemberRegistrationToken.Status.REDEEMED)
         self.assertEqual(token.redeemed_application_id, application.pk)
         self.assertIsNone(token.redeemed_by_id)
+        self.assertEqual(
+            application.stage,
+            MembershipApplication.Stage.FIRST_MEMBER_BOOTSTRAP_REVIEW,
+        )
         self.assertEqual(application.sponsor_membership_id, "")
         self.assertFalse(SponsorVerification.objects.filter(application=application).exists())
+        self.assertTrue(EmailNotification.objects.filter(
+            application=application,
+            kind=EmailNotification.Kind.REGISTRATION_RECEIVED,
+        ).exists())
+        self.assertFalse(EmailNotification.objects.filter(
+            application=application,
+            kind=EmailNotification.Kind.SPONSOR_VERIFICATION,
+        ).exists())
 
     def test_bootstrap_id_remains_available_when_application_save_fails(self):
         self.remove_fixture_sponsor()
@@ -616,6 +631,7 @@ class MembershipRegistrationTests(TestCase):
         self.assertIn("path=/members/register/", logged_traceback)
         self.assertIsNotNone(find_available_registration_id(raw_id))
         self.assertFalse(MembershipApplication.objects.filter(email="ada@example.com").exists())
+        self.assertFalse(EmailNotification.objects.exists())
 
     def test_revoked_id_after_verification_is_rejected_at_submission(self):
         self.remove_fixture_sponsor()
@@ -1085,6 +1101,8 @@ class MembershipRegistrationTests(TestCase):
                 self.assertEqual(response.status_code, 404)
 
     def test_three_registration_documents_share_reference_and_keep_offline_fields_blank(self):
+        self.sponsor.profile.email = "verified-sponsor@example.com"
+        self.sponsor.profile.save(update_fields=("email",))
         data = self.valid_data()
         self.assertFalse({
             "church_society_name",
@@ -1093,6 +1111,18 @@ class MembershipRegistrationTests(TestCase):
         response = self.client.post(reverse("members:register"), data)
         self.assertEqual(response.status_code, 302)
         application = MembershipApplication.objects.get(email="ada@example.com")
+        applicant_email = EmailNotification.objects.get(
+            application=application,
+            kind=EmailNotification.Kind.REGISTRATION_RECEIVED,
+        )
+        sponsor_email = EmailNotification.objects.get(
+            application=application,
+            kind=EmailNotification.Kind.SPONSOR_VERIFICATION,
+        )
+        self.assertEqual(applicant_email.recipient_email, "ada@example.com")
+        self.assertEqual(sponsor_email.recipient_email, "verified-sponsor@example.com")
+        self.assertEqual(applicant_email.status, EmailNotification.Status.QUEUED)
+        self.assertEqual(sponsor_email.status, EmailNotification.Status.QUEUED)
         application_count = MembershipApplication.objects.count()
 
         success = self.client.get(response["Location"])

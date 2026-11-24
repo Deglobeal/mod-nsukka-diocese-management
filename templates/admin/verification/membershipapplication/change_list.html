@@ -1,0 +1,14 @@
+{% extends "admin/change_list.html" %}
+
+{% block content_title %}
+    {{ block.super }}
+    <nav aria-label="Membership administration" style="display:flex;gap:1rem;flex-wrap:wrap;margin:.75rem 0 1.25rem">
+        <a href="{% url 'admin:verification_membershipapplication_changelist' %}">Global Registration Applications</a>
+        <a href="{% url 'admin:verification_membershipapplication_changelist' %}?stage__exact=parish_review">Pending Parish Applications</a>
+        <a href="{% url 'admin:verification_membershipapplication_changelist' %}?stage__exact=deanery_review">Pending Deanery Applications</a>
+        <a href="{% url 'admin:verification_membershipapplication_changelist' %}?stage__exact=diocese_review">Pending Diocese Applications</a>
+        <a href="{% url 'admin:verification_membershipapplication_changelist' %}?stage__exact=first_member_bootstrap_review">Bootstrap Applications</a>
+        <a href="{% url 'admin:verification_membershipapplicationadmindecision_changelist' %}">Direct Approval History</a>
+        <a href="{% url 'admin:members_member_changelist' %}">Global Membership Register</a>
+    </nav>
+{% endblock %}

@@ -1,6 +1,27 @@
 {% extends "chairman/layout.html" %}
 
 {% block dashboard_content %}
+    {% if chairman_transition and chairman_transition.transition_ends_at %}
+        <section class="chairman-panel" id="chairman-transition" aria-labelledby="chairman-transition-heading">
+            <header class="chairman-panel__heading">
+                <div><p class="chairman-panel__eyebrow">72-HOUR GUIDED TRANSITION</p><h2 id="chairman-transition-heading">Your Chairman dashboard transition</h2></div>
+            </header>
+            <p>Started {{ chairman_transition.first_dashboard_login_at }} · scheduled to end {{ chairman_transition.transition_ends_at }}.</p>
+            <p>Orientation checklist: {{ chairman_transition_completed_count }} of {{ chairman_transition_task_count }} complete.</p>
+            <ul class="chairman-status-list">
+                {% for task in chairman_transition_tasks %}
+                    <li>
+                        <span>{{ task.title }}{% if task.description %}<br><small>{{ task.description }}</small>{% endif %}</span>
+                        {% if task.completed_at %}<strong>Complete</strong>{% else %}
+                            <form method="post" action="{% url 'chairman:transition-task-complete' task.id %}">
+                                {% csrf_token %}<button class="chairman-primary-button" type="submit">Mark complete</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
     <section class="chairman-stats" aria-label="Diocesan operational statistics">
         <article class="chairman-stat-card">
             <h2>Dioceses in scope</h2>

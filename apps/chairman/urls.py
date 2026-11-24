@@ -20,11 +20,13 @@ from apps.chairman.views.command_dashboard_view import (
 from apps.verification.views.membership_application_detail_view import (
     membership_application_detail,
 )
+from apps.chairman.views.transition_view import complete_chairman_transition_task
 
 app_name = "chairman"
 
 urlpatterns = [
     path("", command_dashboard, name="dashboard"),
+    path("transition/<int:task_id>/complete/", complete_chairman_transition_task, name="transition-task-complete"),
     path("ranks/", manage_ranks, name="manage-ranks"),
     path("parish-chaplains/", manage_parish_chaplain_appointments, name="parish-chaplains"),
     path(

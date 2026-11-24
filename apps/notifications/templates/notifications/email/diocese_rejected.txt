@@ -1,0 +1,17 @@
+M.O.D. NSUKKA DIOCESE — MEMBERSHIP APPLICATION DECISION
+
+Dear {{ applicant_name }},
+
+Following the review of your membership application, we regret to inform you that your application has not been approved by M.O.D. Nsukka Diocese.
+
+Applicant: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+Final Status: Not Approved
+{% if decision_reason %}Recorded Decision Reason: {{ decision_reason }}{% endif %}
+
+Please review the recorded reason and follow the applicable correction, appeal, or resubmission process communicated by the Diocese, where available. For clarification, contact the appropriate authorized Diocese office.
+
+Thank you for your interest in M.O.D. Nsukka Diocese.
+
+M.O.D. Nsukka Diocese
+Membership Management System

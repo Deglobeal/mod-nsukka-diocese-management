@@ -8,10 +8,15 @@ from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
 from apps.audit.models import AuditEvent
-from apps.members.models import Member
+from apps.identity_cards.models import MembershipIdentity
+from apps.members.models import Member, MemberProfile
 from apps.notifications.models import SponsorVerification, InAppNotification
 from apps.organizations.models import Diocese, Deanery, Parish, Station
-from apps.verification.models import MembershipApplication, MembershipReview
+from apps.verification.models import (
+    MembershipApplication,
+    MembershipApplicationCorrectionRequest,
+    MembershipReview,
+)
 from apps.verification.services.membership_approval import (
     record_membership_review,
 )
@@ -29,6 +34,7 @@ class MembershipApprovalServiceTests(TestCase):
         parish = Parish.objects.create(
             deanery=deanery,
             name="Test Parish",
+            code="TP001",
         )
         cls.diocese = diocese
         cls.deanery = deanery
@@ -175,6 +181,30 @@ class MembershipApprovalServiceTests(TestCase):
         )
         self.member.refresh_from_db()
         self.assertEqual(self.member.status, Member.Status.PENDING_REVIEW)
+        self.assertFalse(MemberProfile.objects.filter(member=self.member).exists())
+
+    def test_approved_direct_diocese_category_receives_dir_identity(self):
+        application = MembershipApplication.objects.create(
+            first_name="Direct",
+            last_name="Religious",
+            category=MembershipApplication.Category.RELIGIOUS,
+            stage=MembershipApplication.Stage.DIOCESE_REVIEW,
+        )
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="DR123456",
+        ):
+            self.review(
+                MembershipReview.ReviewLevel.DIOCESE,
+                MembershipReview.Decision.APPROVED,
+                application_id=application.pk,
+            )
+        application.refresh_from_db()
+        self.assertEqual(application.member.status, Member.Status.ACTIVE)
+        self.assertEqual(
+            MembershipIdentity.objects.get(member=application.member).official_membership_id,
+            "MOD036/DIR/000001",
+        )
 
     def test_cannot_skip_parish_review(self):
         with self.assertRaises(ValidationError):
@@ -244,6 +274,125 @@ class MembershipApprovalServiceTests(TestCase):
             "Final approval granted.",
         )
         self.assertEqual(self.application.reviews.count(), 3)
+        profile = MemberProfile.objects.get(member=self.member)
+        self.assertEqual(profile.phone_number, self.application.phone_number)
+        self.assertEqual(profile.email, self.application.email)
+        self.assertTrue(self.member.membership_identity.official_membership_id)
+        self.assertTrue(self.member.membership_identity.uniform_id)
+
+    def test_diocese_approval_maps_compatible_fields_without_medical_data(self):
+        self.application.first_name = "Applicant"
+        self.application.last_name = "Example"
+        self.application.email = "applicant@example.test"
+        self.application.phone_number = "08012345678"
+        self.application.sex = "Female"
+        self.application.date_of_birth = timezone.now().date()
+        self.application.state_of_origin = "Enugu"
+        self.application.local_government_area = "Nsukka"
+        self.application.occupation = "Teacher"
+        self.application.next_of_kin_name = "Grace Example"
+        self.application.next_of_kin_phone = "08012345679"
+        self.application.next_of_kin_relationship = "Sibling"
+        self.application.emergency_contact_2_name = "John Example"
+        self.application.emergency_contact_2_phone = "08012345670"
+        self.application.emergency_contact_2_relationship = "Brother"
+        self.application.medical_conditions = "Confidential condition"
+        self.application.blood_group = "O+"
+        self.application.save()
+
+        self.review(MembershipReview.ReviewLevel.PARISH,
+                    MembershipReview.Decision.APPROVED)
+        self.review(MembershipReview.ReviewLevel.DEANERY,
+                    MembershipReview.Decision.APPROVED)
+        self.assertFalse(MemberProfile.objects.filter(member=self.member).exists())
+        self.review(MembershipReview.ReviewLevel.DIOCESE,
+                    MembershipReview.Decision.APPROVED)
+
+        profile = MemberProfile.objects.get(member=self.member)
+        self.assertEqual(profile.email, "applicant@example.test")
+        self.assertEqual(profile.phone_number, "08012345678")
+        self.assertEqual(profile.sex, "Female")
+        self.assertEqual(profile.date_of_birth, self.application.date_of_birth)
+        self.assertEqual(profile.state_of_origin, "Enugu")
+        self.assertEqual(profile.local_government_area, "Nsukka")
+        self.assertEqual(profile.occupation, "Teacher")
+        self.assertEqual(profile.next_of_kin_name, "Grace Example")
+        self.assertEqual(profile.next_of_kin_relationship, "Sibling")
+        self.assertEqual(profile.emergency_contact_2_name, "John Example")
+        self.assertEqual(profile.emergency_contact_2_relationship, "Brother")
+        self.assertFalse(hasattr(profile, "medical_conditions"))
+        self.assertFalse(hasattr(profile, "blood_group"))
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.medical_conditions,
+                         "Confidential condition")
+        event = AuditEvent.objects.filter(
+            object_id=self.application.pk,
+            action=AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+            metadata__review_level=MembershipReview.ReviewLevel.DIOCESE,
+        ).latest("created_at")
+        self.assertEqual(event.metadata["member_profile_action"], "created")
+        self.assertNotIn("medical_conditions", event.metadata)
+
+    def test_rejection_and_correction_request_do_not_create_profile(self):
+        self.review(MembershipReview.ReviewLevel.PARISH,
+                    MembershipReview.Decision.REJECTED,
+                    comments="Incomplete application.")
+        self.assertFalse(MemberProfile.objects.filter(member=self.member).exists())
+
+        application = MembershipApplication.objects.create(
+            member=self.member,
+            stage=MembershipApplication.Stage.PARISH_REVIEW,
+        )
+        self.review(MembershipReview.ReviewLevel.PARISH,
+                    MembershipReview.Decision.NEEDS_INFORMATION,
+                    application_id=application.pk,
+                    comments="Please correct the form.")
+        self.assertFalse(MemberProfile.objects.filter(member=self.member).exists())
+        with self.assertRaises(ValidationError):
+            self.review(MembershipReview.ReviewLevel.PARISH,
+                        MembershipReview.Decision.APPROVED,
+                        application_id=application.pk)
+        self.assertFalse(MemberProfile.objects.filter(member=self.member).exists())
+
+    def test_profile_creation_failure_rolls_back_final_approval(self):
+        self.application.stage = MembershipApplication.Stage.DIOCESE_REVIEW
+        self.application.save(update_fields=["stage", "updated_at"])
+        with patch(
+            "apps.verification.services.membership_approval.create_member_profile_from_application",
+            side_effect=RuntimeError("profile write failed"),
+        ), self.assertRaises(RuntimeError):
+            self.review(MembershipReview.ReviewLevel.DIOCESE,
+                        MembershipReview.Decision.APPROVED)
+        self.application.refresh_from_db()
+        self.member.refresh_from_db()
+        self.assertEqual(self.application.stage,
+                         MembershipApplication.Stage.DIOCESE_REVIEW)
+        self.assertEqual(self.member.status, Member.Status.PENDING_REVIEW)
+        self.assertFalse(MemberProfile.objects.filter(member=self.member).exists())
+        self.assertFalse(MembershipIdentity.objects.filter(member=self.member).exists())
+
+    def test_existing_profile_is_preserved_and_recorded(self):
+        profile = MemberProfile.objects.create(
+            member=self.member,
+            email="verified@example.test",
+            phone_number="08000000000",
+            occupation="Verified occupation",
+        )
+        self.application.stage = MembershipApplication.Stage.DIOCESE_REVIEW
+        self.application.save(update_fields=["stage", "updated_at"])
+        self.review(MembershipReview.ReviewLevel.DIOCESE,
+                    MembershipReview.Decision.APPROVED)
+        profile.refresh_from_db()
+        self.assertEqual(profile.email, "verified@example.test")
+        self.assertEqual(profile.phone_number, "08000000000")
+        self.assertEqual(profile.occupation, "Verified occupation")
+        event = AuditEvent.objects.filter(
+            object_id=self.application.pk,
+            action=AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
+            metadata__review_level=MembershipReview.ReviewLevel.DIOCESE,
+        ).latest("created_at")
+        self.assertEqual(event.metadata["member_profile_action"],
+                         "existing_preserved")
 
     def test_rejected_application_cannot_be_reviewed_again(self):
         self.review(
@@ -470,6 +619,14 @@ class MembershipApprovalServiceTests(TestCase):
             MembershipReview.ReviewLevel.PARISH,
             MembershipReview.Decision.NEEDS_INFORMATION,
         )
+        # Model the applicant's successful resubmission before the Parish
+        # reviewer records a later decision; an open correction request now
+        # pauses stale approvals until the applicant responds.
+        MembershipApplicationCorrectionRequest.objects.filter(
+            application=self.application,
+            submitted_at__isnull=True,
+            revoked_at__isnull=True,
+        ).update(submitted_at=timezone.now())
         self.review(
             MembershipReview.ReviewLevel.PARISH,
             MembershipReview.Decision.APPROVED,
@@ -525,13 +682,16 @@ class MembershipApprovalServiceTests(TestCase):
                     event.action,
                     AuditEvent.Action.MEMBERSHIP_REVIEW_RECORDED,
                 )
-                self.assertEqual(
-                    event.metadata,
-                    {
-                        "review_level": level,
-                        "decision": decision,
-                    },
-                )
+                expected_metadata = {
+                    "review_level": level,
+                    "decision": decision,
+                }
+                if (
+                    level == MembershipReview.ReviewLevel.DIOCESE
+                    and decision == MembershipReview.Decision.APPROVED
+                ):
+                    expected_metadata["member_profile_action"] = "created"
+                self.assertEqual(event.metadata, expected_metadata)
 
         self.application.refresh_from_db()
         self.member.refresh_from_db()

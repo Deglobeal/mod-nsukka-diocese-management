@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+  {% if messages %}
+    {% for message in messages %}
+      <p class="messagelist"><span class="{{ message.tags }}">{{ message }}</span></p>
+    {% endfor %}
+  {% endif %}
+
+  <div class="module">
+    <h2>Appointment status</h2>
+    {% if not office %}
+      <p>The reserved first Chairman office {{ office_identifier|default:"MODCHAIRMAN/036/00002" }} is unavailable or inactive. Contact the system administrator.</p>
+    {% elif current_appointment %}
+      <p><strong>Appointed:</strong> {{ current_appointment.member.full_name }}</p>
+      <p><strong>Personal Membership ID:</strong>
+        {% if current_appointment.member.membership_identity %}{{ current_appointment.member.membership_identity.official_membership_id }}{% else %}Not allocated{% endif %}
+      </p>
+      <p><strong>Reserved office:</strong> {{ office.official_identifier }}</p>
+      <p><strong>Appointed by:</strong> {{ current_appointment.appointed_by|default:"Unknown" }}</p>
+      <p><strong>Date:</strong> {{ current_appointment.appointed_at }}</p>
+      <p>The first appointment is complete. Subsequent officeholder appointments belong to the Diocesan Chairman.</p>
+      <p><a class="button" href="{% url 'chairman_activation_admin' %}">Manage Chairman account activation</a></p>
+    {% elif has_history %}
+      <p>A previous appointment exists for {{ office.official_identifier }}, but there is no current Chairman. The superuser first-appointment action is no longer available. Follow the approved succession or handover process.</p>
+      {% if latest_appointment %}<p><strong>Most recent appointee:</strong> {{ latest_appointment.member.full_name }} — {{ latest_appointment.appointed_at }}</p>{% endif %}
+    {% else %}
+      <p>No first Diocesan Chairman has been appointed. The reserved office is {{ office.official_identifier }}. Select an existing Active Member below. This identifier is not the member’s personal Membership ID.</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+          <div class="form-row{% if field.errors %} errors{% endif %}">
+            {{ field.label_tag }}
+            {{ field }}
+            {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+            {{ field.errors }}
+          </div>
+        {% endfor %}
+        <div class="submit-row">
+          <input type="submit" value="Appoint first Chairman" class="default">
+        </div>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -45,6 +45,7 @@ class MembershipApplication(models.Model):
     })
 
     class Stage(models.TextChoices):
+        FIRST_MEMBER_BOOTSTRAP_REVIEW = "first_member_bootstrap_review", "First Member Superuser Review"
         PARISH_REVIEW = "parish_review", "Parish Review"
         DEANERY_REVIEW = "deanery_review", "Deanery Review"
         DIOCESE_REVIEW = "diocese_review", "Diocese Review"
@@ -256,8 +257,8 @@ class MembershipApplication(models.Model):
 
     class Meta:
         ordering = ["-submitted_at"]
-        verbose_name = "Membership Application"
-        verbose_name_plural = "Membership Applications"
+        verbose_name = "Registration Application"
+        verbose_name_plural = "Global Registration Applications"
         constraints = [
             models.CheckConstraint(
                 condition=~models.Q(public_reference=""),

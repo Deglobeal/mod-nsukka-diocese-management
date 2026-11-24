@@ -19,7 +19,7 @@ class MembershipReviewAPITests(TestCase):
             code="TD2663FC6",
         )
         cls.parish = Parish.objects.create(
-            deanery=cls.deanery, name="Test Parish"
+            deanery=cls.deanery, name="Test Parish", code="API001"
         )
         cls.member = Member.objects.create(
             first_name="Ada", last_name="Okafor", parish=cls.parish
@@ -56,7 +56,7 @@ class MembershipReviewAPITests(TestCase):
             code="T2D1B022D",
         )
         other_parish = Parish.objects.create(
-            deanery=other_deanery, name="Other Parish"
+            deanery=other_deanery, name="Other Parish", code="API002"
         )
         other_member = Member.objects.create(
             first_name="Chika", last_name="Eze", parish=other_parish

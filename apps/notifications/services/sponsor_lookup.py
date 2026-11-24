@@ -32,6 +32,7 @@ class SponsorContact:
     member: Member
     official_membership_id: str
     recipient_phone: str
+    recipient_email: str = ""
 
 
 def find_active_sponsor(official_membership_id: str) -> SponsorContact:
@@ -99,4 +100,5 @@ def find_active_sponsor(official_membership_id: str) -> SponsorContact:
         member=member,
         official_membership_id=membership_id,
         recipient_phone=recipient_phone,
+        recipient_email=(getattr(member.profile, "email", "") or "").strip(),
     )

@@ -34,3 +34,8 @@ backups/
 node_modules/
 .vercel
 .env*
+
+# Gmail OAuth material must remain outside the repository.
+/credentials.json
+/token.json
+*.gmail-token.json

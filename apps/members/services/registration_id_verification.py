@@ -26,6 +26,7 @@ GENERIC_INVALID_ID_MESSAGE = (
     "Please check the ID and try again."
 )
 UNRESOLVED_STAGES = (
+    MembershipApplication.Stage.FIRST_MEMBER_BOOTSTRAP_REVIEW,
     MembershipApplication.Stage.PARISH_REVIEW,
     MembershipApplication.Stage.DEANERY_REVIEW,
     MembershipApplication.Stage.DIOCESE_REVIEW,

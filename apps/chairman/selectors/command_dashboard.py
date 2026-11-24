@@ -116,6 +116,7 @@ def get_overview_data(*, diocese_ids):
                 "count": category_totals.get(category, 0),
             }
             for category, label in MembershipApplication.Category.choices
+            if category_totals.get(category, 0) > 0
         ],
         "identity_record_count": MembershipIdentity.objects.filter(
             Q(member__parish__deanery__diocese_id__in=diocese_ids)

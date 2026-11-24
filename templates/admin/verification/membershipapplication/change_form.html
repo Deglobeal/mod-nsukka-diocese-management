@@ -1,0 +1,12 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+    {% if original and has_view_permission %}
+        <li>
+            <a href="{% url 'admin:verification_membershipapplication_superuser_decision' original.pk %}">
+                Superuser decision
+            </a>
+        </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

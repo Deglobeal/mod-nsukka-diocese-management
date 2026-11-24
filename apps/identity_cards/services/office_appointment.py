@@ -127,7 +127,7 @@ def appoint_reserved_office(
 
     try:
         member = (
-            Member.objects.select_for_update()
+            Member.objects.select_for_update(of=("self",))
             .select_related("parish__deanery__diocese", "deanery__diocese")
             .get(pk=member_id)
         )

@@ -38,8 +38,8 @@ class MembershipCard(models.Model):
 
     class Meta:
         ordering = ["official_membership_id"]
-        verbose_name = "Membership Identity"
-        verbose_name_plural = "Membership Identities"
+        verbose_name = "Issued Membership Card"
+        verbose_name_plural = "Issued Membership Cards"
 
     def clean(self):
         super().clean()

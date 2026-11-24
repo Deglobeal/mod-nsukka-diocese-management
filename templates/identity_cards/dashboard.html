@@ -76,7 +76,8 @@
                 {{ form.official_membership_id }}
                 <p class="field-help">
                     Use the official number assigned under the approved
-                    membership-numbering rules.
+                    membership-numbering rules. For a member with an allocated
+                    identity, enter that permanent ID exactly.
                 </p>
                 {% for error in form.official_membership_id.errors %}
                     <p class="field-error">{{ error }}</p>
@@ -121,7 +122,9 @@
                                 <td data-label="Uniform ID">
                                     <span class="uniform-id">{{ card.uniform_id }}</span>
                                 </td>
-                                <td data-label="Parish">{{ card.member.parish.name }}</td>
+                                <td data-label="Parish">
+                                    {% if card.member.parish %}{{ card.member.parish.name }}{% elif card.member.deanery %}Deanery: {{ card.member.deanery.name }}{% else %}Direct Diocese{% endif %}
+                                </td>
                                 <td data-label="Date issued">
                                     {{ card.issued_at|date:"j M Y" }}
                                 </td>

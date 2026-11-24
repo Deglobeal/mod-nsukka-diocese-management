@@ -12,6 +12,7 @@ from apps.members.pdf_design import application_reference
 from apps.notifications.models import SMSNotification, WhatsAppNotification
 from apps.notifications.services.phone_numbers import normalize_nigerian_phone
 from apps.notifications.services.whatsapp_consent import has_current_whatsapp_consent
+from apps.notifications.services.email_notifications import queue_registration_email
 
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ def _queue_whatsapp(*, application, recipient_phone, message):
 
 def queue_registration_notifications(*, application, request):
     """Queue SMS and consented WhatsApp independently, with retry-safe keys."""
+    queue_registration_email(application=application)
     recipient_phone = normalize_nigerian_phone(application.phone_number)
     _access, download_url = issue_application_document_link(
         application=application,

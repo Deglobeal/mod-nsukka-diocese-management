@@ -21,6 +21,7 @@ from apps.members.views.registration_view import (
     registration_received,
     verify_registration_sponsor,
 )
+from apps.members.views.application_correction_view import application_correction
 
 app_name = "members"
 
@@ -28,6 +29,7 @@ urlpatterns = [
     path("portal/", member_dashboard, name="portal"),
     path("communication-settings/", communication_settings, name="communication_settings"),
     path("register/", membership_registration, name="register"),
+    path("register/corrections/<str:token>/", application_correction, name="application_correction"),
     path(
         "register/documents/<str:token>/",
         application_document_download,

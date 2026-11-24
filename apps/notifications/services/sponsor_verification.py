@@ -18,6 +18,9 @@ from apps.notifications.models import (
 from apps.notifications.services.whatsapp_consent import (
     has_current_whatsapp_consent,
 )
+from apps.notifications.services.email_notifications import (
+    queue_sponsor_verification_email,
+)
 
 
 SPONSOR_RESPONSE_EXPIRY_HOURS = 48
@@ -110,5 +113,12 @@ def create_sponsor_verification_and_sms(
                     f"sponsor-verification:{application.pk}:whatsapp"
                 ),
             )
+
+        queue_sponsor_verification_email(
+            application=application,
+            verification=verification,
+            sponsor_email=getattr(sponsor_contact, "recipient_email", ""),
+            response_url=response_url,
+        )
 
     return verification, notification

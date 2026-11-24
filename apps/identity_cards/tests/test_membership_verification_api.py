@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication
@@ -55,6 +55,22 @@ class MembershipVerificationAPITests(TestCase):
             uniform_id="AB234567",
             issued_by=cls.issuer,
         )
+        cls.direct_member = Member.objects.create(
+            first_name="Sister",
+            last_name="Direct",
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=cls.direct_member,
+            category=MembershipApplication.Category.RELIGIOUS,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(),
+        )
+        cls.direct_identity = MembershipIdentity.objects.create(
+            member=cls.direct_member,
+            official_membership_id="MOD036/DIR/000001",
+            uniform_id="CD345678",
+        )
 
     def setUp(self):
         self.client = APIClient()
@@ -87,6 +103,23 @@ class MembershipVerificationAPITests(TestCase):
             response.data["uniform_id"],
             self.card.uniform_id,
         )
+
+    def test_direct_diocese_identity_verifies_without_an_issued_card(self):
+        for identifier in (
+            self.direct_identity.official_membership_id,
+            self.direct_identity.uniform_id.lower(),
+        ):
+            with self.subTest(identifier=identifier):
+                response = self.client.get(self.url, {"identifier": identifier})
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.data["verified"])
+                self.assertEqual(
+                    response.data["official_membership_id"],
+                    "MOD036/DIR/000001",
+                )
+                self.assertEqual(response.data["diocese"], self.diocese.name)
+                self.assertIsNone(response.data["parish"])
+                self.assertIsNone(response.data["deanery"])
 
     def test_inactive_member_is_recognized_but_not_active(self):
         self.member.status = Member.Status.SUSPENDED
@@ -130,6 +163,8 @@ class MembershipVerificationAPITests(TestCase):
                 "official_membership_id",
                 "uniform_id",
                 "name",
+                "diocese",
+                "deanery",
                 "parish",
                 "station",
                 "status",

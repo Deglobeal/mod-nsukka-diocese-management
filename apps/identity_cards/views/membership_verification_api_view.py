@@ -4,7 +4,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.organizations.models import Diocese
 
 
 class MembershipVerificationAPIView(APIView):
@@ -57,20 +58,58 @@ class MembershipVerificationAPIView(APIView):
                 .first()
             )
 
+        identity = None
         if card is None:
+            identity = (
+                MembershipIdentity.objects
+                .select_related(
+                    "member__parish__deanery__diocese",
+                    "member__deanery__diocese",
+                    "member__station",
+                )
+                .filter(official_membership_id=identifier)
+                .first()
+            )
+            if identity is None:
+                identity = (
+                    MembershipIdentity.objects
+                    .select_related(
+                        "member__parish__deanery__diocese",
+                        "member__deanery__diocese",
+                        "member__station",
+                    )
+                    .filter(uniform_id=identifier.upper())
+                    .first()
+                )
+
+        if card is None and identity is None:
             return Response(
                 {"detail": "No recognized membership identity was found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        member = card.member
+        member = card.member if card is not None else identity.member
+        official_id = (
+            card.official_membership_id if card is not None
+            else identity.official_membership_id
+        )
+        uniform_id = card.uniform_id if card is not None else identity.uniform_id
+        if member.parish_id:
+            diocese_name = member.parish.deanery.diocese.name
+        elif member.deanery_id:
+            diocese_name = member.deanery.diocese.name
+        else:
+            diocese_name = Diocese.objects.filter(code="036").values_list(
+                "name", flat=True
+            ).first()
 
         return Response(
             {
                 "verified": True,
-                "official_membership_id": card.official_membership_id,
-                "uniform_id": card.uniform_id,
+                "official_membership_id": official_id,
+                "uniform_id": uniform_id,
                 "name": member.full_name,
+                "diocese": diocese_name,
                 "parish": member.parish.name if member.parish_id else None,
                 "deanery": (
                     member.parish.deanery.name

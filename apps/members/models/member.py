@@ -49,7 +49,7 @@ class Member(models.Model):
     class Meta:
         ordering = ["last_name", "first_name"]
         verbose_name = "Member"
-        verbose_name_plural = "Members"
+        verbose_name_plural = "Global Membership Register"
 
     def clean(self):
         super().clean()

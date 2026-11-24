@@ -1,0 +1,19 @@
+M.O.D. NSUKKA DIOCESE — ADDITIONAL INFORMATION REQUIRED
+
+Dear {{ applicant_name }},
+
+Your membership application is currently under review. Additional information or clarification is required before verification can proceed.
+
+Applicant: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+{% if current_stage %}Current Review Stage: {{ current_stage }}{% endif %}
+{% if information_required %}Information Required: {{ information_required }}{% endif %}
+
+Please follow these instructions to submit the requested information:
+{% if submission_instructions %}{{ submission_instructions }}{% endif %}
+{% if submission_url %}Submit information: {{ submission_url }}{% endif %}
+
+Your application remains subject to the existing verification process until the information has been received and reviewed.
+
+M.O.D. Nsukka Diocese
+Membership Management System

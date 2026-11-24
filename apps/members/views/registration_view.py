@@ -380,7 +380,9 @@ def membership_registration(request):
         ):
             application = form.save(commit=False)
             application.stage = (
-                MembershipApplication.Stage.DIOCESE_REVIEW
+                MembershipApplication.Stage.FIRST_MEMBER_BOOTSTRAP_REVIEW
+                if confirmation["kind"] == "first_member_bootstrap"
+                else MembershipApplication.Stage.DIOCESE_REVIEW
                 if (
                     application.category
                     in MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
