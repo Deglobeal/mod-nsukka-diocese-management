@@ -1,6 +1,7 @@
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase
 
+from apps.core.services.institutional_branding import institutional_branding_context
 
 TEMPLATE_NAMES = (
     "registration_received",
@@ -13,7 +14,9 @@ TEMPLATE_NAMES = (
 )
 
 CONTEXT = {
-    "logo_url": "https://example.test/static/images/branding/mainmodlogo.jpg",
+    **institutional_branding_context(),
+    "logo_cid": "mod-logo",
+    "coat_cid": "nigeria-coat-of-arms",
     "applicant_name": "Ada Applicant",
     "sponsor_name": "Sam Sponsor",
     "application_reference": "MOD-2026-001",
@@ -42,17 +45,38 @@ class EmailTemplateTests(SimpleTestCase):
             with self.subTest(template=name):
                 html = self.render(name, "html")
                 text = self.render(name, "txt")
-                for phrase in ("M.O.D. NSUKKA DIOCESE", "Membership Management System"):
+                for phrase in (
+                    "CATHOLIC DIOCESE OF NSUKKA",
+                    "MAN OF ORDER &amp; DISCIPLINE MOVEMENT, NIGERIA (MOD).",
+                    "DIOCESAN M.O.D. COUNCIL (D.M.C.)",
+                    "036 COMMAND NSUKKA",
+                    "GOVT. REG. NO. MOI/YO/06/17",
+                    "036nsukkadmcmd@gmail.com",
+                    "@Modnsukkadmcmd036",
+                    "St. Theresa&#x27;s Cathedral,",
+                    "Membership Management System",
+                ):
                     self.assertIn(phrase, html)
+                for phrase in (
+                    "CATHOLIC DIOCESE OF NSUKKA",
+                    "MAN OF ORDER & DISCIPLINE MOVEMENT, NIGERIA (MOD).",
+                    "DIOCESAN M.O.D. COUNCIL (D.M.C.)",
+                    "036 COMMAND NSUKKA",
+                    "GOVT. REG. NO. MOI/YO/06/17",
+                    "036nsukkadmcmd@gmail.com",
+                    "@Modnsukkadmcmd036",
+                    "St. Theresa's Cathedral,",
+                ):
                     self.assertIn(phrase, text)
                 self.assertIn("#173D32", html)
-                self.assertIn("#B69A54", html)
+                self.assertIn("#A47B35", html)
+                self.assertIn("#F4F1E9", html)
                 self.assertIn("MOD-2026-001", html)
                 self.assertIn("MOD-2026-001", text)
 
     def test_templates_escape_dynamic_values_and_hide_missing_optional_data(self):
         context = {**CONTEXT, "applicant_name": "<script>alert(1)</script>",
-                   "logo_url": "", "parish_name": "", "deanery_name": "",
+                   "logo_cid": "", "coat_cid": "", "parish_name": "", "deanery_name": "",
                    "membership_id": "", "decision_reason": ""}
         html = render_to_string(
             "notifications/email/diocese_approved.html", context
@@ -100,4 +124,24 @@ class EmailTemplateTests(SimpleTestCase):
                 html = self.render(name, "html")
                 self.assertIn('name="viewport"', html)
                 self.assertIn("max-width: 600px", html)
-                self.assertIn("M.O.D. Nsukka Diocese official crest", html)
+                self.assertIn("Official M.O.D. logo", html)
+                self.assertIn("Nigerian Coat of Arms", html)
+                self.assertIn('width="56" height="56"', html)
+                self.assertIn('width="48" height="51"', html)
+                self.assertIn("MAN OF ORDER &amp; DISCIPLINE MOVEMENT, NIGERIA (MOD).", html)
+
+    def test_preview_command_copies_real_images_for_local_html_previews(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        from django.core.management import call_command
+
+        with TemporaryDirectory(prefix="mod-email-preview-test-") as directory:
+            call_command("preview_email_templates", output_dir=directory, verbosity=0)
+            preview_dir = Path(directory)
+            html = (preview_dir / "registration_received.html").read_text()
+            self.assertIn('src="mod-logo.jpg"', html)
+            self.assertIn('src="nigeria-coat-of-arms.png"', html)
+            self.assertTrue((preview_dir / "mod-logo.jpg").is_file())
+            self.assertTrue((preview_dir / "nigeria-coat-of-arms.png").is_file())
+            self.assertNotIn("example.invalid", html)

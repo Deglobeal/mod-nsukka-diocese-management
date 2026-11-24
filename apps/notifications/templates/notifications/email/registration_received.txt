@@ -1,6 +1,4 @@
-M.O.D. NSUKKA DIOCESE
-MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA
-MEMBERSHIP MANAGEMENT SYSTEM
+{% include "notifications/email/_institutional_header.txt" %}
 
 Your Registration Has Been Successfully Submitted
 
@@ -27,6 +25,5 @@ Submission does not mean final membership approval. We will send follow-up email
 
 Thank you for your interest in M.O.D. Nsukka Diocese.
 
-M.O.D. Nsukka Diocese
-Membership Management System
+{{ institutional.diocese }}
 Automated notification from the M.O.D. Nsukka Diocese Membership Management System.

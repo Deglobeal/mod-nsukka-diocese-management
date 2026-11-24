@@ -1,7 +1,7 @@
 {% extends "notifications/email/base.html" %}
 {% block title %}Registration successfully submitted | M.O.D. Nsukka Diocese{% endblock %}
 {% block content %}
-<div style="display:inline-block;padding:6px 10px;background:#EEF3F7;color:#38566B;font-size:11px;font-weight:bold;letter-spacing:.5px;">INFORMATION · AWAITING VERIFICATION</div>
+<div style="display:inline-block;padding:6px 10px;background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};font-size:11px;font-weight:bold;letter-spacing:.5px;">INFORMATION · AWAITING VERIFICATION</div>
 <h1 style="margin:16px 0;color:{{ email_green }};font-size:23px;line-height:1.3;">Your Registration Has Been Successfully Submitted</h1>
 <p style="font-size:15px;line-height:1.7;">Dear {{ applicant_name }},</p>
 <p style="font-size:15px;line-height:1.7;">Thank you for choosing to register with the Man of Order and Discipline Movement of Nigeria (M.O.D.), Nsukka Diocese. We are pleased to confirm that your membership registration has been successfully received.</p>

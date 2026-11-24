@@ -11,8 +11,7 @@ from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
 from apps.members.pdf_design import (
     MOD_BORDER,
-    MOD_LIGHT_PURPLE,
-    MOD_LIGHT_SURFACE,
+    MOD_IVORY,
     application_reference,
     mod_letterhead,
     mod_pdf_document,
@@ -67,7 +66,7 @@ def _metadata_table(application, styles, *, society_letter=False):
     )
     table.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.35, MOD_BORDER),
-        ("BACKGROUND", (0, 0), (0, -1), MOD_LIGHT_PURPLE),
+        ("BACKGROUND", (0, 0), (0, -1), MOD_IVORY),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 5),
@@ -128,19 +127,10 @@ def _build_letter_pdf(application, *, kind):
         title = "CHURCH SOCIETY / ORGANIZATION RECOMMENDATION LETTER"
         document_title = "M.O.D. Church Society / Organization Recommendation Letter"
         filename = f"MOD-Society-Recommendation-{reference_filename}.pdf"
-        header_lines = (
-            "MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA (M.O.D.)",
-            "NSUKKA DIOCESE",
-        )
     else:
         title = "PARISH CHAPLAIN'S VERIFICATION AND RECOMMENDATION LETTER"
         document_title = "M.O.D. Parish Chaplain Verification and Recommendation Letter"
         filename = f"MOD-Parish-Chaplain-Letter-{reference_filename}.pdf"
-        header_lines = (
-            "MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA (M.O.D.)",
-            "NSUKKA DIOCESE",
-            "PARISH CHAPLAINCY OFFICE",
-        )
 
     buffer = BytesIO()
     document = mod_pdf_document(
@@ -149,7 +139,7 @@ def _build_letter_pdf(application, *, kind):
         subject="Offline supporting document for a membership application",
     )
     styles = mod_pdf_styles()
-    story = mod_letterhead(styles, title=title, header_lines=header_lines)
+    story = mod_letterhead(styles, title=title)
     deanery = (
         application.parish.deanery.name
         if application.parish_id

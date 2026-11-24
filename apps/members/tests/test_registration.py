@@ -1053,14 +1053,57 @@ class MembershipRegistrationTests(TestCase):
         )
         self.assertRegex(
             response.content.decode("latin-1"),
-            r"/ca\s+(?:0?\.075)",
-            "The official logo watermark should use its historical 7.5% opacity.",
+            r"/ca\s+(?:0?\.06)",
+            "The official logo watermark should use the approved subtle opacity.",
         )
         from apps.members.pdf_design import application_reference
         self.assertIn(application_reference(application), _pdf_decoded_stream_text(response.content))
         pdf_text = _pdf_decoded_stream_text(response.content)
         page_count = len(re.findall(rb"/Type\s*/Page\b", response.content))
         self.assertEqual(page_count, 2)
+        from pypdf import PdfReader
+        from pypdf.generic import ContentStream
+        reader = PdfReader(BytesIO(response.content))
+        for page_index, page in enumerate(reader.pages):
+            page_text = page.extract_text()
+            for brand_text in (
+                "CATHOLIC DIOCESE OF NSUKKA",
+                "MAN OF ORDER & DISCIPLINE MOVEMENT, NIGERIA (MOD).",
+                "DIOCESAN M.O.D. COUNCIL (D.M.C.)",
+                "036 COMMAND NSUKKA",
+                "GOVT. REG. NO. MOI/YO/06/17",
+            ):
+                self.assertIn(brand_text, page_text)
+            annotation_uris = [
+                annotation.get_object().get("/A", {}).get("/URI")
+                for annotation in page.get("/Annots", [])
+            ]
+            if page_index == 0:
+                for brand_text in (
+                    "036nsukkadmcmd@gmail.com",
+                    "@Modnsukkadmcmd036",
+                    "DIOCESAN HEADQUARTERS",
+                    "St. Theresa's Cathedral,",
+                    "P.O. Box 32, Nsukka,",
+                    "Enugu State, Nigeria.",
+                ):
+                    self.assertIn(brand_text, page_text)
+                self.assertIn("mailto:036nsukkadmcmd@gmail.com", annotation_uris)
+                self.assertIn("https://t.me/Modnsukkadmcmd036", annotation_uris)
+            content = page.get_contents()
+            self.assertIn(b"gs", content.get_data())
+            draw_positions = []
+            current_x = None
+            for operands, operator in ContentStream(content, reader).operations:
+                if operator == b"cm":
+                    current_x = float(operands[4])
+                elif operator == b"Do" and current_x is not None:
+                    draw_positions.append(current_x)
+            self.assertGreaterEqual(len(draw_positions), 3)
+            self.assertLess(
+                draw_positions[1], draw_positions[2],
+                "The M.O.D. emblem must precede the Nigerian Coat of Arms from left to right.",
+            )
         for heading in (
             "SECTION A: PARISH CHAPLAIN'S ENDORSEMENT",
             "SECTION B: DEANERY CHAIRMAN'S ENDORSEMENT",
@@ -1158,9 +1201,20 @@ class MembershipRegistrationTests(TestCase):
             self.assertIn(reference, decoded)
             self.assertRegex(
                 pdf.content.decode("latin-1"),
-                r"/ca\s+(?:0?\.075)",
+                r"/ca\s+(?:0?\.06)",
             )
             decoded_documents.append(decoded)
+
+        for decoded in decoded_documents:
+            for brand_text in (
+                "CATHOLIC DIOCESE OF NSUKKA",
+                "036 COMMAND NSUKKA",
+                "GOVT. REG. NO. MOI/YO/06/17",
+                "036nsukkadmcmd@gmail.com",
+                "@Modnsukkadmcmd036",
+                "St. Theresa's Cathedral,",
+            ):
+                self.assertIn(brand_text, decoded)
 
         self.assertIn("Ada Chinwe Okafor", decoded_documents[1])
         self.assertIn("Registration Test Parish", decoded_documents[1])

@@ -1,0 +1,13 @@
+{% autoescape off %}
+{{ institutional.diocese }}
+{{ institutional.movement }}
+{{ institutional.council }}
+{{ institutional.command }}
+{{ institutional.registration }}
+Email: {{ institutional.email }}
+Telegram: {{ institutional.telegram }}
+DIOCESAN HEADQUARTERS:
+{{ institutional.headquarters.0 }}
+{{ institutional.headquarters.1 }}
+{{ institutional.headquarters.2 }}
+{% endautoescape %}

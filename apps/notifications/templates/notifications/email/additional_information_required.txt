@@ -1,4 +1,5 @@
-M.O.D. NSUKKA DIOCESE — ADDITIONAL INFORMATION REQUIRED
+{% include "notifications/email/_institutional_header.txt" %}
+ADDITIONAL INFORMATION REQUIRED
 
 Dear {{ applicant_name }},
 

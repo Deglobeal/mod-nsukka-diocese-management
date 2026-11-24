@@ -1,4 +1,5 @@
-M.O.D. NSUKKA DIOCESE — DEANERY VERIFICATION COMPLETED
+{% include "notifications/email/_institutional_header.txt" %}
+DEANERY VERIFICATION COMPLETED
 
 Dear {{ applicant_name }},
 

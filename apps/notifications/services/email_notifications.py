@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.members.pdf_design import application_reference
+from apps.core.services.institutional_branding import institutional_branding_context
 from apps.notifications.models import EmailNotification
 from apps.verification.models import MembershipApplication
 
@@ -45,6 +46,7 @@ def _application_context(application):
 
 def _enqueue(*, application, kind, recipient, context, idempotency_key,
              sponsor_verification=None, failure_reason=""):
+    context = {**institutional_branding_context(), **context}
     recipient = (recipient or "").strip()
     status = EmailNotification.Status.QUEUED
     failure = ""

@@ -51,7 +51,7 @@ class EmailOutboxTests(TestCase):
             diocese=diocese, name="Mail Test Deanery", code="MTD-001",
         )
         cls.parish = Parish.objects.create(
-            deanery=cls.deanery, name="Mail Test Parish",
+            deanery=cls.deanery, name="Mail Test Parish", code="MTP001",
         )
         cls.member = Member.objects.create(
             first_name="Ada", last_name="Applicant", parish=cls.parish,
@@ -320,7 +320,10 @@ class EmailOutboxTests(TestCase):
             application=self.application,
             kind=EmailNotification.Kind.DIOCESE_APPROVED,
         )
-        self.assertNotIn("membership_id", approved.template_context)
+        self.assertEqual(
+            approved.template_context["membership_id"],
+            self.application.member.membership_identity.official_membership_id,
+        )
 
     def test_diocesan_rejection_uses_recorded_reason(self):
         self.application.stage = MembershipApplication.Stage.DIOCESE_REVIEW
@@ -474,7 +477,23 @@ class EmailOutboxTests(TestCase):
         parts = list(message.walk())
         self.assertTrue(any(part.get_content_type() == "text/plain" for part in parts))
         self.assertTrue(any(part.get_content_type() == "text/html" for part in parts))
-        self.assertTrue(any(part.get("Content-ID") == "<mod-nsukka-diocese-logo>" for part in parts))
+        html_part = next(part for part in parts if part.get_content_type() == "text/html")
+        html_body = html_part.get_content()
+        expected_images = {
+            "<mod-logo>": ("image/jpeg", "cid:mod-logo"),
+            "<nigeria-coat-of-arms>": (
+                "image/png", "cid:nigeria-coat-of-arms"
+            ),
+        }
+        for content_id, (content_type, html_reference) in expected_images.items():
+            with self.subTest(content_id=content_id):
+                image_part = next(part for part in parts if part.get("Content-ID") == content_id)
+                self.assertEqual(image_part.get_content_type(), content_type)
+                self.assertEqual(image_part.get_content_disposition(), "inline")
+                self.assertNotEqual(image_part.get_content_disposition(), "attachment")
+                self.assertIn(f'src="{html_reference}"', html_body)
+        self.assertNotIn("localhost", html_body)
+        self.assertNotIn("example.invalid", html_body)
         self.assertTrue(any(part.get_filename() == "application.pdf" for part in parts))
 
     @override_settings(GMAIL_API_ENABLED=True)
@@ -510,3 +529,9 @@ class EmailOutboxTests(TestCase):
         reader = PdfReader(BytesIO(content))
         self.assertTrue(filename.startswith("MOD_COMPLETE_REGISTRATION_"))
         self.assertGreaterEqual(len(reader.pages), 3)
+        all_page_text = "\n".join(page.extract_text() for page in reader.pages)
+        for page in reader.pages:
+            page_text = page.extract_text()
+            self.assertIn("CATHOLIC DIOCESE OF NSUKKA", page_text)
+            self.assertIn("GOVT. REG. NO. MOI/YO/06/17", page_text)
+        self.assertIn("DIOCESAN HEADQUARTERS", all_page_text)
