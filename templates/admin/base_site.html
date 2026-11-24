@@ -3,5 +3,8 @@
 {% block nav-global %}
 <div class="nav-global">
   {% if user.is_superuser %}<a href="{% url 'first_member_registration_ids' %}">First Member Registration IDs</a>{% endif %}
+  {% if user.is_superuser %}<a href="{% url 'membership_review_dashboard:first_member_bootstrap_review' %}">First Member Application Review</a>{% endif %}
+  {% if user.is_superuser %}<a href="{% url 'first_diocesan_chairman_appointment' %}">First Diocesan Chairman Appointment</a>{% endif %}
+  {% if user.is_superuser %}<a href="{% url 'chairman_activation_admin' %}">Chairman Account Activation</a>{% endif %}
 </div>
 {% endblock %}

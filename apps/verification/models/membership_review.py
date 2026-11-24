@@ -4,6 +4,7 @@ from django.db import models
 
 class MembershipReview(models.Model):
     class ReviewLevel(models.TextChoices):
+        FIRST_MEMBER_BOOTSTRAP = "bootstrap", "First Member Bootstrap"
         PARISH = "parish", "Parish"
         DEANERY = "deanery", "Deanery"
         DIOCESE = "diocese", "Diocese"

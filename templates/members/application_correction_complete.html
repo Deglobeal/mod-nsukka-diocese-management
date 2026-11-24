@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}Corrections Submitted{% endblock %}
+
+{% block content %}
+<main class="container" style="max-width: 680px; margin: 3rem auto; padding: 1.25rem;">
+    <h1>Corrections submitted</h1>
+    <p>Your updated information for application <strong>{{ application.public_reference }}</strong> has been received. It is back in the appropriate review queue. The review stage has not been advanced by this submission.</p>
+</main>
+{% endblock %}

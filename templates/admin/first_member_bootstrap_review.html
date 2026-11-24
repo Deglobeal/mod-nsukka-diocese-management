@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>First Member Application Review</h1>
+<p>Only token-backed first-member applications appear here. Decisions on this page are available to Django superusers only.</p>
+
+{% if messages %}
+  <ul class="messagelist">
+    {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+  </ul>
+{% endif %}
+
+{% for item in applications %}
+  {% with application=item.application %}
+  <section class="module" style="margin-bottom: 1.5em">
+    <h2>{{ application.applicant_name|default:application.first_name }} — {{ application.get_category_display }}</h2>
+    <table>
+      <tbody>
+        <tr><th>Application reference</th><td>{{ application.public_reference }}</td></tr>
+        <tr><th>Applicant</th><td>{{ application.first_name }} {{ application.middle_name }} {{ application.last_name }}</td></tr>
+        <tr><th>Phone</th><td>{{ application.phone_number }}</td></tr>
+        <tr><th>Email</th><td>{{ application.email|default:"—" }}</td></tr>
+        <tr><th>Deanery</th><td>{{ application.deanery|default:"—" }}</td></tr>
+        <tr><th>Parish</th><td>{{ application.parish|default:"—" }}</td></tr>
+        <tr><th>Submitted</th><td>{{ application.submitted_at }}</td></tr>
+        <tr><th>Bootstrap token</th><td>Redeemed ID record #{{ item.token.pk }}</td></tr>
+      </tbody>
+    </table>
+    <p><a class="button" href="{{ item.admin_url }}">Inspect full application and securely access supporting documents</a></p>
+
+    {% if item.reviews %}
+      <h3>Decision history</h3>
+      <table>
+        <thead><tr><th>Decision</th><th>Reviewer</th><th>Time</th><th>Comments</th></tr></thead>
+        <tbody>
+          {% for review in item.reviews %}
+            <tr><td>{{ review.get_decision_display }}</td><td>{{ review.reviewer|default:"—" }}</td><td>{{ review.reviewed_at }}</td><td>{{ review.comments|default:"—" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    <form method="post" style="margin-top: 1em">
+      {% csrf_token %}
+      <input type="hidden" name="application_id" value="{{ application.pk }}">
+      <label for="decision-{{ application.pk }}">Decision</label>
+      <select id="decision-{{ application.pk }}" name="decision" required>
+        <option value="">Select a decision</option>
+        {% for value, label in decision_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <label for="comments-{{ application.pk }}">Comments or information requested</label>
+      <textarea id="comments-{{ application.pk }}" name="comments" maxlength="5000" rows="4" style="width: 100%"></textarea>
+      <button class="button default" type="submit">Record decision</button>
+    </form>
+  </section>
+  {% endwith %}
+{% empty %}
+  <section class="module"><p>No first-member applications are awaiting superuser review.</p></section>
+{% endfor %}
+{% endblock %}

@@ -63,6 +63,7 @@ class MembershipApplicationTests(TestCase):
 
     def test_all_workflow_stages_are_defined(self):
         expected = {
+            "first_member_bootstrap_review",
             "parish_review",
             "deanery_review",
             "diocese_review",

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Registration Documents | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="registration-page">
+    <div class="registration-card registration-success">
+        <p class="registration-eyebrow">M.O.D. NSUKKA DIOCESE</p>
+        <h1 class="registration-title">Your registration documents</h1>
+        <p class="registration-description">
+            Application Reference: <strong>{{ application_reference }}</strong><br>
+            Status: <strong>UNDER REVIEW</strong>
+        </p>
+        <p class="registration-notice">
+            Your application is awaiting the required verification and approval. This link opens only the documents for this application. Keep it private.
+        </p>
+
+        <a class="registration-button registration-link"
+           href="{% url 'members:registration_document_pdf_download' token=token %}">
+            Download Registration Form PDF (A4)
+        </a>
+        <a class="registration-button registration-link"
+           href="{% url 'members:registration_document_chaplain_download' token=token %}">
+            Download Parish Chaplain Verification and Recommendation Letter
+        </a>
+        <a class="registration-button registration-link"
+           href="{% url 'members:registration_document_society_download' token=token %}">
+            Download Optional Church Society / Organization Recommendation Letter
+        </a>
+        <p class="registration-notice">
+            Print the required documents and follow the physical verification and endorsement process through your Parish, Deanery, and Diocese. The optional Society / Organization letter does not replace Parish Chaplain verification.
+        </p>
+    </div>
+</section>
+{% endblock %}

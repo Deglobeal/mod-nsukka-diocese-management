@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity, ReservedOffice
 from apps.identity_cards.services.membership_card_issuance import (
     issue_membership_card,
 )
@@ -177,6 +177,50 @@ class MembershipCardIssuanceTests(TestCase):
             self.issue(second_member, official_id="MOD-TEST-DUPLICATE")
 
         self.assertEqual(MembershipCard.objects.count(), 1)
+
+    def test_dir_identity_is_mirrored_onto_card_without_changing_uniform_id(self):
+        member = Member.objects.create(
+            first_name="Direct",
+            last_name="Diocesan",
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=member,
+            category=MembershipApplication.Category.RELIGIOUS,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(),
+        )
+        identity = MembershipIdentity.objects.create(
+            member=member,
+            official_membership_id="MOD036/DIR/000001",
+            uniform_id="AB234567",
+        )
+        card = self.issue(member, official_id=identity.official_membership_id)
+        self.assertEqual(card.official_membership_id, identity.official_membership_id)
+        self.assertEqual(card.uniform_id, identity.uniform_id)
+
+    def test_existing_identity_cannot_be_replaced_during_card_issuance(self):
+        member = self.create_member()
+        self.approve_member(member)
+        MembershipIdentity.objects.create(
+            member=member,
+            official_membership_id="MOD036/002/043/000001",
+            uniform_id="AB234567",
+        )
+        with self.assertRaisesMessage(ValidationError, "permanent official Membership ID"):
+            self.issue(member, official_id="MOD-REPLACEMENT-001")
+        self.assertFalse(MembershipCard.objects.exists())
+
+    def test_reserved_office_identifier_cannot_be_issued_to_a_member(self):
+        member = self.create_member()
+        self.approve_member(member)
+        office = ReservedOffice.objects.get(
+            diocese=self.diocese,
+            office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+        )
+        with self.assertRaisesMessage(ValidationError, "Reserved office identifiers"):
+            self.issue(member, official_id=office.official_identifier)
+        self.assertFalse(MembershipCard.objects.exists())
 
     def test_blank_official_id_is_rejected(self):
         member = self.create_member()

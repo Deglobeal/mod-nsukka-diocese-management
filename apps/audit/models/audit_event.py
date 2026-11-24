@@ -23,6 +23,14 @@ class AuditEvent(models.Model):
             "membership.review_recorded",
             "Membership review recorded",
         )
+        APPLICATION_CORRECTIONS_RESUBMITTED = (
+            "membership.corrections_resubmitted",
+            "Membership application corrections resubmitted",
+        )
+        SUPERUSER_APPLICATION_DECISION = (
+            "membership.superuser_decision",
+            "Superuser membership application decision",
+        )
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

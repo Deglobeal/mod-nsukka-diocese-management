@@ -1,0 +1,22 @@
+M.O.D. NSUKKA DIOCESE
+MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA
+MEMBERSHIP MANAGEMENT SYSTEM
+
+Your Sponsorship Confirmation Is Required
+
+Dear {{ sponsor_name }},
+
+An applicant has supplied your M.O.D. membership details as part of a new membership registration. Please confirm whether you recognize and accept this sponsorship request.
+
+APPLICATION DETAILS
+Applicant: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+Sponsor: {{ sponsor_name }}
+
+Review and respond using this personal, secure link:
+{{ verification_url }}
+
+You may confirm or dispute the request. Do not share this link. It expires{% if expires_at %} on {{ expires_at }}{% else %} according to the existing token-expiry policy{% endif %}. Sponsorship confirmation does not automatically approve the applicant's membership. If you do not recognize the request, use the dispute option through the secure link.
+
+M.O.D. Nsukka Diocese
+Membership Management System

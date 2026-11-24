@@ -15,6 +15,9 @@ from apps.verification.views.parish_member_directory_view import (
     parish_member_directory,
     parish_member_directory_csv,
 )
+from apps.verification.views.first_member_bootstrap_review_view import (
+    first_member_bootstrap_review,
+)
 
 from apps.verification.views.membership_review_dashboard_view import (
     deanery_chairman_dashboard,
@@ -25,6 +28,11 @@ from apps.verification.views.membership_review_dashboard_view import (
 app_name = "membership_review_dashboard"
 
 urlpatterns = [
+    path(
+        "superuser/first-member-review/",
+        first_member_bootstrap_review,
+        name="first_member_bootstrap_review",
+    ),
     path(
         "application/<int:application_id>/member-profile-form/",
         membership_application_member_profile_form,

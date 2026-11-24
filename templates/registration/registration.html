@@ -146,6 +146,12 @@
                 <div class="registration-fixed-value"><span class="registration-fixed-label">Diocese *</span><strong>Nsukka Diocese</strong></div>
                 <div class="registration-grid">
                     {% include "registration/partials/registration_field.html" with field=form.category %}
+                    <p id="optional-organization-fields-help" class="registration-help" role="status" aria-live="polite" hidden>
+                        Parish and Deanery are optional for Chaplain, Sister Advisors/Animators, and Religious applicants. You may select a Deanery without selecting a Parish, select both a Deanery and Parish, or leave both blank if yours is not listed.
+                    </p>
+                    <p id="sister-advisor-sex-requirement" class="registration-help" role="status" aria-live="polite" hidden>
+                        Sister Advisors/Animators must be female. Select Female in the Sex field in Section 1 to continue.
+                    </p>
                     {% include "registration/partials/registration_field.html" with field=form.deanery %}
                     {% include "registration/partials/registration_field.html" with field=form.parish %}
                     {% include "registration/partials/registration_field.html" with field=form.station %}
@@ -357,5 +363,5 @@
 <script type="module" src="{% static 'js/registration/passport-camera.js' %}?v=12"></script>
 
 <script type="module" src="{% static 'js/registration/signature-camera.js' %}?v=2"></script>
-<script src="{% static 'js/registration/registration-form.js' %}?v=4"></script>
+<script src="{% static 'js/registration/registration-form.js' %}?v=7"></script>
 {% endblock %}

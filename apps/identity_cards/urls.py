@@ -16,6 +16,11 @@ app_name = "identity_cards"
 
 urlpatterns = [
     path(
+        "identities/<int:identity_id>/qr/",
+        MembershipQRDownloadAPIView.as_view(),
+        name="download-membership-identity-qr",
+    ),
+    path(
         "<int:card_id>/qr/",
         MembershipQRDownloadAPIView.as_view(),
         name="download-membership-qr",

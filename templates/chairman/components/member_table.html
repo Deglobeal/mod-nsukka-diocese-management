@@ -36,7 +36,7 @@
                     <tr>
                         <th scope="row">{{ member.full_name }}</th>
                         <td>{% if member.membership_identity %}{{ member.membership_identity.official_membership_id }}{% else %}Not allocated{% endif %}</td>
-                        <td>{{ member.parish.name }}</td>
+                        <td>{% if member.parish_id %}{{ member.parish.name }}{% elif member.deanery_id %}{{ member.deanery.name }} (no Parish){% else %}Diocesan / unassigned{% endif %}</td>
                         <td>{% if member.station %}{{ member.station.name }}{% else %}Not assigned{% endif %}</td>
                         <td>{{ member.get_status_display }}</td>
                     </tr>

@@ -58,7 +58,7 @@ class MembershipReviewTests(TestCase):
     def test_review_levels_are_defined(self):
         self.assertEqual(
             {value for value, label in MembershipReview.ReviewLevel.choices},
-            {"parish", "deanery", "diocese"},
+            {"bootstrap", "parish", "deanery", "diocese"},
         )
 
     def test_review_decisions_are_defined(self):

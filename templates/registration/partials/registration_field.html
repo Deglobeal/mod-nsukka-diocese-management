@@ -1,4 +1,4 @@
-{% if field.name == "declaration_accepted" or field.name == "verification_consent" %}
+{% if field.field.widget.input_type == "checkbox" %}
 <div class="registration-field registration-consent">
     <label class="registration-checkbox-label" for="{{ field.id_for_label }}">
         {{ field }}

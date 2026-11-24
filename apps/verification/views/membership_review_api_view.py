@@ -6,9 +6,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.verification.models import MembershipApplication
+from apps.verification.models import MembershipApplication, MembershipReview
 from apps.verification.services.membership_approval import (
     record_membership_review,
+)
+from apps.notifications.services.application_correction_notifications import (
+    queue_application_correction_notification,
 )
 
 
@@ -81,6 +84,11 @@ class MembershipReviewAPIView(APIView):
             )
 
         review.application.refresh_from_db()
+        correction_link_queued = False
+        if decision == MembershipReview.Decision.NEEDS_INFORMATION:
+            correction_link_queued = queue_application_correction_notification(
+                review=review, request=request
+            )
 
         return Response(
             {
@@ -96,6 +104,7 @@ class MembershipReviewAPIView(APIView):
                     else None
                 ),
                 "reviewed_at": review.reviewed_at,
+                "correction_link_queued": correction_link_queued,
             },
             status=status.HTTP_201_CREATED,
         )

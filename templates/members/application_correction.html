@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Update Your Membership Application{% endblock %}
+
+{% block content %}
+<main class="container" style="max-width: 760px; margin: 2rem auto; padding: 1.25rem;">
+    <h1>Update your membership application</h1>
+    <p>Application reference: <strong>{{ application.public_reference }}</strong></p>
+    <p>The Diocese requested additional information or corrections. Update the relevant details below and resubmit. Your original approval stage will resume after submission.</p>
+    {% if correction_request.source_review.comments %}
+        <section aria-labelledby="requested-information-heading">
+            <h2 id="requested-information-heading">Information requested by the reviewer</h2>
+            <p>{{ correction_request.source_review.comments|linebreaksbr }}</p>
+        </section>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <div style="margin: 0 0 1rem;">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+        <button type="submit">Resubmit corrections</button>
+    </form>
+    <p>For your security, this private link works once and expires 14 days after it was issued.</p>
+</main>
+{% endblock %}

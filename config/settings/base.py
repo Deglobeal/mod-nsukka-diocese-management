@@ -11,6 +11,42 @@ DEBUG = False
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
 
+# Email is configured through environment variables and remains opt-in for
+# appointment activation so deployments do not start sending automatically.
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+).strip()
+EMAIL_HOST = os.getenv("EMAIL_HOST", "").strip()
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "15"))
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
+CHAIRMAN_ACTIVATION_EMAIL_ENABLED = os.getenv(
+    "CHAIRMAN_ACTIVATION_EMAIL_ENABLED", "False"
+).strip().lower() in {"1", "true", "yes", "on"}
+
+# Gmail API is separate from Django's configured email backend. The worker
+# requires both this explicit switch and an explicit --send option.
+GMAIL_API_ENABLED = os.getenv("GMAIL_API_ENABLED", "False").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+GMAIL_API_SENDER = os.getenv("GMAIL_API_SENDER", "deglobeal@gmail.com").strip()
+GMAIL_OAUTH_CREDENTIALS_FILE = os.getenv(
+    "GMAIL_OAUTH_CREDENTIALS_FILE",
+    "~/.config/mod-nsukka/credentials.json",
+).strip()
+GMAIL_OAUTH_TOKEN_FILE = os.getenv(
+    "GMAIL_OAUTH_TOKEN_FILE",
+    "~/.config/mod-nsukka/token.json",
+).strip()
+
 # Sendar SMS gateway
 SENDAR_API_KEY = os.getenv("SENDAR_API_KEY", "").strip()
 SENDAR_API_BASE_URL = os.getenv(
@@ -99,6 +135,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "identity_cards_web:dashboard"
 LOGOUT_REDIRECT_URL = "public_home"
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],

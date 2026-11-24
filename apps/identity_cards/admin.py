@@ -1,6 +1,40 @@
 from django.contrib import admin
 
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
+
+
+@admin.register(MembershipIdentity)
+class MembershipIdentityAdmin(admin.ModelAdmin):
+    list_display = (
+        "official_membership_id",
+        "uniform_id",
+        "member",
+        "allocated_at",
+    )
+    list_filter = ("member__status", "allocated_at")
+    search_fields = (
+        "official_membership_id",
+        "uniform_id",
+        "member__first_name",
+        "member__middle_name",
+        "member__last_name",
+    )
+    list_select_related = ("member",)
+    readonly_fields = (
+        "member",
+        "official_membership_id",
+        "uniform_id",
+        "allocated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(MembershipCard)

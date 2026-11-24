@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication
@@ -71,6 +71,22 @@ class MembershipQRDownloadAPITests(TestCase):
             uniform_id="AB234567",
             issued_by=cls.admin,
         )
+        cls.direct_member = Member.objects.create(
+            first_name="Direct",
+            last_name="Diocesan",
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=cls.direct_member,
+            category=MembershipApplication.Category.RELIGIOUS,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(),
+        )
+        cls.direct_identity = MembershipIdentity.objects.create(
+            member=cls.direct_member,
+            official_membership_id="MOD036/DIR/000001",
+            uniform_id="CD345678",
+        )
 
     def setUp(self):
         self.client = APIClient()
@@ -94,6 +110,17 @@ class MembershipQRDownloadAPITests(TestCase):
             response["Content-Disposition"],
         )
         self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.assertTrue(response.content.startswith(b"\x89PNG\r\n\x1a\n"))
+
+    @override_settings(PUBLIC_BASE_URL="https://mod.example")
+    def test_authorized_diocese_admin_can_download_direct_identity_qr(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(
+            f"/api/identity-cards/identities/{self.direct_identity.pk}/qr/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/png")
+        self.assertIn("membership-CD345678.png", response["Content-Disposition"])
         self.assertTrue(response.content.startswith(b"\x89PNG\r\n\x1a\n"))
 
     def test_unassigned_user_cannot_download_card(self):

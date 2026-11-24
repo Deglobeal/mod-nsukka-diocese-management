@@ -47,9 +47,20 @@ def get_chairman_shell_data(*, diocese_ids):
 
 
 def get_overview_data(*, diocese_ids):
-    member_scope = Member.objects.filter(
-        parish__deanery__diocese_id__in=diocese_ids,
+    member_scope_filter = (
+        Q(parish__deanery__diocese_id__in=diocese_ids)
+        | Q(deanery__diocese_id__in=diocese_ids)
     )
+    if Diocese.objects.filter(pk__in=diocese_ids, code="036").exists():
+        unassigned_category_members = MembershipApplication.objects.filter(
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION,
+            member__parish__isnull=True,
+            member__deanery__isnull=True,
+            member_id__isnull=False,
+        ).values("member_id")
+        member_scope_filter |= Q(pk__in=unassigned_category_members)
+    member_scope = Member.objects.filter(member_scope_filter)
     active_members = member_scope.filter(status=Member.Status.ACTIVE)
     status_totals = {
         row["status"]: row["total"]
@@ -104,20 +115,16 @@ def get_overview_data(*, diocese_ids):
                 "label": label,
                 "count": category_totals.get(category, 0),
             }
-            for category, label in (
-                (
-                    MembershipApplication.Category.REGULAR_MEMBER,
-                    "Regular Member",
-                ),
-                (MembershipApplication.Category.PATRON, "Patron"),
-                (MembershipApplication.Category.CHAPLAIN, "Chaplain"),
-            )
+            for category, label in MembershipApplication.Category.choices
+            if category_totals.get(category, 0) > 0
         ],
         "identity_record_count": MembershipIdentity.objects.filter(
-            member__parish__deanery__diocese_id__in=diocese_ids,
+            Q(member__parish__deanery__diocese_id__in=diocese_ids)
+            | Q(member__deanery__diocese_id__in=diocese_ids)
         ).count(),
         "issued_card_count": MembershipCard.objects.filter(
-            member__parish__deanery__diocese_id__in=diocese_ids,
+            Q(member__parish__deanery__diocese_id__in=diocese_ids)
+            | Q(member__deanery__diocese_id__in=diocese_ids)
         ).count(),
         "eligible_card_count": sum(
             eligible_members_for_card_issuance(diocese=diocese).count()
@@ -131,12 +138,24 @@ def get_overview_data(*, diocese_ids):
 
 
 def get_member_directory(*, diocese_ids, search_query="", page_number=1):
+    member_scope_filter = (
+        Q(parish__deanery__diocese_id__in=diocese_ids)
+        | Q(deanery__diocese_id__in=diocese_ids)
+    )
+    if Diocese.objects.filter(pk__in=diocese_ids, code="036").exists():
+        unassigned_category_members = MembershipApplication.objects.filter(
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION,
+            member__parish__isnull=True,
+            member__deanery__isnull=True,
+            member_id__isnull=False,
+        ).values("member_id")
+        member_scope_filter |= Q(pk__in=unassigned_category_members)
     members = (
-        Member.objects.filter(
-            parish__deanery__diocese_id__in=diocese_ids,
-        )
+        Member.objects.filter(member_scope_filter)
         .select_related(
             "parish__deanery__diocese",
+            "deanery__diocese",
             "station",
             "membership_identity",
         )

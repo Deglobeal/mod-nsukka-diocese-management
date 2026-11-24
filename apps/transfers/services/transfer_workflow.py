@@ -91,6 +91,11 @@ def submit_transfer_request(*, member_id, destination_parish_id, submitted_by, r
     if member.status != Member.Status.ACTIVE:
         raise ValidationError("Only active members can request a transfer.")
 
+    if member.parish_id is None:
+        raise ValidationError(
+            "A member without a Parish assignment cannot request a Parish transfer."
+        )
+
     authorized = OfficeAssignment.objects.filter(
         user=submitted_by,
         role=OfficeAssignment.Role.PARISH_ADMIN,

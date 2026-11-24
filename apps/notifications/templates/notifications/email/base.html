@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}M.O.D. Nsukka Diocese{% endblock %}</title>
+  <style>
+    :root { --mod-green: #173D32; --mod-gold: #B69A54; --mod-white: #FFFFFF; --mod-cream: #F7F8F5; --mod-text: #24312B; --mod-muted: #68746D; }
+    body { margin: 0; padding: 0; background: #F7F8F5; color: #24312B; font-family: Arial, Helvetica, sans-serif; }
+    a { color: #173D32; }
+    @media screen and (max-width: 600px) { .email-shell { width: 100% !important; } .email-content { padding: 22px 18px !important; } .brand-copy { font-size: 12px !important; } }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#F7F8F5;color:#24312B;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#F7F8F5;width:100%;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#FFFFFF;border-collapse:collapse;">
+        {% if preview_notice %}<tr><td style="background:#FFF4CC;color:#5D4A12;padding:9px 18px;text-align:center;font-size:12px;font-weight:bold;">{{ preview_notice }}</td></tr>{% endif %}
+        <tr><td style="background-color:#173D32;border-bottom:4px solid #B69A54;padding:22px 28px;text-align:center;">
+          {% if logo_cid %}<img src="cid:{{ logo_cid }}" width="76" alt="M.O.D. Nsukka Diocese official crest" style="display:block;width:76px;height:auto;max-height:76px;margin:0 auto 12px;border:0;">{% elif logo_url %}<img src="{{ logo_url }}" width="76" alt="M.O.D. Nsukka Diocese official crest" style="display:block;width:76px;height:auto;max-height:76px;margin:0 auto 12px;border:0;">{% endif %}
+          <div class="brand-copy" style="color:#FFFFFF;font-size:15px;font-weight:bold;letter-spacing:1px;">M.O.D. NSUKKA DIOCESE</div>
+          <div style="color:#FFFFFF;font-size:11px;line-height:1.6;margin-top:5px;">MAN OF ORDER AND DISCIPLINE MOVEMENT OF NIGERIA</div>
+          <div style="color:#E7D7A8;font-size:10px;letter-spacing:1px;margin-top:4px;">MEMBERSHIP MANAGEMENT SYSTEM</div>
+        </td></tr>
+        <tr><td class="email-content" style="padding:32px 36px 28px;">
+          {% with email_green="#173D32" email_gold="#B69A54" email_text="#24312B" email_muted="#68746D" %}
+            {% block content %}{% endblock %}
+          {% endwith %}
+        </td></tr>
+        <tr><td style="border-top:1px solid #E4E9E4;padding:20px 28px;text-align:center;color:#68746D;font-size:12px;line-height:1.7;">
+          <strong style="color:#173D32;">M.O.D. Nsukka Diocese</strong><br>
+          Membership Management System<br>
+          Automated notification from the M.O.D. Nsukka Diocese Membership Management System.
+          {% if institutional_contact %}<br>{{ institutional_contact }}{% endif %}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

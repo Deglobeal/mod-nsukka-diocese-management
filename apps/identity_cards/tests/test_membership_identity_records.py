@@ -1,11 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import MembershipIdentity
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
+from apps.verification.models import MembershipApplication
 
 
 class MembershipIdentityRecordsTests(TestCase):
@@ -88,6 +90,23 @@ class MembershipIdentityRecordsTests(TestCase):
             uniform_id="CD345678",
         )
 
+        cls.direct_member = Member.objects.create(
+            first_name="Direct",
+            last_name="Member",
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=cls.direct_member,
+            category=MembershipApplication.Category.RELIGIOUS,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(),
+        )
+        cls.direct_identity = MembershipIdentity.objects.create(
+            member=cls.direct_member,
+            official_membership_id="MOD036/DIR/000001",
+            uniform_id="DR123456",
+        )
+
     def setUp(self):
         self.records_url = reverse(
             "identity_cards_web:membership-identities"
@@ -126,7 +145,7 @@ class MembershipIdentityRecordsTests(TestCase):
             response,
             "identity_cards/membership_identity_records.html",
         )
-        self.assertEqual(response.context["identity_count"], 2)
+        self.assertEqual(response.context["identity_count"], 3)
         self.assertContains(response, "Nsukka Diocese")
         self.assertContains(response, "Ada Okafor")
         self.assertContains(response, "MOD036/002/043/000001")
@@ -138,6 +157,9 @@ class MembershipIdentityRecordsTests(TestCase):
         self.assertContains(response, "Chika Nwosu")
         self.assertContains(response, "MOD036/003/044/000001")
         self.assertContains(response, "CD345678")
+        self.assertContains(response, "Direct Member")
+        self.assertContains(response, "MOD036/DIR/000001")
+        self.assertContains(response, "Direct Diocese")
 
     def test_page_links_back_to_diocese_chairman_dashboard(self):
         self.client.force_login(self.diocese_admin)
@@ -149,6 +171,21 @@ class MembershipIdentityRecordsTests(TestCase):
             response,
             reverse("chairman:dashboard"),
         )
+
+    def test_django_admin_can_search_allocated_dir_identity(self):
+        admin_user = get_user_model().objects.create_superuser(
+            username="identity-admin-search",
+            email="identity-admin-search@example.com",
+            password="test-password",
+        )
+        self.client.force_login(admin_user)
+        response = self.client.get(
+            reverse("admin:identity_cards_membershipidentity_changelist"),
+            {"q": "MOD036/DIR/000001"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MOD036/DIR/000001")
+        self.assertContains(response, "Direct Member")
 
     def test_diocese_dashboard_links_to_identity_records(self):
         self.client.force_login(self.diocese_admin)

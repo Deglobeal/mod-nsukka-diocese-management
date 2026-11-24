@@ -1,10 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
+from apps.verification.models import MembershipApplication
 
 
 class MemberPortalLookupTests(TestCase):
@@ -53,6 +55,22 @@ class MemberPortalLookupTests(TestCase):
             uniform_id="PT654321",
             issued_by=cls.issuer,
         )
+        cls.direct_member = Member.objects.create(
+            first_name="Religious",
+            last_name="Member",
+            status=Member.Status.ACTIVE,
+        )
+        MembershipApplication.objects.create(
+            member=cls.direct_member,
+            category=MembershipApplication.Category.RELIGIOUS,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(),
+        )
+        cls.direct_identity = MembershipIdentity.objects.create(
+            member=cls.direct_member,
+            official_membership_id="MOD036/DIR/000001",
+            uniform_id="DR123456",
+        )
 
     def setUp(self):
         self.url = reverse("members:portal")
@@ -79,6 +97,20 @@ class MemberPortalLookupTests(TestCase):
         self.assertContains(response, self.card.official_membership_id)
         self.assertContains(response, self.card.uniform_id)
         self.assertContains(response, "IDENTITY MATCH CONFIRMED")
+
+    def test_dir_identity_can_be_verified_before_card_issuance(self):
+        response = self.client.post(
+            self.url,
+            {
+                "official_membership_id": self.direct_identity.official_membership_id,
+                "uniform_id": self.direct_identity.uniform_id,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.direct_member.full_name)
+        self.assertContains(response, "MOD036/DIR/000001")
+        self.assertContains(response, "DR123456")
+        self.assertContains(response, "Direct Diocese")
 
     def test_identifiers_from_different_cards_do_not_match(self):
         response = self.client.post(

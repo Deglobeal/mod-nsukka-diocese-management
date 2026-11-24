@@ -5,8 +5,9 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import MembershipCard, MembershipIdentity, ReservedOffice
 from apps.members.models import Member
+from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
 
 
@@ -30,7 +31,27 @@ def _authorize_issuer(*, issuer, member):
     if issuer is None or not getattr(issuer, "is_authenticated", False):
         raise PermissionDenied("An authenticated issuer is required.")
 
-    diocese_id = member.parish.deanery.diocese_id
+    if member.parish_id is None:
+        has_approved_unassigned_category = MembershipApplication.objects.filter(
+            member=member,
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=(
+                MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+            ),
+        ).exists()
+        diocese = (
+            member.deanery.diocese
+            if member.deanery_id
+            else Diocese.objects.filter(code="036").first()
+        )
+        if not has_approved_unassigned_category or diocese is None:
+            raise ValidationError(
+                "A Parish assignment is required unless the member has an "
+                "approved unassigned Diocesan category."
+            )
+        diocese_id = diocese.pk
+    else:
+        diocese_id = member.parish.deanery.diocese_id
 
     authorized = OfficeAssignment.objects.filter(
         user=issuer,
@@ -46,6 +67,7 @@ def _authorize_issuer(*, issuer, member):
             "Only an active Diocese Administrator for the member's "
             "Diocese may issue membership identifiers."
         )
+    return diocese_id
 
 
 @transaction.atomic
@@ -65,14 +87,21 @@ def issue_membership_card(*, member_id, issuer, official_membership_id):
 
     try:
         member = (
-            Member.objects.select_for_update()
-            .select_related("parish__deanery__diocese")
+            Member.objects.select_for_update(of=("self",))
+            .select_related(
+                "parish__deanery__diocese",
+                "deanery__diocese",
+                "membership_identity",
+            )
             .get(pk=member_id)
         )
     except Member.DoesNotExist:
         raise ValidationError("The requested member does not exist.")
 
-    _authorize_issuer(issuer=issuer, member=member)
+    diocese_id = _authorize_issuer(issuer=issuer, member=member)
+    # Share the Diocese lock with automatic sequence allocation to prevent an
+    # authorized manual card issue from racing a new official ID allocation.
+    Diocese.objects.select_for_update().get(pk=diocese_id)
 
     if member.status != Member.Status.ACTIVE:
         raise ValidationError(
@@ -101,6 +130,24 @@ def issue_membership_card(*, member_id, issuer, official_membership_id):
             "Use a separate replacement workflow if needed."
         )
 
+    identity = MembershipIdentity.objects.filter(member=member).first()
+    if identity and identity.official_membership_id != official_membership_id:
+        raise ValidationError(
+            "This member already has a permanent official Membership ID. Use that exact ID for card issuance."
+        )
+    if not identity and "/DIR/" in official_membership_id:
+        raise ValidationError(
+            "Direct Diocesan IDs must be allocated by the membership identity service."
+        )
+
+    if ReservedOffice.objects.filter(official_identifier=official_membership_id).exists():
+        raise ValidationError("Reserved office identifiers cannot be assigned to a personal membership.")
+
+    if MembershipIdentity.objects.filter(
+        official_membership_id=official_membership_id
+    ).exclude(member=member).exists():
+        raise ValidationError("That official membership ID is already assigned to another member.")
+
     if MembershipCard.objects.filter(
         official_membership_id=official_membership_id
     ).exists():
@@ -108,10 +155,17 @@ def issue_membership_card(*, member_id, issuer, official_membership_id):
             "That official membership ID is already assigned."
         )
 
-    for _ in range(_MAX_ID_ATTEMPTS):
-        uniform_id = _generate_uniform_id()
+    for _ in range(1 if identity else _MAX_ID_ATTEMPTS):
+        uniform_id = identity.uniform_id if identity else _generate_uniform_id()
 
-        if MembershipCard.objects.filter(uniform_id=uniform_id).exists():
+        uniform_collision = MembershipCard.objects.filter(uniform_id=uniform_id).exists()
+        identity_query = MembershipIdentity.objects.filter(uniform_id=uniform_id)
+        if identity:
+            identity_query = identity_query.exclude(member=member)
+        identity_collision = identity_query.exists()
+        if uniform_collision or identity_collision:
+            if identity:
+                raise ValidationError("The member's allocated Uniform ID is already assigned to another card.")
             continue
 
         try:

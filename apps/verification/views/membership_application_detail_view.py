@@ -23,6 +23,7 @@ from apps.members.views.registration_pdf_view import (
 from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
 )
+from apps.organizations.models import Diocese
 
 
 STAGE_CONFIG = {
@@ -137,13 +138,27 @@ def _display_value(application, field_name):
         parish = application.parish or (
             application.member.parish if application.member_id else None
         )
-        return parish.deanery.diocese.name if parish else ""
+        if parish:
+            return parish.deanery.diocese.name
+        deanery = application.deanery or (
+            application.member.deanery if application.member_id else None
+        )
+        if deanery:
+            return deanery.diocese.name
+        if application.category in MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION:
+            return Diocese.objects.filter(code="036").values_list(
+                "name", flat=True
+            ).first() or "Nsukka Diocese"
+        return ""
 
     if field_name == "deanery_name":
         parish = application.parish or (
             application.member.parish if application.member_id else None
         )
-        return parish.deanery.name if parish else ""
+        deanery = application.deanery or (
+            application.member.deanery if application.member_id else None
+        )
+        return parish.deanery.name if parish else deanery.name if deanery else ""
 
     if field_name == "parish_name":
         parish = application.parish or (
@@ -179,6 +194,8 @@ def _get_authorized_application(application_id, user, review_level=None):
         "member__parish",
         "member__parish__deanery",
         "member__parish__deanery__diocese",
+        "deanery__diocese",
+        "member__deanery__diocese",
     )
 
     if review_level is None:
@@ -337,6 +354,9 @@ def membership_application_detail(request, application_id):
     application_parish = application.parish
     if application_parish is None and application.member_id:
         application_parish = application.member.parish
+    application_deanery = application.deanery
+    if application_deanery is None and application.member_id:
+        application_deanery = application.member.deanery
 
     chairman_shell_data = {}
     if config["level"] == MembershipReview.ReviewLevel.DIOCESE:
@@ -360,11 +380,10 @@ def membership_application_detail(request, application_id):
             ),
             "dashboard_scopes": (
                 [application_parish.deanery.diocese.name]
-                if (
-                    config["level"] == MembershipReview.ReviewLevel.DIOCESE
-                    and application_parish
-                )
-                else []
+                if application_parish
+                else [application_deanery.diocese.name]
+                if application_deanery
+                else chairman_shell_data.get("dashboard_scopes", [])
             ),
             "application": application,
             "membership_card": (

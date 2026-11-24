@@ -1,0 +1,16 @@
+M.O.D. NSUKKA DIOCESE — PARISH VERIFICATION COMPLETED
+
+Dear {{ applicant_name }},
+
+Your membership application has successfully passed the Parish verification stage.
+
+Applicant: {{ applicant_name }}
+Application Reference: {{ application_reference }}
+{% if parish_name %}Parish: {{ parish_name }}{% endif %}
+Verification Stage: Parish
+Status: Successfully verified
+
+Your application will now proceed to Deanery verification. Parish verification is the first stage; final Diocesan approval is still required.
+
+M.O.D. Nsukka Diocese
+Membership Management System

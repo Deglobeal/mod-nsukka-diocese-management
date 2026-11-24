@@ -33,6 +33,9 @@ class MembershipCardIssuanceForm(forms.Form):
         self.fields["member"].queryset = (
             eligible_members_for_card_issuance(diocese=diocese)
         )
+        self.fields["official_membership_id"].help_text = (
+            "For a member with an allocated identity, enter that permanent ID exactly."
+        )
 
     def clean_official_membership_id(self):
         value = self.cleaned_data["official_membership_id"].strip()
@@ -41,3 +44,18 @@ class MembershipCardIssuanceForm(forms.Form):
                 "Enter an official membership ID."
             )
         return value
+
+    def clean(self):
+        cleaned_data = super().clean()
+        member = cleaned_data.get("member")
+        official_id = cleaned_data.get("official_membership_id")
+        if member and official_id:
+            from apps.identity_cards.models import MembershipIdentity
+
+            identity = MembershipIdentity.objects.filter(member=member).first()
+            if identity and identity.official_membership_id != official_id:
+                self.add_error(
+                    "official_membership_id",
+                    "Use the member's already allocated permanent Membership ID.",
+                )
+        return cleaned_data

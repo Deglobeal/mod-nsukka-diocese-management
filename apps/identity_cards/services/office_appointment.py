@@ -3,6 +3,8 @@ from django.db import IntegrityError, transaction
 
 from apps.identity_cards.models import OfficeAppointment, ReservedOffice
 from apps.members.models import Member, MemberAccount
+from apps.organizations.models import Diocese
+from apps.verification.models import MembershipApplication
 
 
 def _require_authenticated_actor(actor):
@@ -125,8 +127,8 @@ def appoint_reserved_office(
 
     try:
         member = (
-            Member.objects.select_for_update()
-            .select_related("parish__deanery__diocese")
+            Member.objects.select_for_update(of=("self",))
+            .select_related("parish__deanery__diocese", "deanery__diocese")
             .get(pk=member_id)
         )
     except Member.DoesNotExist:
@@ -137,7 +139,25 @@ def appoint_reserved_office(
             "Only an existing ACTIVE Member can be appointed."
         )
 
-    if member.parish.deanery.diocese_id != office.diocese_id:
+    if member.parish_id is None:
+        approved_unassigned_category = MembershipApplication.objects.filter(
+            member=member,
+            stage=MembershipApplication.Stage.APPROVED,
+            category__in=(
+                MembershipApplication.CATEGORIES_WITH_OPTIONAL_ORGANIZATION
+            ),
+        ).exists()
+        member_diocese_id = (
+            member.deanery.diocese_id
+            if member.deanery_id
+            else Diocese.objects.filter(code="036").values_list("pk", flat=True).first()
+        )
+        if not approved_unassigned_category or member_diocese_id != office.diocese_id:
+            raise ValidationError(
+                "The appointee must have an approved Diocesan category or "
+                "a Parish assignment in this Diocese."
+            )
+    elif member.parish.deanery.diocese_id != office.diocese_id:
         raise ValidationError(
             "The appointee must belong to the Diocese that owns this office."
         )

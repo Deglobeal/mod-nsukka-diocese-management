@@ -18,6 +18,9 @@ from apps.verification.selectors.membership_review_queue import (
 from apps.verification.services.membership_approval import (
     record_membership_review,
 )
+from apps.notifications.services.application_correction_notifications import (
+    queue_application_correction_notification,
+)
 
 
 DASHBOARD_CONFIG = {
@@ -123,10 +126,11 @@ def membership_review_dashboard(request, dashboard_level, return_url=None):
             )
             return redirect(review_return_url)
 
-        messages.success(
-            request,
-            f"Review recorded: {review.get_decision_display()}.",
-        )
+        messages.success(request, f"Review recorded: {review.get_decision_display()}.")
+        if decision == MembershipReview.Decision.NEEDS_INFORMATION:
+            queued = queue_application_correction_notification(review=review, request=request)
+            if not queued:
+                messages.warning(request, "The review is saved, but the applicant could not be notified by SMS. Please contact them using the details on file.")
         return redirect(review_return_url)
 
     applications = (

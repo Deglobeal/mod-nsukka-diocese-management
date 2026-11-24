@@ -1,4 +1,4 @@
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
 from apps.accounts.models import OfficeAssignment
@@ -24,6 +24,12 @@ def submit_membership_application(*, member_id, submitted_by):
         )
         .get(pk=member_id)
     )
+
+    if member.parish_id is None:
+        raise ValidationError(
+            "This member has no Parish assignment. Their application must be "
+            "submitted for direct Diocesan review."
+        )
 
     authorized = OfficeAssignment.objects.filter(
         user=submitted_by,
