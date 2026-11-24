@@ -46,10 +46,11 @@ Copy `.env.example` to `.env` and set these PostgreSQL connection values:
 | `TEST_DB_PORT` | PostgreSQL test service port; defaults to `5432` |
 | `TEST_DB_SSLMODE` | SSL mode for the isolated test service |
 
-Production may use `DATABASE_URL_UNPOOLED` or `DATABASE_URL`
-(`postgres://` or `postgresql://`) instead of the `DB_*` values. The unpooled
-URL is preferred when both are present, which suits short-lived serverless
-connections. The URL is validated and rejected if it names another engine.
+Production may use `DATABASE_URL_UNPOOLED`, `POSTGRES_URL_NON_POOLING`,
+`DATABASE_URL`, or `POSTGRES_URL` (`postgres://` or `postgresql://`) instead
+of the `DB_*` values. Direct/unpooled URLs are preferred for migrations and
+short-lived serverless connections. URLs are validated and rejected if they
+name another engine.
 Never set production `DATABASE_URL` as a test connection: tests exclusively
 read `TEST_DB_*` values, and their database name is required to have the `test_`
 prefix.

@@ -36,6 +36,30 @@ class PostgreSQLSettingsTests(SimpleTestCase):
         self.assertEqual(config["HOST"], "db.example")
         self.assertEqual(config["OPTIONS"]["sslmode"], "require")
 
+    def test_vercel_non_pooling_postgres_url_is_supported(self):
+        values = {
+            "POSTGRES_URL_NON_POOLING": (
+                "postgresql://app:secret@db.example/mod_nsukka?sslmode=require"
+            ),
+        }
+        with patch.dict(os.environ, values, clear=True):
+            config = postgres_database_config()
+
+        self.assertEqual(config["ENGINE"], "django.db.backends.postgresql")
+        self.assertEqual(config["NAME"], "mod_nsukka")
+        self.assertEqual(config["HOST"], "db.example")
+        self.assertEqual(config["OPTIONS"]["sslmode"], "require")
+
+    def test_vercel_postgres_url_is_supported(self):
+        values = {
+            "POSTGRES_URL": "postgres://app:secret@db.example/mod_nsukka",
+        }
+        with patch.dict(os.environ, values, clear=True):
+            config = postgres_database_config()
+
+        self.assertEqual(config["NAME"], "mod_nsukka")
+        self.assertEqual(config["HOST"], "db.example")
+
     def test_test_settings_use_dedicated_test_database_values(self):
         values = {
             "DATABASE_URL": "postgresql://production:secret@prod.example/prod",
