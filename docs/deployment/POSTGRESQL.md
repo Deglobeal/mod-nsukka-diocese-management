@@ -140,6 +140,8 @@ connections.
 Web processes, `manage.py` commands, notification outbox workers, and scheduled
 tasks share the same Django database settings. Vercel entry points and default
 management commands select `config.settings.production`; local development uses
-`config.settings.development`. Test commands are routed to
+`config.settings.development`. Vercel collects static assets into its
+`.vercel/output/static/static` directory for `/static/` CDN delivery. Test
+commands are routed to
 `config.settings.test` automatically unless an explicit `--settings` option is
 provided.

@@ -125,8 +125,13 @@ TIME_ZONE = "Africa/Lagos"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_URL = "/static/"
+if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+    # Vercel publishes this directory at /static/ and copies the manifest into
+    # the function bundle for ManifestStaticFilesStorage URL resolution.
+    STATIC_ROOT = BASE_DIR / ".vercel" / "output" / "static" / "static"
+else:
+    STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
