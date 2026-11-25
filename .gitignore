@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .Python
 .venv/
+.mypy_cache/
 venv/
 env/
 ENV/
@@ -31,8 +32,11 @@ staticfiles/
 # Private membership evidence — never commit uploaded documents.
 private_media/
 
-# Local database backups — never commit database dumps.
+# Local database and source backups — never commit backup artifacts.
 backups/
+*.bak
+*_backup.sqlite3
+*.sqlite3.*.bak
 .neon
 node_modules/
 .vercel
