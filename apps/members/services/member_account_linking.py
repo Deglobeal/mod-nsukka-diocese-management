@@ -26,7 +26,7 @@ def link_member_account(*, actor, user_id, member_id):
         with transaction.atomic():
             target_user = User.objects.select_for_update().get(pk=user_id)
             member = (
-                Member.objects.select_for_update()
+                Member.objects.select_for_update(of=("self",))
                 .select_related("parish__deanery__diocese", "deanery__diocese")
                 .get(pk=member_id)
             )

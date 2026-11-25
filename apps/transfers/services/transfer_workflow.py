@@ -81,7 +81,7 @@ def submit_transfer_request(*, member_id, destination_parish_id, submitted_by, r
 
     try:
         member = (
-            Member.objects.select_for_update()
+            Member.objects.select_for_update(of=("self",))
             .select_related("parish__deanery__diocese")
             .get(pk=member_id)
         )
@@ -167,7 +167,7 @@ def record_transfer_review(
         raise ValidationError("Comments must not exceed 5000 characters.")
 
     transfer_request = (
-        TransferRequest.objects.select_for_update()
+        TransferRequest.objects.select_for_update(of=("self",))
         .select_related(
             "member",
             "source_parish__deanery__diocese",
@@ -213,7 +213,7 @@ def record_transfer_review(
     transfer_request.stage = NEXT_STAGE[transfer_request.stage]
 
     if transfer_request.stage == TransferRequest.Stage.APPROVED:
-        member = Member.objects.select_for_update().get(
+        member = Member.objects.select_for_update(of=("self",)).get(
             pk=transfer_request.member_id
         )
 

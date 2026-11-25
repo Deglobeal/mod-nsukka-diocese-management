@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.members.models import Rank
+
 
 class PublicHomepageTests(TestCase):
     def test_homepage_returns_success(self):
@@ -30,6 +32,13 @@ class PublicHomepageTests(TestCase):
         ):
             with self.subTest(label=label):
                 self.assertContains(response, label)
+
+    def test_homepage_shows_empty_state_when_no_ranks_exist(self):
+        Rank.objects.all().delete()
+
+        response = self.client.get(reverse("public_home"))
+
+        self.assertContains(response, "No ranks have been added yet.")
 
     def test_homepage_renders_three_principle_cards(self):
         response = self.client.get(reverse("public_home"))

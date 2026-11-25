@@ -92,6 +92,92 @@ class MembershipIdentityAllocationTests(TestCase):
         self.assertEqual(MembershipIdentity.objects.filter(member=member).count(), 1)
         self.assertEqual(MembershipSequence.objects.get(parish=self.parish).next_number, 2)
 
+    def create_card(self, member, official_membership_id, uniform_id):
+        from django.contrib.auth import get_user_model
+
+        issuer = get_user_model().objects.create_user(
+            username=f"issuer-{uniform_id.lower()}",
+            password="test-password",
+        )
+        return MembershipCard.objects.create(
+            member=member,
+            official_membership_id=official_membership_id,
+            uniform_id=uniform_id,
+            issued_by=issuer,
+        )
+
+    def test_parish_allocation_skips_existing_identity_number(self):
+        prior_member = self.create_member()
+        MembershipIdentity.objects.create(
+            member=prior_member,
+            official_membership_id="MOD036/002/043/000099",
+            uniform_id="AB234567",
+        )
+        member = self.create_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(identity.official_membership_id, "MOD036/002/043/000100")
+
+    def test_parish_allocation_skips_existing_card_number(self):
+        prior_member = self.create_member()
+        self.create_card(
+            prior_member,
+            "MOD036/002/043/000099",
+            "AB234567",
+        )
+        member = self.create_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(identity.official_membership_id, "MOD036/002/043/000100")
+
+    def test_stale_parish_sequence_is_recovered_from_existing_identity(self):
+        prior_member = self.create_member()
+        MembershipIdentity.objects.create(
+            member=prior_member,
+            official_membership_id="MOD036/002/043/000099",
+            uniform_id="AB234567",
+        )
+        MembershipSequence.objects.create(parish=self.parish, next_number=1)
+        member = self.create_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(identity.official_membership_id, "MOD036/002/043/000100")
+        self.assertEqual(MembershipSequence.objects.get(parish=self.parish).next_number, 101)
+
+    def test_stale_parish_sequence_is_recovered_from_existing_card(self):
+        prior_member = self.create_member()
+        self.create_card(
+            prior_member,
+            "MOD036/002/043/000099",
+            "AB234567",
+        )
+        MembershipSequence.objects.create(parish=self.parish, next_number=4)
+        member = self.create_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(identity.official_membership_id, "MOD036/002/043/000100")
+        self.assertEqual(MembershipSequence.objects.get(parish=self.parish).next_number, 101)
+
     def test_pending_member_cannot_receive_identity(self):
         member = self.create_member(status=Member.Status.PENDING_REVIEW)
 
@@ -200,6 +286,50 @@ class MembershipIdentityAllocationTests(TestCase):
             identity = allocate_membership_identity(member_id=new_member.pk)
         self.assertEqual(identity.official_membership_id, "MOD036/DIR/000010")
 
+    def test_stale_direct_sequence_is_recovered_from_existing_identity(self):
+        prior_member = self.create_direct_member()
+        MembershipIdentity.objects.create(
+            member=prior_member,
+            official_membership_id="MOD036/DIR/000009",
+            uniform_id="AB234567",
+        )
+        DirectMembershipSequence.objects.create(diocese=self.diocese, next_number=1)
+        member = self.create_direct_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(identity.official_membership_id, "MOD036/DIR/000010")
+        self.assertEqual(
+            DirectMembershipSequence.objects.get(diocese=self.diocese).next_number,
+            11,
+        )
+
+    def test_stale_direct_sequence_is_recovered_from_existing_card(self):
+        prior_member = self.create_direct_member()
+        self.create_card(
+            prior_member,
+            "MOD036/DIR/000009",
+            "AB234567",
+        )
+        DirectMembershipSequence.objects.create(diocese=self.diocese, next_number=2)
+        member = self.create_direct_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(identity.official_membership_id, "MOD036/DIR/000010")
+        self.assertEqual(
+            DirectMembershipSequence.objects.get(diocese=self.diocese).next_number,
+            11,
+        )
+
     def test_deanery_only_member_does_not_receive_a_dir_id(self):
         member = self.create_direct_member(deanery=self.deanery)
         with self.assertRaisesMessage(ValidationError, "Deanery-only member cannot receive a DIR"):
@@ -277,3 +407,51 @@ class ConcurrentDirectMembershipAllocationTests(TransactionTestCase):
             with ThreadPoolExecutor(max_workers=2) as pool:
                 official_ids = list(pool.map(allocate, self.member_ids))
         self.assertCountEqual(official_ids, ["MOD036/DIR/000001", "MOD036/DIR/000002"])
+
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_concurrent_parish_allocations_use_distinct_numbers(self):
+        diocese = Diocese.objects.get(code="036")
+        deanery = Deanery.objects.create(
+            name="Concurrent Parish Deanery",
+            code="CPD001",
+            diocese=diocese,
+        )
+        parish = Parish.objects.create(
+            name="Concurrent Parish",
+            code="CPP001",
+            deanery=deanery,
+        )
+        member_ids = [
+            Member.objects.create(
+                first_name=name,
+                last_name="Parish",
+                parish=parish,
+                status=Member.Status.ACTIVE,
+            ).pk
+            for name in ("First", "Second")
+        ]
+
+        def allocate(member_id):
+            close_old_connections()
+            try:
+                return allocate_membership_identity(
+                    member_id=member_id,
+                ).official_membership_id
+            finally:
+                close_old_connections()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation._generate_uniform_id",
+            side_effect=["AB234567", "CD345678"],
+        ):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                official_ids = list(pool.map(allocate, member_ids))
+
+        self.assertCountEqual(
+            official_ids,
+            [
+                "MOD036/CPD001/CPP001/000001",
+                "MOD036/CPD001/CPP001/000002",
+            ],
+        )
+        self.assertEqual(len(set(official_ids)), 2)

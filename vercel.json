@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then DJANGO_SETTINGS_MODULE=config.settings.production DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" python manage.py migrate --noinput; fi"
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then DJANGO_SETTINGS_MODULE=config.settings.production DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-${POSTGRES_URL_NON_POOLING:-${DATABASE_URL:-${POSTGRES_URL:-}}}}\" python manage.py migrate --noinput; fi"
 }
