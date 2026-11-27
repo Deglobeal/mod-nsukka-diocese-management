@@ -1,31 +1,93 @@
 {% extends "admin/index.html" %}
 
 {% block content %}
-<div class="module" style="margin-bottom: 1.5em; padding: 1em;">
-  <h2>First Member Registration IDs</h2>
-  <p>Generate and manage the one-time ID for the first membership registration.</p>
-  <a class="button" href="{% url 'first_member_registration_ids' %}">
-    Open ID generation and management
-  </a>
-  <a class="button" href="{% url 'membership_review_dashboard:first_member_bootstrap_review' %}">
-    Review first-member applications
-  </a>
-</div>
+<style>
+  .admin-workflows { margin: 0 0 1.5em; }
+  .admin-workflows__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: 1em;
+  }
+  .admin-workflows__section { box-sizing: border-box; margin: 0; padding: 1em; }
+  .admin-workflows__section h2 { margin-top: 0; }
+  .admin-workflows__links { display: flex; flex-wrap: wrap; gap: .6em; }
+</style>
+
 {% if user.is_superuser %}
-<div class="module" style="margin-bottom: 1.5em; padding: 1em;">
-  <h2>First Diocesan Chairman</h2>
-  <p>Appoint the first Chairman from an existing Active Member.</p>
-  <a class="button" href="{% url 'first_diocesan_chairman_appointment' %}">
-    Open first Chairman appointment
-  </a>
-</div>
-{% if user.is_superuser %}
-<div class="module" style="margin-bottom: 1.5em; padding: 1em;">
-  <h2>Chairman Account Activation</h2>
-  <p>Manage the secure activation link for the already-appointed first Chairman.</p>
-  <a class="button" href="{% url 'chairman_activation_admin' %}">Open account activation</a>
-</div>
+<section class="admin-workflows" aria-label="First member and leadership setup">
+  <div class="admin-workflows__grid">
+    <div class="module admin-workflows__section">
+      <h2>First Member Registration IDs</h2>
+      <p>Generate and manage the one-time ID for the first membership registration.</p>
+      <div class="admin-workflows__links">
+        <a class="button" href="{% url 'first_member_registration_ids' %}">Open ID generation and management</a>
+        <a class="button" href="{% url 'membership_review_dashboard:first_member_bootstrap_review' %}">Review first-member applications</a>
+      </div>
+    </div>
+    <div class="module admin-workflows__section">
+      <h2>First Diocesan Chairman</h2>
+      <p>Appoint the first Chairman from an existing Active Member.</p>
+      <div class="admin-workflows__links">
+        <a class="button" href="{% url 'first_diocesan_chairman_appointment' %}">Open first Chairman appointment</a>
+        <a class="button" href="{% url 'chairman_activation_admin' %}">Manage Chairman account activation</a>
+      </div>
+    </div>
+  </div>
+</section>
 {% endif %}
+
+{% with nav=admin_navigation %}
+{% if nav.organizations or nav.parish_review or nav.deanery_review or nav.diocese_review or nav.chairman_dashboard or nav.membership_identities or nav.membership_cards %}
+<section class="admin-workflows" aria-label="Management workflows">
+  <h1>Management Workflows</h1>
+  <div class="admin-workflows__grid">
+    {% if nav.organizations %}
+    <div class="module admin-workflows__section">
+      <h2>Organization Management</h2>
+      <p>Manage the Diocese organization structure within your assigned scope.</p>
+      <div class="admin-workflows__links">
+        <a class="button" href="{% url 'organizations:manage' %}">Manage Diocese, Deaneries, Parishes, and Stations</a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if nav.parish_review or nav.deanery_review or nav.diocese_review %}
+    <div class="module admin-workflows__section">
+      <h2>Membership Review</h2>
+      <p>Open the review queue for an organization where you hold an active assignment.</p>
+      <div class="admin-workflows__links">
+        {% if nav.parish_review %}<a class="button" href="{% url 'membership_review_dashboard:parish' %}">Parish membership review</a>{% endif %}
+        {% if nav.deanery_review %}<a class="button" href="{% url 'membership_review_dashboard:deanery' %}">Deanery membership review</a>{% endif %}
+        {% if nav.diocese_review %}<a class="button" href="{% url 'membership_review_dashboard:diocese' %}">Diocese membership review</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if nav.chairman_dashboard %}
+    <div class="module admin-workflows__section">
+      <h2>Chairman Administration</h2>
+      <p>Access diocesan membership, notifications, audit history, ranks, and chaplain tools.</p>
+      <div class="admin-workflows__links">
+        <a class="button" href="{% url 'chairman:dashboard' %}">Open Chairman command dashboard</a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if nav.membership_identities or nav.membership_cards %}
+    <div class="module admin-workflows__section">
+      <h2>Membership Identity and Cards</h2>
+      <p>Review diocesan membership identities and issued cards.</p>
+      <div class="admin-workflows__links">
+        {% if nav.membership_identities %}<a class="button" href="{% url 'identity_cards_web:membership-identities' %}">Membership identity records</a>{% endif %}
+        {% if nav.membership_cards %}<a class="button" href="{% url 'identity_cards_web:dashboard' %}">Membership card dashboard</a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
 {% endif %}
+{% endwith %}
+
 {{ block.super }}
 {% endblock %}
