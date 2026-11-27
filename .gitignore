@@ -13,7 +13,10 @@ ENV/
 # Django
 *.log
 local_settings.py
-db.sqlite3
+# Historical local SQLite snapshots are ignored as inert files only. PostgreSQL
+# is the sole runtime and test database backend; these files are never imported.
+db.sqlite3*
+db_*.sqlite3
 media/
 staticfiles/
 .env

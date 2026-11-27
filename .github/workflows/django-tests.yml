@@ -1,0 +1,47 @@
+name: Django tests (PostgreSQL)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mod_test
+          POSTGRES_PASSWORD: mod_test_ci_only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mod_test -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-only-secret-key
+      TEST_DB_NAME: test_mod_nsukka
+      TEST_DB_USER: mod_test
+      TEST_DB_PASSWORD: mod_test_ci_only
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 5432
+      TEST_DB_SSLMODE: disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/development.txt
+      - name: Install dependencies
+        run: pip install -r requirements/development.txt
+      - name: Check Django configuration
+        run: python manage.py check
+      - name: Check migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Run test suite on PostgreSQL
+        run: python manage.py test --verbosity 2

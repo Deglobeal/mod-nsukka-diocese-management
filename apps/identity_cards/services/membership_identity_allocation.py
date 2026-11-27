@@ -71,48 +71,36 @@ def _create_identity(*, member, official_id, sequence, number, sequence_name):
     )
 
 
+def _next_issued_number(prefix):
+    """Return the next number after all matching identities and cards."""
+    pattern = re.compile(r"^(\d{6})$")
+    official_ids = list(
+        MembershipIdentity.objects.filter(
+            official_membership_id__startswith=prefix
+        ).values_list("official_membership_id", flat=True)
+    )
+    official_ids += list(
+        MembershipCard.objects.filter(
+            official_membership_id__startswith=prefix
+        ).values_list("official_membership_id", flat=True)
+    )
+    numbers = [
+        int(match.group(1))
+        for official_id in official_ids
+        if (match := pattern.fullmatch(official_id[len(prefix):]))
+    ]
+    return max(numbers, default=0) + 1
+
+
 def _next_direct_number(diocese):
     """Initialize after previously issued DIR IDs so they are never reused."""
-    prefix = f"MOD{diocese.code}/DIR/"
-    pattern = re.compile(r"^(\d{6})$")
-    numbers = []
-    official_ids = list(
-        MembershipIdentity.objects.filter(
-            official_membership_id__startswith=prefix
-        ).values_list("official_membership_id", flat=True)
-    )
-    official_ids += list(
-        MembershipCard.objects.filter(
-            official_membership_id__startswith=prefix
-        ).values_list("official_membership_id", flat=True)
-    )
-    for official_id in official_ids:
-        match = pattern.fullmatch(official_id[len(prefix):])
-        if match:
-            numbers.append(int(match.group(1)))
-    return max(numbers, default=0) + 1
+    return _next_issued_number(f"MOD{diocese.code}/DIR/")
 
 
-def _next_parish_number(*, diocese_code, deanery_code, parish_code):
-    """Start after any legacy or manually recorded ID for this Parish."""
-    prefix = f"MOD{diocese_code}/{deanery_code}/{parish_code}/"
-    pattern = re.compile(r"^(\d{6})$")
-    official_ids = list(
-        MembershipIdentity.objects.filter(
-            official_membership_id__startswith=prefix
-        ).values_list("official_membership_id", flat=True)
-    )
-    official_ids += list(
-        MembershipCard.objects.filter(
-            official_membership_id__startswith=prefix
-        ).values_list("official_membership_id", flat=True)
-    )
-    numbers = []
-    for official_id in official_ids:
-        match = pattern.fullmatch(official_id[len(prefix):])
-        if match:
-            numbers.append(int(match.group(1)))
-    return max(numbers, default=0) + 1
+def _next_parish_number(diocese, deanery, parish):
+    """Initialize after previously issued Parish IDs so they are never reused."""
+    prefix = f"MOD{diocese.code}/{deanery.code.strip()}/{parish.code.strip()}/"
+    return _next_issued_number(prefix)
 
 
 def _allocate_direct_membership_identity(*, member):
@@ -146,10 +134,10 @@ def _allocate_direct_membership_identity(*, member):
         defaults={"next_number": _next_direct_number(diocese)},
     )
     sequence = DirectMembershipSequence.objects.select_for_update().get(pk=sequence.pk)
-    next_direct_number = _next_direct_number(diocese)
-    if sequence.next_number < next_direct_number:
-        sequence.next_number = next_direct_number
-        sequence.save(update_fields=("next_number", "updated_at"))
+    next_issued_number = _next_direct_number(diocese)
+    if sequence.next_number < next_issued_number:
+        sequence.next_number = next_issued_number
+        sequence.save(update_fields=["next_number", "updated_at"])
     number = sequence.next_number
     if number > 999999:
         raise ValidationError("The Diocese has exhausted its six-digit direct membership number sequence.")
@@ -214,11 +202,7 @@ def allocate_membership_identity(*, member_id):
     sequence, _created = MembershipSequence.objects.get_or_create(
         parish=parish,
         defaults={
-            "next_number": _next_parish_number(
-                diocese_code=diocese.code,
-                deanery_code=deanery_code,
-                parish_code=parish_code,
-            ),
+            "next_number": _next_parish_number(diocese, deanery, parish),
         },
     )
     sequence = (
@@ -226,14 +210,10 @@ def allocate_membership_identity(*, member_id):
         .select_for_update()
         .get(pk=sequence.pk)
     )
-    next_parish_number = _next_parish_number(
-        diocese_code=diocese.code,
-        deanery_code=deanery_code,
-        parish_code=parish_code,
-    )
-    if sequence.next_number < next_parish_number:
-        sequence.next_number = next_parish_number
-        sequence.save(update_fields=("next_number", "updated_at"))
+    next_issued_number = _next_parish_number(diocese, deanery, parish)
+    if sequence.next_number < next_issued_number:
+        sequence.next_number = next_issued_number
+        sequence.save(update_fields=["next_number", "updated_at"])
 
     number = sequence.next_number
     if number > 999999:

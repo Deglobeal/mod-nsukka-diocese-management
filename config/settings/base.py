@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from .database import postgres_database_config
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
@@ -108,16 +109,16 @@ TEMPLATES = [{
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
+_database_prefix = (
+    "TEST_DB_"
+    if os.getenv("DJANGO_SETTINGS_MODULE") == "config.settings.test"
+    else "DB_"
+)
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "mod_nsukka"),
-        "USER": os.getenv("DB_USER", "mod_app"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
-    }
+    "default": postgres_database_config(
+        prefix=_database_prefix,
+        allow_url=_database_prefix != "TEST_DB_",
+    )
 }
 
 LANGUAGE_CODE = "en-ng"
@@ -125,8 +126,13 @@ TIME_ZONE = "Africa/Lagos"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_URL = "/static/"
+if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+    # Vercel publishes this directory at /static/ and copies the manifest into
+    # the function bundle for ManifestStaticFilesStorage URL resolution.
+    STATIC_ROOT = BASE_DIR / ".vercel" / "output" / "static" / "static"
+else:
+    STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
