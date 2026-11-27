@@ -1,15 +1,23 @@
 from django.contrib.auth import get_user_model
+from django.test import override_settings
+from django.utils import timezone
 from django.test import TestCase
 from django.urls import reverse
+from unittest.mock import patch
 from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import (
+    MembershipCard,
+    OfficeAppointment,
+    ReservedOffice,
+)
 from apps.identity_cards.services.membership_card_issuance import (
     issue_membership_card,
 )
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
+from apps.medical.models import MemberMedicalProfile
 from apps.verification.models import MembershipApplication
 
 
@@ -161,3 +169,66 @@ class MembershipCardDashboardTests(TestCase):
             response,
             "css/pages/identity-card-dashboard.css",
         )
+
+    def test_card_preview_requires_a_current_diocesan_chairman(self):
+        self.client.force_login(self.diocese_admin)
+        card = MembershipCard.objects.get(member=self.foreign_member)
+
+        response = self.client.get(
+            reverse("identity_cards_web:card-preview", args=[card.pk])
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(response, "No current active Diocesan Chairman", status_code=409)
+
+    @override_settings(PUBLIC_BASE_URL="https://membership.example")
+    def test_preview_uses_current_chairman_and_approved_member_records(self):
+        card = MembershipCard.objects.get(member=self.foreign_member)
+        member_application = MembershipApplication.objects.get(member=self.foreign_member)
+        member_application.passport_photo = "private/member-photo.png"
+        member_application.signature_image = "private/member-signature.png"
+        member_application.save(update_fields=("passport_photo", "signature_image"))
+        chairman = Member.objects.create(
+            first_name="Current",
+            last_name="Chairman",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+        chairman_application = MembershipApplication.objects.create(
+            member=chairman,
+            stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(),
+            signature_image="private/chairman-signature.png",
+        )
+        office = ReservedOffice.objects.get(
+            diocese=self.diocese,
+            office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+        )
+        OfficeAppointment.objects.create(
+            reserved_office=office,
+            member=chairman,
+            appointed_by=self.diocese_admin,
+        )
+        MemberMedicalProfile.objects.create(member=self.foreign_member)
+        self.client.force_login(self.diocese_admin)
+
+        with patch(
+            "apps.identity_cards.views.membership_card_preview_view.render_membership_card_pdf",
+            return_value=b"%PDF-preview",
+        ) as renderer:
+            response = self.client.get(
+                reverse("identity_cards_web:card-preview", args=[card.pk])
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(response.content, b"%PDF-preview")
+        self.assertEqual(renderer.call_args.kwargs["chairman"], chairman)
+        self.assertEqual(renderer.call_args.kwargs["chairman_application"], chairman_application)
+        self.assertEqual(renderer.call_args.kwargs["application"], member_application)
+        print_event = card.status_events.first()
+        self.assertEqual(
+            print_event.action,
+            "preview_generated",
+        )
+        self.assertEqual(print_event.chairman_appointment.member, chairman)

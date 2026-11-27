@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Secure Medical Profile | M.O.D.{% endblock %}
+
+{% block content %}
+<main class="container" style="max-width: 64rem; margin: 2rem auto; padding: 1rem;">
+  <h1>Secure Medical Profile</h1>
+  <p>Confidential record for {{ profile.member.full_name }}. Access is recorded.</p>
+  <section aria-labelledby="emergency-profile-title">
+    <h2 id="emergency-profile-title">Emergency information</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="operation" value="save_profile">
+      {{ profile_form.as_p }}
+      <button type="submit">Save emergency profile</button>
+    </form>
+  </section>
+  <section aria-labelledby="medical-records-title">
+    <h2 id="medical-records-title">Clinical history</h2>
+    {% for record in records %}
+      <article>
+        <h3>{{ record.assessed_at|date:"j M Y H:i" }} · {{ record.recorded_by.get_full_name|default:record.recorded_by.get_username }}</h3>
+        <p><strong>Assessment:</strong> {{ record.medical_assessment|linebreaksbr }}</p>
+        <p><strong>Observations:</strong> {{ record.diagnosis_or_observations|linebreaksbr }}</p>
+        <p><strong>Treatment:</strong> {{ record.treatment_administered|linebreaksbr }}</p>
+        <p><strong>Medication:</strong> {{ record.medication_prescribed|linebreaksbr }}</p>
+        <p><strong>Warnings:</strong> {{ record.important_warnings|linebreaksbr }}</p>
+        <p><strong>Follow-up:</strong> {{ record.follow_up_at|default:"Not specified" }} {{ record.follow_up_instructions|linebreaksbr }}</p>
+        {% if record.attachment %}<p><a href="{% url 'medical:record-attachment' record.pk %}">Download private attachment</a></p>{% endif %}
+      </article>
+    {% empty %}
+      <p>No clinical entries have been added.</p>
+    {% endfor %}
+    <h3>Add clinical record</h3>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="operation" value="add_record">
+      {{ record_form.as_p }}
+      <button type="submit">Add record to history</button>
+    </form>
+  </section>
+  <section aria-labelledby="medical-profile-history-title">
+    <h2 id="medical-profile-history-title">Emergency profile change history</h2>
+    {% for revision in revisions %}
+      <article>
+        <h3>{{ revision.created_at|date:"j M Y H:i" }} · {{ revision.changed_by.get_full_name|default:revision.changed_by.get_username }}</h3>
+        <p>Previous allergies: {{ revision.snapshot.known_allergies|default:"None recorded" }}</p>
+        <p>Original registration medical notes: {{ revision.snapshot.registration_medical_notes|default:"None recorded" }}</p>
+        <p>Previous conditions: {{ revision.snapshot.important_conditions|default:"None recorded" }}</p>
+      </article>
+    {% empty %}
+      <p>No prior emergency profile changes.</p>
+    {% endfor %}
+  </section>
+  <section aria-labelledby="medical-code-title">
+    <h2 id="medical-code-title">Secure card access code</h2>
+    <p>Rotating this code revokes previously printed medical access QR links. Authentication and an active Medical Staff assignment are still required.</p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="operation" value="rotate_access_code">
+      <button type="submit">Revoke old code and create a new one</button>
+    </form>
+    <p><a href="{% url 'medical:member-profile' %}">Open member emergency profile</a></p>
+  </section>
+</main>
+{% endblock %}

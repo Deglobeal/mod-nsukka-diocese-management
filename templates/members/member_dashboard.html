@@ -18,6 +18,7 @@
             </p>
         </div>
         <a href="{% url 'members:communication_settings' %}">Communication settings</a>
+        {% if user.is_authenticated %}<a href="{% url 'medical:member-profile' %}">Emergency medical profile</a>{% endif %}
     </header>
 
     <section class="member-profile-section" aria-labelledby="lookup-heading">

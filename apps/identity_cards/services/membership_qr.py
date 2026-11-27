@@ -58,10 +58,16 @@ def build_membership_verification_url(*, uniform_id):
 
 def generate_membership_qr_png(*, uniform_id):
     """Return a QR-code PNG as bytes; do not store it or embed private data."""
-    verification_url = build_membership_verification_url(
-        uniform_id=uniform_id
-    )
+    return _generate_png_for_identifier(identifier=uniform_id)
 
+
+def generate_card_verification_qr_png(*, verification_token):
+    """Build a card-specific QR credential that can be revoked on replacement."""
+    return _generate_png_for_identifier(identifier=str(verification_token))
+
+
+def _generate_png_for_identifier(*, identifier):
+    verification_url = build_membership_verification_url(uniform_id=identifier)
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -70,7 +76,6 @@ def generate_membership_qr_png(*, uniform_id):
     )
     qr.add_data(verification_url)
     qr.make(fit=True)
-
     image = qr.make_image(fill_color="black", back_color="white")
     output = BytesIO()
     image.save(output, format="PNG")

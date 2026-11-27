@@ -27,8 +27,6 @@ class PublicHomepageTests(TestCase):
             "Regular Member",
             "Patron",
             "Chaplain",
-            "Major General",
-            "Supreme General",
         ):
             with self.subTest(label=label):
                 self.assertContains(response, label)

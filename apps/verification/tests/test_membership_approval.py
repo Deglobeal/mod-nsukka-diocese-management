@@ -279,6 +279,11 @@ class MembershipApprovalServiceTests(TestCase):
         self.assertEqual(profile.email, self.application.email)
         self.assertTrue(self.member.membership_identity.official_membership_id)
         self.assertTrue(self.member.membership_identity.uniform_id)
+        medical_profile = self.member.medical_profile
+        self.assertEqual(
+            medical_profile.important_conditions,
+            self.application.medical_conditions,
+        )
 
     def test_diocese_approval_maps_compatible_fields_without_medical_data(self):
         self.application.first_name = "Applicant"
@@ -322,6 +327,13 @@ class MembershipApprovalServiceTests(TestCase):
         self.assertEqual(profile.emergency_contact_2_relationship, "Brother")
         self.assertFalse(hasattr(profile, "medical_conditions"))
         self.assertFalse(hasattr(profile, "blood_group"))
+        medical_profile = self.member.medical_profile
+        self.assertEqual(medical_profile.important_conditions, "Confidential condition")
+        self.assertEqual(medical_profile.blood_group, "O+")
+        self.assertEqual(
+            medical_profile.registration_medical_notes,
+            self.application.allergies_medications,
+        )
         self.application.refresh_from_db()
         self.assertEqual(self.application.medical_conditions,
                          "Confidential condition")
