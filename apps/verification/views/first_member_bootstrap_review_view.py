@@ -28,7 +28,9 @@ def first_member_bootstrap_review(request):
         comments = request.POST.get("comments", "").strip()
         if not application_id.isdigit():
             messages.error(request, "Select a valid first-member application.")
-            return redirect("first_member_bootstrap_review")
+            return redirect(
+                "membership_review_dashboard:first_member_bootstrap_review"
+            )
         try:
             review = record_first_member_bootstrap_review(
                 application_id=int(application_id),
@@ -46,7 +48,9 @@ def first_member_bootstrap_review(request):
                 if not queued:
                     messages.warning(request, "The review is saved, but the applicant could not be notified by SMS. Please contact them using the details on file.")
             messages.success(request, f"Bootstrap review recorded: {review.get_decision_display()}.")
-        return redirect("first_member_bootstrap_review")
+        return redirect(
+            "membership_review_dashboard:first_member_bootstrap_review"
+        )
 
     tokens = (
         FirstMemberRegistrationToken.objects.filter(
