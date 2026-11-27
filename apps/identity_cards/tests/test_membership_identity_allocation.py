@@ -92,6 +92,51 @@ class MembershipIdentityAllocationTests(TestCase):
         self.assertEqual(MembershipIdentity.objects.filter(member=member).count(), 1)
         self.assertEqual(MembershipSequence.objects.get(parish=self.parish).next_number, 2)
 
+    def test_new_parish_sequence_starts_after_existing_identity_numbers(self):
+        prior_member = self.create_member()
+        MembershipIdentity.objects.create(
+            member=prior_member,
+            official_membership_id="MOD036/002/043/000009",
+            uniform_id="AB234567",
+        )
+        member = self.create_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation"
+            "._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(
+            identity.official_membership_id,
+            "MOD036/002/043/000010",
+        )
+        self.assertEqual(MembershipSequence.objects.get(parish=self.parish).next_number, 11)
+
+    def test_existing_parish_sequence_advances_past_existing_identity_numbers(self):
+        MembershipSequence.objects.create(parish=self.parish, next_number=2)
+        prior_member = self.create_member()
+        MembershipIdentity.objects.create(
+            member=prior_member,
+            official_membership_id="MOD036/002/043/000009",
+            uniform_id="AB234567",
+        )
+        member = self.create_member()
+
+        with patch(
+            "apps.identity_cards.services.membership_identity_allocation"
+            "._generate_uniform_id",
+            return_value="CD345678",
+        ):
+            identity = allocate_membership_identity(member_id=member.pk)
+
+        self.assertEqual(
+            identity.official_membership_id,
+            "MOD036/002/043/000010",
+        )
+        self.assertEqual(MembershipSequence.objects.get(parish=self.parish).next_number, 11)
+
     def test_pending_member_cannot_receive_identity(self):
         member = self.create_member(status=Member.Status.PENDING_REVIEW)
 

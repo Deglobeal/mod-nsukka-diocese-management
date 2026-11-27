@@ -25,11 +25,10 @@ class PublicHomepageTests(TestCase):
             "Regular Member",
             "Patron",
             "Chaplain",
-            "Major General",
-            "Supreme General",
         ):
             with self.subTest(label=label):
                 self.assertContains(response, label)
+        self.assertContains(response, "No ranks have been added yet.")
 
     def test_homepage_renders_three_principle_cards(self):
         response = self.client.get(reverse("public_home"))

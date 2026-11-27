@@ -501,7 +501,7 @@ def record_first_member_bootstrap_review(
         raise ValidationError("A rejection reason is required.")
 
     application = (
-        MembershipApplication.objects.select_for_update()
+        MembershipApplication.objects.select_for_update(of=("self",))
         .select_related("parish__deanery__diocese", "deanery__diocese", "station")
         .get(pk=application_id)
     )
@@ -782,7 +782,7 @@ def record_superuser_application_decision(
         raise ValidationError("The administrative reason must not exceed 5,000 characters.")
 
     application = (
-        MembershipApplication.objects.select_for_update()
+        MembershipApplication.objects.select_for_update(of=("self",))
         .select_related("parish__deanery__diocese", "deanery__diocese", "station")
         .get(pk=application_id)
     )

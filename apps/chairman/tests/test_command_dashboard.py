@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.utils import timezone
@@ -876,6 +877,9 @@ class ChairmanCommandDashboardTests(TestCase):
                 "comments": "Final diocesan review completed.",
             },
         )
+        response_messages = [
+            message.message for message in get_messages(response.wsgi_request)
+        ]
 
         self.assertRedirects(
             response,
@@ -887,6 +891,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertEqual(
             self.application.stage,
             MembershipApplication.Stage.APPROVED,
+            response_messages,
         )
         self.assertEqual(self.pending_member.status, Member.Status.ACTIVE)
         self.assertEqual(self.application.reviews.count(), 1)

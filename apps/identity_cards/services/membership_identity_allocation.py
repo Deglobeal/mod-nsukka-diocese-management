@@ -93,6 +93,28 @@ def _next_direct_number(diocese):
     return max(numbers, default=0) + 1
 
 
+def _next_parish_number(*, diocese_code, deanery_code, parish_code):
+    """Start after any legacy or manually recorded ID for this Parish."""
+    prefix = f"MOD{diocese_code}/{deanery_code}/{parish_code}/"
+    pattern = re.compile(r"^(\d{6})$")
+    official_ids = list(
+        MembershipIdentity.objects.filter(
+            official_membership_id__startswith=prefix
+        ).values_list("official_membership_id", flat=True)
+    )
+    official_ids += list(
+        MembershipCard.objects.filter(
+            official_membership_id__startswith=prefix
+        ).values_list("official_membership_id", flat=True)
+    )
+    numbers = []
+    for official_id in official_ids:
+        match = pattern.fullmatch(official_id[len(prefix):])
+        if match:
+            numbers.append(int(match.group(1)))
+    return max(numbers, default=0) + 1
+
+
 def _allocate_direct_membership_identity(*, member):
     if member.deanery_id:
         raise ValidationError(
@@ -124,6 +146,10 @@ def _allocate_direct_membership_identity(*, member):
         defaults={"next_number": _next_direct_number(diocese)},
     )
     sequence = DirectMembershipSequence.objects.select_for_update().get(pk=sequence.pk)
+    next_direct_number = _next_direct_number(diocese)
+    if sequence.next_number < next_direct_number:
+        sequence.next_number = next_direct_number
+        sequence.save(update_fields=("next_number", "updated_at"))
     number = sequence.next_number
     if number > 999999:
         raise ValidationError("The Diocese has exhausted its six-digit direct membership number sequence.")
@@ -187,13 +213,27 @@ def allocate_membership_identity(*, member_id):
 
     sequence, _created = MembershipSequence.objects.get_or_create(
         parish=parish,
-        defaults={"next_number": 1},
+        defaults={
+            "next_number": _next_parish_number(
+                diocese_code=diocese.code,
+                deanery_code=deanery_code,
+                parish_code=parish_code,
+            ),
+        },
     )
     sequence = (
         MembershipSequence.objects
         .select_for_update()
         .get(pk=sequence.pk)
     )
+    next_parish_number = _next_parish_number(
+        diocese_code=diocese.code,
+        deanery_code=deanery_code,
+        parish_code=parish_code,
+    )
+    if sequence.next_number < next_parish_number:
+        sequence.next_number = next_parish_number
+        sequence.save(update_fields=("next_number", "updated_at"))
 
     number = sequence.next_number
     if number > 999999:
