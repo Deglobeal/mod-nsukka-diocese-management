@@ -30,7 +30,6 @@ class PublicHomepageTests(TestCase):
         ):
             with self.subTest(label=label):
                 self.assertContains(response, label)
-        self.assertContains(response, "No ranks have been added yet.")
 
     def test_homepage_shows_empty_state_when_no_ranks_exist(self):
         Rank.objects.all().delete()
