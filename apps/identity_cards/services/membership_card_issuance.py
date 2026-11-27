@@ -1,11 +1,18 @@
 import secrets
 import string
+import uuid
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard, MembershipIdentity, ReservedOffice
+from apps.identity_cards.models import (
+    MembershipCard,
+    MembershipCardStatusEvent,
+    MembershipIdentity,
+    OfficeAppointment,
+    ReservedOffice,
+)
 from apps.members.models import Member
 from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
@@ -178,6 +185,11 @@ def issue_membership_card(*, member_id, issuer, official_membership_id):
                     uniform_id=uniform_id,
                     issued_by=issuer,
                 )
+                MembershipCardStatusEvent.objects.create(
+                    card=card,
+                    action=MembershipCardStatusEvent.Action.ISSUED,
+                    actor=issuer,
+                )
             return card
         except IntegrityError:
             # Retry a rare uniform-ID collision. If another issuer claimed
@@ -188,3 +200,90 @@ def issue_membership_card(*, member_id, issuer, official_membership_id):
     raise ValidationError(
         "A unique uniform ID could not be generated. Please retry."
     )
+
+
+@transaction.atomic
+def replace_membership_card(*, card_id, issuer, reason=""):
+    """Rotate a card's QR credential while preserving its permanent member ID."""
+    card = (
+        MembershipCard.objects.select_for_update(of=("self",))
+        .select_related("member__parish__deanery__diocese", "member__deanery__diocese")
+        .filter(pk=card_id)
+        .first()
+    )
+    if card is None:
+        raise ValidationError("The membership card does not exist.")
+    diocese_id = _authorize_issuer(issuer=issuer, member=card.member)
+    if card.member.status != Member.Status.ACTIVE:
+        raise ValidationError("Only an active member may receive a replacement card.")
+    if card.status == MembershipCard.Status.REVOKED:
+        raise ValidationError("A revoked card cannot be replaced through this workflow.")
+    chairman_appointment = (
+        OfficeAppointment.objects.filter(
+            reserved_office__diocese_id=diocese_id,
+            reserved_office__office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            reserved_office__is_active=True,
+            ended_at__isnull=True,
+            member__status=Member.Status.ACTIVE,
+        )
+        .select_related("member")
+        .order_by("-appointed_at", "-pk")
+        .first()
+    )
+    if chairman_appointment is None:
+        raise ValidationError(
+            "A current active Diocesan Chairman is required before replacing a membership card."
+        )
+
+    card.verification_token = uuid.uuid4()
+    card.status = MembershipCard.Status.ACTIVE
+    card.save(update_fields=("verification_token", "status"))
+    MembershipCardStatusEvent.objects.create(
+        card=card,
+        action=MembershipCardStatusEvent.Action.REPLACED,
+        actor=issuer,
+        chairman_appointment=chairman_appointment,
+        reason=reason.strip(),
+    )
+    return card
+
+
+@transaction.atomic
+def update_membership_card_status(*, card_id, issuer, status, reason=""):
+    """Suspend, mark lost, reactivate, or revoke a card and audit the change."""
+    if status not in {
+        MembershipCard.Status.ACTIVE,
+        MembershipCard.Status.SUSPENDED,
+        MembershipCard.Status.LOST,
+        MembershipCard.Status.REVOKED,
+    }:
+        raise ValidationError("Choose a valid membership-card status.")
+    card = (
+        MembershipCard.objects.select_for_update(of=("self",))
+        .select_related("member__parish__deanery__diocese", "member__deanery__diocese")
+        .filter(pk=card_id)
+        .first()
+    )
+    if card is None:
+        raise ValidationError("The membership card does not exist.")
+    _authorize_issuer(issuer=issuer, member=card.member)
+    if card.status == MembershipCard.Status.REVOKED:
+        raise ValidationError("A revoked card cannot be reactivated.")
+    previous_status = card.status
+    card.status = status
+    if status == MembershipCard.Status.REVOKED:
+        card.verification_token = uuid.uuid4()
+    card.save(update_fields=("status", "verification_token"))
+    event_action = {
+        MembershipCard.Status.ACTIVE: MembershipCardStatusEvent.Action.REACTIVATED,
+        MembershipCard.Status.SUSPENDED: MembershipCardStatusEvent.Action.SUSPENDED,
+        MembershipCard.Status.LOST: MembershipCardStatusEvent.Action.MARKED_LOST,
+        MembershipCard.Status.REVOKED: MembershipCardStatusEvent.Action.REVOKED,
+    }[status]
+    MembershipCardStatusEvent.objects.create(
+        card=card,
+        action=event_action,
+        actor=issuer,
+        reason=reason.strip() or f"Status changed from {previous_status} to {status}.",
+    )
+    return card

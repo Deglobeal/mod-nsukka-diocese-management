@@ -1,6 +1,7 @@
 """Public membership portal lookup."""
 
 from django.shortcuts import render
+from django.db.models import Q
 from django.views.decorators.cache import never_cache
 
 from apps.identity_cards.models import MembershipCard, MembershipIdentity
@@ -38,7 +39,17 @@ def member_dashboard(request):
                 .first()
             )
 
-            if card is None:
+            invalid_or_inactive_card_exists = bool(
+                card and card.status != MembershipCard.Status.ACTIVE
+            ) or MembershipCard.objects.filter(
+                Q(official_membership_id=official_id, uniform_id=uniform_id)
+                & ~Q(status=MembershipCard.Status.ACTIVE)
+            ).exists()
+            if invalid_or_inactive_card_exists:
+                card = None
+                error_message = "This membership card is no longer active. Contact the Diocese for assistance."
+
+            if card is None and not invalid_or_inactive_card_exists:
                 identity = (
                     MembershipIdentity.objects
                     .select_related(
@@ -54,7 +65,7 @@ def member_dashboard(request):
                 )
 
             if card is None and identity is None:
-                error_message = (
+                error_message = error_message or (
                     "The supplied identifiers could not be verified. "
                     "Check both values and try again."
                 )

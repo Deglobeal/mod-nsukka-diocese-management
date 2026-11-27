@@ -8,7 +8,11 @@ from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.forms.membership_card_issuance_form import (
     MembershipCardIssuanceForm,
 )
-from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.models import (
+    MembershipCard,
+    OfficeAppointment,
+    ReservedOffice,
+)
 from apps.verification.models import MembershipApplication
 from apps.identity_cards.selectors.membership_card_dashboard import (
     eligible_members_for_card_issuance,
@@ -116,6 +120,13 @@ def membership_card_dashboard(request):
         ).count(),
         "cards": cards,
         "issued_card_count": cards.count(),
+        "chairman_is_available": OfficeAppointment.objects.filter(
+            reserved_office__diocese=diocese,
+            reserved_office__office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            reserved_office__is_active=True,
+            ended_at__isnull=True,
+            member__status="active",
+        ).exists(),
     }
     return render(
         request,

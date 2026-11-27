@@ -428,6 +428,15 @@ def record_membership_review(
             application=application,
             member=member,
         )
+        from apps.medical.services.member_medical_profile import (
+            create_member_medical_profile_from_application,
+        )
+
+        create_member_medical_profile_from_application(
+            application=application,
+            member=member,
+            actor=reviewer,
+        )
         event = _record_review_audit_event(
             application=application,
             reviewer=reviewer,
@@ -639,6 +648,15 @@ def record_first_member_bootstrap_review(
     _profile, profile_created = create_member_profile_from_application(
         application=application,
         member=member,
+    )
+    from apps.medical.services.member_medical_profile import (
+        create_member_medical_profile_from_application,
+    )
+
+    create_member_medical_profile_from_application(
+        application=application,
+        member=member,
+        actor=reviewer,
     )
     review.member_profile_action = (
         "created" if profile_created else "existing_preserved"
@@ -919,6 +937,15 @@ def record_superuser_application_decision(
         _profile, profile_created = create_member_profile_from_application(
             application=application,
             member=member,
+        )
+        from apps.medical.services.member_medical_profile import (
+            create_member_medical_profile_from_application,
+        )
+
+        create_member_medical_profile_from_application(
+            application=application,
+            member=member,
+            actor=administrator,
         )
         member_profile_action = (
             "created" if profile_created else "existing_preserved"

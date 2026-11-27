@@ -8,13 +8,14 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from apps.identity_cards.services.membership_qr import (
+    generate_card_verification_qr_png,
+    generate_membership_qr_png,
+)
 
 from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.verification.models import MembershipApplication
-from apps.identity_cards.services.membership_qr import (
-    generate_membership_qr_png,
-)
 
 
 class MembershipQRDownloadAPIView(APIView):
@@ -91,9 +92,22 @@ class MembershipQRDownloadAPIView(APIView):
             )
 
         try:
-            png = generate_membership_qr_png(
-                uniform_id=record.uniform_id,
+            linked_card = (
+                record
+                if card_id is not None
+                else MembershipCard.objects.filter(member=record.member).first()
             )
+            if linked_card is not None:
+                if linked_card.status != MembershipCard.Status.ACTIVE:
+                    return Response(
+                        {"detail": "This membership card is not active."},
+                        status=status.HTTP_410_GONE,
+                    )
+                png = generate_card_verification_qr_png(
+                    verification_token=linked_card.verification_token,
+                )
+            else:
+                png = generate_membership_qr_png(uniform_id=record.uniform_id)
         except ValueError:
             return Response(
                 {"detail": "QR generation is not configured correctly."},

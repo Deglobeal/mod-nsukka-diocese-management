@@ -32,6 +32,12 @@
         </div>
     {% endif %}
 
+    {% if not chairman_is_available %}
+        <div class="dashboard-message dashboard-message-warning" role="alert">
+            No current active Diocesan Chairman is appointed. Membership card printing is unavailable until the appointment is resolved.
+        </div>
+    {% endif %}
+
     <div class="dashboard-stats">
         <article class="stat-card">
             <span class="stat-label">Eligible members</span>
@@ -107,6 +113,7 @@
                             <th scope="col">Uniform ID</th>
                             <th scope="col">Parish</th>
                             <th scope="col">Date issued</th>
+                            <th scope="col">Card status</th>
                             <th scope="col">QR code</th>
                         </tr>
                     </thead>
@@ -128,11 +135,34 @@
                                 <td data-label="Date issued">
                                     {{ card.issued_at|date:"j M Y" }}
                                 </td>
+                                <td data-label="Card status">
+                                    {{ card.get_status_display }}
+                                </td>
                                 <td data-label="QR code">
-                                    <a class="table-link"
+                                    {% if card.status == "active" %}<a class="table-link"
                                        href="{% url 'api:identity_cards:download-membership-qr' card.pk %}">
                                         Download QR
+                                    </a>{% endif %}
+                                    {% if card.status == "active" and card.member.status == "active" %}
+                                    <a class="table-link"
+                                       href="{% url 'identity_cards_web:card-preview' card.pk %}">
+                                        Print preview PDF
                                     </a>
+                                    {% endif %}
+                                    <form method="post" action="{% url 'identity_cards_web:card-lifecycle' card.pk %}">
+                                        {% csrf_token %}
+                                        <label class="visually-hidden" for="card-reason-{{ card.pk }}">Reason for card status change</label>
+                                        <input id="card-reason-{{ card.pk }}" name="reason" type="text" maxlength="2000" placeholder="Reason (optional)">
+                                        <label class="visually-hidden" for="card-action-{{ card.pk }}">Card action</label>
+                                        <select id="card-action-{{ card.pk }}" name="action">
+                                            <option value="replace">Replace card and revoke old QR</option>
+                                            <option value="mark_lost">Mark lost</option>
+                                            <option value="suspend">Suspend</option>
+                                            <option value="activate">Reactivate</option>
+                                            <option value="revoke">Revoke permanently</option>
+                                        </select>
+                                        <button class="table-link" type="submit">Update card</button>
+                                    </form>
                                 </td>
                             </tr>
                         {% endfor %}

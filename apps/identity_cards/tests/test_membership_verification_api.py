@@ -5,7 +5,16 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.identity_cards.models import (
+    MembershipCard,
+    MembershipIdentity,
+    OfficeAppointment,
+    ReservedOffice,
+)
+from apps.identity_cards.services.membership_card_issuance import (
+    replace_membership_card,
+    update_membership_card_status,
+)
 from apps.members.models import Member
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication
@@ -35,6 +44,20 @@ class MembershipVerificationAPITests(TestCase):
             user=cls.issuer,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
+        )
+        cls.current_chairman = Member.objects.create(
+            first_name="Current",
+            last_name="Chairman",
+            parish=cls.parish,
+            status=Member.Status.ACTIVE,
+        )
+        OfficeAppointment.objects.create(
+            reserved_office=ReservedOffice.objects.get(
+                diocese=cls.diocese,
+                office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            ),
+            member=cls.current_chairman,
+            appointed_by=cls.issuer,
         )
 
         cls.member = Member.objects.create(
@@ -103,6 +126,58 @@ class MembershipVerificationAPITests(TestCase):
             response.data["uniform_id"],
             self.card.uniform_id,
         )
+
+    def test_card_specific_qr_token_verifies_and_is_revoked_on_replacement(self):
+        old_token = self.card.verification_token
+        old_response = self.client.get(
+            self.url,
+            {"identifier": str(old_token)},
+        )
+        self.assertEqual(old_response.status_code, 200)
+        self.assertTrue(old_response.data["active"])
+
+        replaced = replace_membership_card(
+            card_id=self.card.pk,
+            issuer=self.issuer,
+            reason="Card damaged",
+        )
+        self.assertNotEqual(replaced.verification_token, old_token)
+        self.assertEqual(replaced.official_membership_id, "MOD-VERIFY-0001")
+        self.assertEqual(replaced.uniform_id, "AB234567")
+        self.assertEqual(replaced.status_events.first().action, "replaced")
+
+        old_qr_response = self.client.get(
+            self.url,
+            {"identifier": str(old_token)},
+        )
+        legacy_uniform_qr_response = self.client.get(
+            self.url,
+            {"identifier": self.card.uniform_id},
+        )
+        new_qr_response = self.client.get(
+            self.url,
+            {"identifier": str(replaced.verification_token)},
+        )
+        self.assertEqual(old_qr_response.status_code, 404)
+        self.assertEqual(legacy_uniform_qr_response.status_code, 404)
+        self.assertEqual(new_qr_response.status_code, 200)
+        self.assertTrue(new_qr_response.data["active"])
+
+    def test_suspended_card_does_not_verify_as_active(self):
+        update_membership_card_status(
+            card_id=self.card.pk,
+            issuer=self.issuer,
+            status=MembershipCard.Status.SUSPENDED,
+            reason="Pending review",
+        )
+
+        response = self.client.get(
+            self.url,
+            {"identifier": str(self.card.verification_token)},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["active"])
 
     def test_direct_diocese_identity_verifies_without_an_issued_card(self):
         for identifier in (

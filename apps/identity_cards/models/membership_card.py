@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+import uuid
 
 
 class MembershipCard(models.Model):
@@ -10,6 +11,12 @@ class MembershipCard(models.Model):
     Card printing, replacements, and QR verification will be separate
     workflows. This record does not itself approve a membership application.
     """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        SUSPENDED = "suspended", "Suspended"
+        LOST = "lost", "Lost"
+        REVOKED = "revoked", "Revoked"
 
     member = models.OneToOneField(
         "members.Member",
@@ -35,6 +42,16 @@ class MembershipCard(models.Model):
         related_name="issued_membership_cards",
     )
     issued_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    verification_token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+    )
 
     class Meta:
         ordering = ["official_membership_id"]
@@ -63,6 +80,11 @@ class MembershipCard(models.Model):
             raise ValidationError({
                 "uniform_id": "A uniform lookup ID is required."
             })
+
+    def save(self, *args, **kwargs):
+        if self.verification_token is None:
+            self.verification_token = uuid.uuid4()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return (

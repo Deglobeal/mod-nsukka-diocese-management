@@ -1,4 +1,5 @@
 from .membership_card import MembershipCard
+from .membership_card_status_event import MembershipCardStatusEvent
 from .membership_identity import MembershipIdentity
 from .membership_sequence import MembershipSequence
 from .direct_membership_sequence import DirectMembershipSequence
@@ -15,6 +16,7 @@ from .chairman_activation import (
 
 __all__ = [
     "MembershipCard",
+    "MembershipCardStatusEvent",
     "MembershipIdentity",
     "MembershipSequence",
     "DirectMembershipSequence",

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import ScopedRateThrottle
@@ -33,18 +35,34 @@ class MembershipVerificationAPIView(APIView):
 
         identifier = identifier.strip()
 
-        card = (
-            MembershipCard.objects
-            .select_related(
-                "member__parish__deanery__diocese",
-                "member__deanery__diocese",
-                "member__station",
+        card = None
+        try:
+            card_token = UUID(identifier)
+        except (ValueError, AttributeError):
+            card_token = None
+        if card_token is not None:
+            card = (
+                MembershipCard.objects
+                .select_related(
+                    "member__parish__deanery__diocese",
+                    "member__deanery__diocese",
+                    "member__station",
+                )
+                .filter(verification_token=card_token)
+                .first()
             )
-            .filter(
-                official_membership_id=identifier
+
+        if card is None:
+            card = (
+                MembershipCard.objects
+                .select_related(
+                    "member__parish__deanery__diocese",
+                    "member__deanery__diocese",
+                    "member__station",
+                )
+                .filter(official_membership_id=identifier)
+                .first()
             )
-            .first()
-        )
 
         if card is None:
             card = (
@@ -88,6 +106,17 @@ class MembershipVerificationAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if (
+            card is not None
+            and identifier.upper() == card.uniform_id
+            and card.status == MembershipCard.Status.ACTIVE
+            and card.status_events.filter(action="replaced").exists()
+        ):
+            return Response(
+                {"detail": "This card verification credential is no longer valid."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         member = card.member if card is not None else identity.member
         official_id = (
             card.official_membership_id if card is not None
@@ -123,7 +152,13 @@ class MembershipVerificationAPIView(APIView):
                 ),
                 "status": member.status,
                 "status_label": member.get_status_display(),
-                "active": member.status == member.Status.ACTIVE,
+                "active": (
+                    member.status == member.Status.ACTIVE
+                    and (
+                        card is None
+                        or card.status == MembershipCard.Status.ACTIVE
+                    )
+                ),
             },
             status=status.HTTP_200_OK,
         )

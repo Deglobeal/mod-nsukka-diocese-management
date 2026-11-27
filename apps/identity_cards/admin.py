@@ -1,6 +1,10 @@
 from django.contrib import admin
 
-from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.identity_cards.models import (
+    MembershipCard,
+    MembershipCardStatusEvent,
+    MembershipIdentity,
+)
 
 
 @admin.register(MembershipIdentity)
@@ -45,6 +49,7 @@ class MembershipCardAdmin(admin.ModelAdmin):
         "member",
         "issued_by",
         "issued_at",
+        "status",
     )
     search_fields = (
         "official_membership_id",
@@ -60,6 +65,8 @@ class MembershipCardAdmin(admin.ModelAdmin):
         "uniform_id",
         "issued_by",
         "issued_at",
+        "status",
+        "verification_token",
     )
 
     def has_add_permission(self, request):
@@ -72,4 +79,21 @@ class MembershipCardAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         # Preserve the identifier allocation history.
+        return False
+
+
+@admin.register(MembershipCardStatusEvent)
+class MembershipCardStatusEventAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "card", "action", "actor", "chairman_appointment")
+    list_filter = ("action", "created_at")
+    search_fields = ("card__official_membership_id", "card__member__first_name", "card__member__last_name")
+    readonly_fields = ("card", "action", "actor", "chairman_appointment", "reason", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}My Emergency Medical Profile | M.O.D.{% endblock %}
+
+{% block content %}
+<main class="container" style="max-width: 52rem; margin: 2rem auto; padding: 1rem;">
+  <h1>My Emergency Medical Profile</h1>
+  <p>Only you and specifically authorized Medical Staff can access these private emergency details.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save emergency information</button>
+  </form>
+  <section aria-labelledby="medical-history-title">
+    <h2 id="medical-history-title">Previous emergency profile details</h2>
+    {% for revision in revisions %}
+      <article>
+        <h3>{{ revision.created_at|date:"j M Y H:i" }}</h3>
+        <p>Previous allergies: {{ revision.snapshot.known_allergies|default:"None recorded" }}</p>
+        <p>Original registration medical notes: {{ revision.snapshot.registration_medical_notes|default:"None recorded" }}</p>
+        <p>Previous conditions: {{ revision.snapshot.important_conditions|default:"None recorded" }}</p>
+      </article>
+    {% empty %}
+      <p>No prior emergency profile changes.</p>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}
