@@ -15,10 +15,10 @@
       .brand-emblem { width: 42px !important; height: auto !important; }
       .brand-coat { width: 38px !important; height: auto !important; }
       .brand-cell { padding-left: 4px !important; padding-right: 4px !important; }
-      .brand-identity { font-size: 9px !important; }
-      .brand-movement { font-size: 9px !important; }
-      .brand-admin { font-size: 8px !important; }
-      .brand-contact { font-size: 10px !important; }
+      .brand-identity { font-size: 11px !important; }
+      .brand-movement { font-size: 11px !important; }
+      .brand-admin { font-size: 11px !important; }
+      .brand-contact { font-size: 11px !important; }
     }
   </style>
 </head>
@@ -26,20 +26,20 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:{{ institutional.colors.ivory }};width:100%;">
     <tr><td align="center" style="padding:24px 12px;">
       <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:{{ institutional.colors.white }};border-collapse:collapse;">
-        {% if preview_notice %}<tr><td style="background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};padding:9px 18px;text-align:center;font-size:12px;font-weight:bold;">{{ preview_notice }}</td></tr>{% endif %}
+        {% if preview_notice %}<tr><td style="background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};padding:9px 18px;text-align:center;font-size:11px;font-weight:bold;">{{ preview_notice }}</td></tr>{% endif %}
         <tr><td style="background-color:{{ institutional.colors.white }};border-top:3px solid {{ institutional.colors.green }};border-bottom:2px solid {{ institutional.colors.gold }};padding:14px 14px 12px;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">
             <tr>
               <td class="brand-cell" width="70" align="center" valign="middle" style="width:70px;padding:0 7px;text-align:center;">
-                {% if logo_cid %}<img src="cid:{{ logo_cid }}" width="56" height="56" alt="Official M.O.D. logo" class="brand-emblem" style="display:block;width:56px;height:56px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% elif logo_url %}<img src="{{ logo_url }}" width="56" height="56" alt="Official M.O.D. logo" class="brand-emblem" style="display:block;width:56px;height:56px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% else %}<span style="font-size:12px;font-weight:bold;color:{{ institutional.colors.green }};">M.O.D.</span>{% endif %}
+                {% if logo_cid %}<img src="cid:{{ logo_cid }}" width="56" height="56" alt="Official M.O.D. logo" class="brand-emblem" style="display:block;width:56px;height:56px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% elif logo_url %}<img src="{{ logo_url }}" width="56" height="56" alt="Official M.O.D. logo" class="brand-emblem" style="display:block;width:56px;height:56px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% else %}<span style="font-size:11px;font-weight:bold;color:{{ institutional.colors.green }};">M.O.D.</span>{% endif %}
               </td>
               <td class="brand-cell" align="center" valign="middle" style="padding:0 4px;text-align:center;color:{{ institutional.colors.green }};font-family:Arial,Helvetica,sans-serif;">
-                <div class="brand-copy" style="font-size:12px;line-height:1.35;font-weight:bold;">{{ institutional.diocese }}</div>
-                <div class="brand-movement" style="font-size:10px;line-height:1.4;font-weight:bold;margin-top:2px;">{{ institutional.movement }}</div>
-                <div class="brand-admin" style="font-size:8px;line-height:1.45;margin-top:3px;">{{ institutional.council }}<br>{{ institutional.command }}<br>{{ institutional.registration }}</div>
+                <div class="brand-copy" style="font-size:11px;line-height:1.35;font-weight:bold;">{{ institutional.diocese }}</div>
+                <div class="brand-movement" style="font-size:11px;line-height:1.4;font-weight:bold;margin-top:2px;">{{ institutional.movement }}</div>
+                <div class="brand-admin" style="font-size:11px;line-height:1.45;margin-top:3px;">{{ institutional.council }}<br>{{ institutional.command }}<br>{{ institutional.registration }}</div>
               </td>
               <td class="brand-cell" width="60" align="center" valign="middle" style="width:60px;padding:0 7px;text-align:center;">
-                {% if coat_cid %}<img src="cid:{{ coat_cid }}" width="48" height="51" alt="Nigerian Coat of Arms" class="brand-coat" style="display:block;width:48px;height:51px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% elif coat_url %}<img src="{{ coat_url }}" width="48" height="51" alt="Nigerian Coat of Arms" class="brand-coat" style="display:block;width:48px;height:51px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% else %}<span style="font-size:8px;line-height:1.2;color:{{ institutional.colors.green }};">Nigerian Coat of Arms</span>{% endif %}
+                {% if coat_cid %}<img src="cid:{{ coat_cid }}" width="48" height="51" alt="Nigerian Coat of Arms" class="brand-coat" style="display:block;width:48px;height:51px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% elif coat_url %}<img src="{{ coat_url }}" width="48" height="51" alt="Nigerian Coat of Arms" class="brand-coat" style="display:block;width:48px;height:51px;border:0;outline:none;text-decoration:none;margin:0 auto;">{% else %}<span style="font-size:11px;line-height:1.2;color:{{ institutional.colors.green }};">Nigerian Coat of Arms</span>{% endif %}
               </td>
             </tr>
           </table>
@@ -58,7 +58,7 @@
             {% block content %}{% endblock %}
           {% endwith %}
         </td></tr>
-        <tr><td style="border-top:1px solid {{ institutional.colors.gold }};padding:20px 28px;text-align:center;color:{{ institutional.colors.black }};font-size:12px;line-height:1.7;">
+        <tr><td style="border-top:1px solid {{ institutional.colors.gold }};padding:20px 28px;text-align:center;color:{{ institutional.colors.black }};font-size:11px;line-height:1.7;">
           <strong style="color:{{ institutional.colors.green }};">{{ institutional.diocese }}</strong><br>
           Automated notification from the M.O.D. Nsukka Diocese Membership Management System.
         </td></tr>

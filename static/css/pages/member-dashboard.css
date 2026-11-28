@@ -22,7 +22,7 @@
 .member-portal-eyebrow,
 .member-card-label {
     margin: 0 0 8px;
-    font-size: 0.55rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     letter-spacing: 0.1em;
 }
@@ -65,7 +65,7 @@
     background: var(--color-primary, #2e1065);
     color: #fff;
     font-weight: 700;
-    font-size: 0.57rem;
+    font-size: 1.05rem;
 }
 
 .member-identity-copy {
@@ -82,7 +82,7 @@
     padding: 6px 10px;
     border-radius: 999px;
     border: 1px solid var(--color-border, #dedede);
-    font-size: 0.55rem;
+    font-size: 0.7rem;
     font-weight: 700;
 }
 
@@ -101,7 +101,7 @@
 
 .member-feature-note {
     flex-basis: 100%;
-    font-size: 0.55rem;
+    font-size: 0.7438rem;
 }
 
 .member-portal-primary-button,
@@ -183,7 +183,7 @@
 
 .member-section-heading p {
     margin: 0;
-    font-size: 0.55rem;
+    font-size: 0.7875rem;
 }
 
 .member-field-grid {
@@ -208,11 +208,11 @@
 .member-field span {
     margin-bottom: 6px;
     color: var(--color-text-muted, #666);
-    font-size: 0.55rem;
+    font-size: 0.7175rem;
 }
 
 .member-field strong {
-    font-size: 0.55rem;
+    font-size: 0.8312rem;
     font-weight: 600;
     line-height: 1.5;
 }
@@ -225,13 +225,13 @@
 
 .member-detail-section h3 {
     margin: 0 0 14px;
-    font-size: 0.55rem;
+    font-size: 0.9188rem;
 }
 
 .member-portal-footer {
     padding: 16px 0;
     color: var(--color-text-muted, #666);
-    font-size: 0.55rem;
+    font-size: 0.7875rem;
     line-height: 1.6;
 }
 
@@ -246,7 +246,7 @@
     }
 
     .member-portal-header h1 {
-        font-size: 0.71rem;
+        font-size: 1.3125rem;
     }
 
     .member-field-grid {
@@ -271,7 +271,7 @@
 }
 
 .member-lookup-field label {
-    font-size: 0.55rem;
+    font-size: 0.805rem;
     font-weight: 700;
 }
 

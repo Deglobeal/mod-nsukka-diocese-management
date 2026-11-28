@@ -2,11 +2,11 @@
 {% block title %}Parish verification completed | M.O.D. Nsukka Diocese{% endblock %}
 {% block content %}
 <div style="display:inline-block;padding:6px 10px;background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};font-size:11px;font-weight:bold;letter-spacing:.5px;">COMPLETED · PARISH VERIFICATION</div>
-<h1 style="margin:16px 0;color:{{ email_green }};font-size:23px;line-height:1.3;">Congratulations! Parish Verification Completed</h1>
-<p style="font-size:15px;line-height:1.7;">Dear {{ applicant_name }},</p>
-<p style="font-size:15px;line-height:1.7;">We are pleased to inform you that your membership application has successfully passed the Parish verification stage.</p>
-<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">APPLICATION PROGRESS</h2>
+<h1 style="margin:16px 0;color:{{ email_green }};font-size:20.125px;line-height:1.3;">Congratulations! Parish Verification Completed</h1>
+<p style="font-size:13.125px;line-height:1.7;">Dear {{ applicant_name }},</p>
+<p style="font-size:13.125px;line-height:1.7;">We are pleased to inform you that your membership application has successfully passed the Parish verification stage.</p>
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:12.25px;">APPLICATION PROGRESS</h2>
 {% include "notifications/email/_application_details.html" with current_stage="Parish" application_status="Successfully verified" %}
-<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">WHAT HAPPENS NEXT?</h2>
-<p style="font-size:14px;line-height:1.7;">Your application will now proceed to Deanery verification. Parish verification is the first stage; final Diocesan approval is still required.</p>
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:12.25px;">WHAT HAPPENS NEXT?</h2>
+<p style="font-size:12.25px;line-height:1.7;">Your application will now proceed to Deanery verification. Parish verification is the first stage; final Diocesan approval is still required.</p>
 {% endblock %}

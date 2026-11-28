@@ -16,7 +16,7 @@
 .organization-eyebrow {
     margin: 0 0 var(--space-2);
     color: var(--color-primary);
-    font-size: 0.55rem;
+    font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.08em;
 }
@@ -62,7 +62,7 @@
 
 .organization-stat strong {
     margin-top: var(--space-2);
-    font-size: 0.86rem;
+    font-size: 1.575rem;
 }
 
 .organization-panel {
@@ -171,7 +171,7 @@
 
 .organization-field small {
     color: var(--color-text-muted);
-    font-size:var(--font-size-sm);
+    font-size: var(--font-size-sm);
 }
 
 .organization-field small[role="alert"] {

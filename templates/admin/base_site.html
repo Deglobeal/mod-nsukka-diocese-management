@@ -1,5 +1,8 @@
 {% extends "admin/base.html" %}
-{% load i18n %}
+{% load i18n static %}
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/admin/typography.css' %}">
+{% endblock %}
 {% block nav-global %}
 <div class="nav-global">
   {% if user.is_superuser %}<a href="{% url 'first_member_registration_ids' %}">First Member Registration IDs</a>{% endif %}

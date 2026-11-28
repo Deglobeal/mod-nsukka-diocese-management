@@ -1,4 +1,8 @@
 {% extends "admin/base.html" %}
+{% load static %}
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/admin/typography.css' %}">
+{% endblock %}
 {% block content %}
 <h1>First Member Application Review</h1>
 <p>Only token-backed first-member applications appear here. Decisions on this page are available to Django superusers only.</p>

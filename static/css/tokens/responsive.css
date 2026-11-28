@@ -19,9 +19,9 @@
         --space-section: var(--space-10);
         --space-section-lg: var(--space-12);
 
-        --font-size-h1: 1.07rem;
-        --font-size-h2: 0.84rem;
-        --font-size-h3: 0.66rem;
+        --font-size-h1: 1.9688rem;
+        --font-size-h2: 1.5312rem;
+        --font-size-h3: 1.2031rem;
 
         --card-padding: var(--space-5);
         --header-height: 68px;
@@ -35,9 +35,9 @@
         --space-section: var(--space-8);
         --space-section-lg: var(--space-10);
 
-        --font-size-h1: 0.89rem;
-        --font-size-h2: 0.71rem;
-        --font-size-h3: 0.59rem;
+        --font-size-h1: 1.6406rem;
+        --font-size-h2: 1.3125rem;
+        --font-size-h3: 1.0938rem;
 
         --card-padding: var(--space-4);
         --header-height: 60px;

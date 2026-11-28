@@ -2,14 +2,14 @@
 {% block title %}Additional information required | M.O.D. Nsukka Diocese{% endblock %}
 {% block content %}
 <div style="display:inline-block;padding:6px 10px;background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};font-size:11px;font-weight:bold;letter-spacing:.5px;">ACTION REQUIRED · APPLICATION REVIEW</div>
-<h1 style="margin:16px 0;color:{{ email_green }};font-size:23px;line-height:1.3;">Additional Information Is Required</h1>
-<p style="font-size:15px;line-height:1.7;">Dear {{ applicant_name }},</p>
-<p style="font-size:15px;line-height:1.7;">Your membership application is currently under review. Additional information or clarification is required before the verification process can proceed.</p>
-<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">APPLICATION DETAILS</h2>
+<h1 style="margin:16px 0;color:{{ email_green }};font-size:20.125px;line-height:1.3;">Additional Information Is Required</h1>
+<p style="font-size:13.125px;line-height:1.7;">Dear {{ applicant_name }},</p>
+<p style="font-size:13.125px;line-height:1.7;">Your membership application is currently under review. Additional information or clarification is required before the verification process can proceed.</p>
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:12.25px;">APPLICATION DETAILS</h2>
 {% include "notifications/email/_application_details.html" %}
-<p style="font-size:14px;line-height:1.7;">Please follow the instructions below to submit the requested information:</p>
-{% if submission_instructions %}<p style="font-size:14px;line-height:1.7;">{{ submission_instructions|linebreaksbr }}</p>{% endif %}
-{% if submission_url %}<p style="margin:24px 0;text-align:center;"><a href="{{ submission_url }}" style="display:inline-block;background:{{ email_green }};border:2px solid {{ email_gold }};color:{{ institutional.colors.white }};text-decoration:none;font-size:14px;font-weight:bold;padding:14px 24px;">SUBMIT REQUESTED INFORMATION</a></p>{% endif %}
-{% if expires_at %}<p style="font-size:13px;line-height:1.7;">The secure correction link expires on {{ expires_at }} and can be used once.</p>{% endif %}
-<p style="font-size:14px;line-height:1.7;">Your application remains subject to the existing verification process until the requested information has been received and reviewed.</p>
+<p style="font-size:12.25px;line-height:1.7;">Please follow the instructions below to submit the requested information:</p>
+{% if submission_instructions %}<p style="font-size:12.25px;line-height:1.7;">{{ submission_instructions|linebreaksbr }}</p>{% endif %}
+{% if submission_url %}<p style="margin:24px 0;text-align:center;"><a href="{{ submission_url }}" style="display:inline-block;background:{{ email_green }};border:2px solid {{ email_gold }};color:{{ institutional.colors.white }};text-decoration:none;font-size:12.25px;font-weight:bold;padding:14px 24px;">SUBMIT REQUESTED INFORMATION</a></p>{% endif %}
+{% if expires_at %}<p style="font-size:11.375px;line-height:1.7;">The secure correction link expires on {{ expires_at }} and can be used once.</p>{% endif %}
+<p style="font-size:12.25px;line-height:1.7;">Your application remains subject to the existing verification process until the requested information has been received and reviewed.</p>
 {% endblock %}

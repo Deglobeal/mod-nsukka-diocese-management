@@ -2,11 +2,11 @@
 {% block title %}Membership application decision | M.O.D. Nsukka Diocese{% endblock %}
 {% block content %}
 <div style="display:inline-block;padding:6px 10px;background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};font-size:11px;font-weight:bold;letter-spacing:.5px;">FINAL DECISION · NOT APPROVED</div>
-<h1 style="margin:16px 0;color:{{ email_green }};font-size:23px;line-height:1.3;">Membership Application Not Approved</h1>
-<p style="font-size:15px;line-height:1.7;">Dear {{ applicant_name }},</p>
-<p style="font-size:15px;line-height:1.7;">Following the review of your membership application, we regret to inform you that your application has not been approved by M.O.D. Nsukka Diocese.</p>
-<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:14px;">APPLICATION DETAILS</h2>
+<h1 style="margin:16px 0;color:{{ email_green }};font-size:20.125px;line-height:1.3;">Membership Application Not Approved</h1>
+<p style="font-size:13.125px;line-height:1.7;">Dear {{ applicant_name }},</p>
+<p style="font-size:13.125px;line-height:1.7;">Following the review of your membership application, we regret to inform you that your application has not been approved by M.O.D. Nsukka Diocese.</p>
+<h2 style="margin:24px 0 8px;color:{{ email_green }};font-size:12.25px;">APPLICATION DETAILS</h2>
 {% include "notifications/email/_application_details.html" with application_status="Not Approved" %}
-<p style="font-size:14px;line-height:1.7;">Please review the recorded reason and follow the applicable correction, appeal, or resubmission process communicated by the Diocese, where available. For clarification, contact the appropriate authorized Diocese office.</p>
-<p style="font-size:14px;line-height:1.7;">Thank you for your interest in M.O.D. Nsukka Diocese.</p>
+<p style="font-size:12.25px;line-height:1.7;">Please review the recorded reason and follow the applicable correction, appeal, or resubmission process communicated by the Diocese, where available. For clarification, contact the appropriate authorized Diocese office.</p>
+<p style="font-size:12.25px;line-height:1.7;">Thank you for your interest in M.O.D. Nsukka Diocese.</p>
 {% endblock %}
