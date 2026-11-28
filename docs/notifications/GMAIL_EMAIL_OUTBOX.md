@@ -20,6 +20,22 @@ GMAIL_API_SENDER=deglobeal@gmail.com
 GMAIL_API_ENABLED=False
 ```
 
+For serverless production environments, the OAuth client and authorized-user
+JSON may instead be supplied through the secret environment variables
+`GMAIL_OAUTH_CREDENTIALS_JSON` and `GMAIL_OAUTH_TOKEN_JSON`. Set both values;
+the application refreshes access tokens in memory and does not write secrets to
+the deployment filesystem. Production enables Gmail sending by default, and
+registration emails are dispatched after the registration transaction commits.
+Delivery failures remain visible in the email outbox and never roll back a
+saved registration.
+
+The Vercel production deployment also runs the outbox retry endpoint once per
+day at 07:00 UTC. `CRON_SECRET` must be set as a sensitive production variable;
+the endpoint rejects calls without the matching bearer token. Vercel Hobby
+supports daily cron execution only, so retries scheduled sooner by the outbox
+backoff are picked up by the next daily run. Pro and Enterprise can use a more
+frequent schedule if the project plan supports it.
+
 Keep both OAuth files outside the repository and media directories. Restrict filesystem access to the application operator. The application checks paths before loading them; it never prints their contents. The worker refreshes expired access tokens and atomically writes a refreshed token file with owner-only permissions. Production must use its own secret mount or protected persistent secret store; do not copy a developer's local token file to a production host.
 
 The sender also embeds the approved `static/images/branding/mainmodlogo.jpg` crest as a CID image, so recipients do not need access to a development filesystem or a publicly hosted static file.
@@ -32,9 +48,9 @@ Before production:
 
 1. Use a production Google Cloud project and publish its OAuth consent screen to In production.
 2. Complete the required verification for the sensitive `gmail.send` scope, including the consent-screen details and any Google review requirements.
-3. Reauthorize the actual sending account in that production project and store its resulting token in a production-only protected location.
-4. Set `GMAIL_OAUTH_CREDENTIALS_FILE`, `GMAIL_OAUTH_TOKEN_FILE`, and `GMAIL_API_SENDER` for the server process; set `GMAIL_API_ENABLED=True` only when ready.
-5. Confirm server egress to Google's OAuth and Gmail API endpoints, and configure a supervised scheduled worker.
+3. Reauthorize the actual sending account in that production project and store its resulting OAuth client and token JSON in production-only secrets. On Vercel, use `GMAIL_OAUTH_CREDENTIALS_JSON` and `GMAIL_OAUTH_TOKEN_JSON`; do not add them to the repository.
+4. Set `GMAIL_API_SENDER`. Production enables automatic registration email delivery by default; set `GMAIL_API_ENABLED=False` only to pause it.
+5. Confirm server egress to Google's OAuth and Gmail API endpoints. The registration request dispatches the applicant and sponsor messages after commit; other queued notices still use the supervised outbox worker.
 6. Review Gmail account sending limits and quota responses. Gmail API acceptance is not proof of inbox delivery; the outbox records only the Gmail message ID and acceptance time.
 
 Google classifies `gmail.send` as sensitive and documents additional OAuth verification for public apps using sensitive scopes ([Gmail scopes](https://developers.google.com/workspace/gmail/api/auth/scopes), [OAuth sensitive-scope review](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification)). Gmail's sending quotas and service limits apply; this implementation backs off on retryable quota and service errors and does not claim unlimited sending.
@@ -43,7 +59,7 @@ Google classifies `gmail.send` as sensitive and documents additional OAuth verif
 
 Queue rows are created transactionally with registration or review decisions and carry an idempotency key. The worker claims one row at a time, records attempts, retries transient errors with exponential backoff capped at six hours, and fails permanent errors. If a send request times out after it starts or a worker lease goes stale, the row moves to administrator review because Gmail may already have accepted the message; the worker does not automatically resend an uncertain message. Administrators can inspect status, recipient, attempt count, Gmail message ID, and safe error summaries in Django Admin under Email Notifications. The template context, including sponsor bearer URLs, is hidden from the admin detail page and bearer URLs are discarded after Gmail acceptance.
 
-Ordinary processing is simulation only:
+Manual outbox processing is simulation only by default:
 
 ```sh
 python manage.py process_email_outbox --simulate

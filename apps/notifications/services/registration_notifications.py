@@ -1,7 +1,9 @@
 """Queue applicant registration notifications after the application is saved."""
 
 import logging
+from functools import partial
 
+from django.conf import settings
 from django.db import transaction
 
 from apps.members.models import MemberProfile
@@ -9,13 +11,49 @@ from apps.members.services.application_document_access import (
     issue_application_document_link,
 )
 from apps.members.pdf_design import application_reference
-from apps.notifications.models import SMSNotification, WhatsAppNotification
+from apps.notifications.models import (
+    EmailNotification,
+    SMSNotification,
+    WhatsAppNotification,
+)
 from apps.notifications.services.phone_numbers import normalize_nigerian_phone
 from apps.notifications.services.whatsapp_consent import has_current_whatsapp_consent
 from apps.notifications.services.email_notifications import queue_registration_email
 
 
 logger = logging.getLogger(__name__)
+
+
+def _send_registration_emails(application_id):
+    """Deliver this registration's queued email notices after commit."""
+    if not getattr(settings, "GMAIL_API_ENABLED", False):
+        logger.warning(
+            "Registration emails remain queued because Gmail delivery is disabled "
+            "application_id=%s",
+            application_id,
+        )
+        return
+
+    try:
+        from apps.notifications.services.email_outbox import process_email_outbox
+
+        process_email_outbox(
+            batch_size=5,
+            simulate=False,
+            application_id=application_id,
+            kinds=(
+                EmailNotification.Kind.REGISTRATION_RECEIVED,
+                EmailNotification.Kind.SPONSOR_VERIFICATION,
+            ),
+        )
+    except Exception as error:
+        # The registration is already committed; delivery failures remain
+        # visible in the outbox and must never turn a successful POST into 500.
+        logger.warning(
+            "Automatic registration email dispatch failed application_id=%s error=%s",
+            application_id,
+            error.__class__.__name__,
+        )
 
 
 def _consenting_applicant_whatsapp_profile(*, application):
@@ -75,6 +113,10 @@ def _queue_whatsapp(*, application, recipient_phone, message):
 def queue_registration_notifications(*, application, request):
     """Queue SMS and consented WhatsApp independently, with retry-safe keys."""
     queue_registration_email(application=application)
+    transaction.on_commit(
+        partial(_send_registration_emails, application.pk),
+        robust=True,
+    )
     recipient_phone = normalize_nigerian_phone(application.phone_number)
     _access, download_url = issue_application_document_link(
         application=application,

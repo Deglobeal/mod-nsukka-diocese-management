@@ -55,46 +55,59 @@ class GmailOutcomeUnknownError(GmailSendError):
 
 
 def _load_credentials():
+    inline_credentials = getattr(settings, "GMAIL_OAUTH_CREDENTIALS_JSON", "")
+    inline_token = getattr(settings, "GMAIL_OAUTH_TOKEN_JSON", "")
+    use_inline_credentials = bool(inline_credentials and inline_token)
+    if bool(inline_credentials) != bool(inline_token):
+        raise GmailConfigurationError(
+            "Both Gmail OAuth JSON environment variables must be configured."
+        )
+
     credentials_path = getattr(settings, "GMAIL_OAUTH_CREDENTIALS_FILE", "")
     token_path = getattr(settings, "GMAIL_OAUTH_TOKEN_FILE", "")
-    if not credentials_path or not token_path:
-        raise GmailConfigurationError(
-            "Gmail OAuth credential and token file paths are not configured."
-        )
-    credentials_path = Path(credentials_path).expanduser().resolve()
-    token_path = Path(token_path).expanduser().resolve()
-    project_root = Path(settings.BASE_DIR).resolve()
-    media_root = Path(
-        getattr(settings, "MEDIA_ROOT", project_root / "media")
-    ).resolve()
-    for candidate in (credentials_path, token_path):
-        if candidate == project_root or project_root in candidate.parents:
+    if not use_inline_credentials:
+        if not credentials_path or not token_path:
             raise GmailConfigurationError(
-                "Gmail OAuth files must be stored outside the project repository."
+                "Gmail OAuth credential and token file paths are not configured."
             )
-        if candidate == media_root or media_root in candidate.parents:
+        credentials_path = Path(credentials_path).expanduser().resolve()
+        token_path = Path(token_path).expanduser().resolve()
+        project_root = Path(settings.BASE_DIR).resolve()
+        media_root = Path(
+            getattr(settings, "MEDIA_ROOT", project_root / "media")
+        ).resolve()
+        for candidate in (credentials_path, token_path):
+            if candidate == project_root or project_root in candidate.parents:
+                raise GmailConfigurationError(
+                    "Gmail OAuth files must be stored outside the project repository."
+                )
+            if candidate == media_root or media_root in candidate.parents:
+                raise GmailConfigurationError(
+                    "Gmail OAuth files must be stored outside public media storage."
+                )
+        if not credentials_path.is_file() or not token_path.is_file():
             raise GmailConfigurationError(
-                "Gmail OAuth files must be stored outside public media storage."
+                "A configured Gmail OAuth credential or token file is unavailable."
             )
-    if not credentials_path.is_file() or not token_path.is_file():
-        raise GmailConfigurationError(
-            "A configured Gmail OAuth credential or token file is unavailable."
-        )
-    for secret_file in (credentials_path, token_path):
-        try:
-            if stat.S_IMODE(secret_file.stat().st_mode) & 0o077:
-                os.chmod(secret_file, 0o600)
-        except OSError as exc:
-            raise GmailConfigurationError(
-                "Gmail OAuth files must be readable only by the application account."
-            ) from exc
+        for secret_file in (credentials_path, token_path):
+            try:
+                if stat.S_IMODE(secret_file.stat().st_mode) & 0o077:
+                    os.chmod(secret_file, 0o600)
+            except OSError as exc:
+                raise GmailConfigurationError(
+                    "Gmail OAuth files must be readable only by the application account."
+                ) from exc
 
     try:
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
         from google.auth.exceptions import DefaultCredentialsError, RefreshError
 
-        credential_config = json.loads(credentials_path.read_text(encoding="utf-8"))
+        credential_config = (
+            json.loads(inline_credentials)
+            if use_inline_credentials
+            else json.loads(credentials_path.read_text(encoding="utf-8"))
+        )
         if not isinstance(credential_config, dict) or not (
             "installed" in credential_config or "web" in credential_config
         ):
@@ -102,9 +115,15 @@ def _load_credentials():
                 "The configured Gmail OAuth credential file has an invalid format."
             )
 
-        credentials = Credentials.from_authorized_user_file(
-            str(token_path), ["https://www.googleapis.com/auth/gmail.send"]
-        )
+        if use_inline_credentials:
+            credentials = Credentials.from_authorized_user_info(
+                json.loads(inline_token),
+                ["https://www.googleapis.com/auth/gmail.send"],
+            )
+        else:
+            credentials = Credentials.from_authorized_user_file(
+                str(token_path), ["https://www.googleapis.com/auth/gmail.send"]
+            )
         if not credentials.has_scopes(
             ["https://www.googleapis.com/auth/gmail.send"]
         ):
@@ -122,11 +141,12 @@ def _load_credentials():
                 raise GmailAuthenticationError(
                     "Gmail OAuth refresh failed; authorize the sending account again."
                 ) from exc
-            replacement = token_path.with_suffix(token_path.suffix + ".new")
-            replacement.write_text(credentials.to_json(), encoding="utf-8")
-            os.chmod(replacement, 0o600)
-            replacement.replace(token_path)
-            os.chmod(token_path, 0o600)
+            if not use_inline_credentials:
+                replacement = token_path.with_suffix(token_path.suffix + ".new")
+                replacement.write_text(credentials.to_json(), encoding="utf-8")
+                os.chmod(replacement, 0o600)
+                replacement.replace(token_path)
+                os.chmod(token_path, 0o600)
         return credentials
     except GmailSendError:
         raise

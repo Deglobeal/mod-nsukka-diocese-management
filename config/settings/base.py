@@ -47,6 +47,9 @@ GMAIL_OAUTH_TOKEN_FILE = os.getenv(
     "GMAIL_OAUTH_TOKEN_FILE",
     "~/.config/mod-nsukka/token.json",
 ).strip()
+GMAIL_OAUTH_CREDENTIALS_JSON = os.getenv("GMAIL_OAUTH_CREDENTIALS_JSON", "")
+GMAIL_OAUTH_TOKEN_JSON = os.getenv("GMAIL_OAUTH_TOKEN_JSON", "")
+CRON_SECRET = os.getenv("CRON_SECRET", "")
 
 # Sendar SMS gateway
 SENDAR_API_KEY = os.getenv("SENDAR_API_KEY", "").strip()
