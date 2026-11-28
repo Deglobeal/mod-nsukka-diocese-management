@@ -226,9 +226,10 @@ def process_email_outbox(*, batch_size=25, simulate=True, now=None,
             else:
                 failed += 1
             logger.warning(
-                "Email send failed kind=%s application_id=%s error=%s retryable=%s",
+                "Email send failed kind=%s application_id=%s error_type=%s "
+                "error=%s retryable=%s",
                 notification.kind, notification.application_id,
-                exc.__class__.__name__, exc.retryable,
+                exc.__class__.__name__, exc.safe_message, exc.retryable,
             )
         except Exception as exc:
             # Do not log traceback or exception text: it could contain email
