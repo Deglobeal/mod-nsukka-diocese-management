@@ -4,15 +4,15 @@
     --font-family-heading: Georgia, "Times New Roman", serif;
 
     /* Font sizes */
-    /* Compact site scale: approximately two-thirds, with a readable 10.4px floor. */
-    --font-size-xs: 0.65rem;
-    --font-size-sm: 0.65rem;
-    --font-size-base: 0.67rem;
-    --font-size-lg: 0.75rem;
-    --font-size-xl: 0.83rem;
-    --font-size-2xl: 1rem;
-    --font-size-3xl: 1.33rem;
-    --font-size-4xl: 1.83rem;
+    /* Further compact scale with an 8.8px floor. */
+    --font-size-xs: 0.55rem;
+    --font-size-sm: 0.55rem;
+    --font-size-base: 0.55rem;
+    --font-size-lg: 0.55rem;
+    --font-size-xl: 0.59rem;
+    --font-size-2xl: 0.71rem;
+    --font-size-3xl: 0.95rem;
+    --font-size-4xl: 1.31rem;
 
     /* Semantic text sizes */
     --font-size-caption: var(--font-size-xs);

@@ -27,7 +27,7 @@
     background: var(--color-brand-950);
     color: var(--color-gold-300);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 16.7px;
+    font-size: 11.93px;
 }
 
 .home-brand-copy {
@@ -37,14 +37,14 @@
 
 .home-brand-copy strong {
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 14px;
+    font-size: 10px;
     line-height: 1;
     letter-spacing: 0.04em;
 }
 
 .home-brand-copy > span {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.16em;
 }
@@ -58,7 +58,7 @@
 .home-nav a,
 .home-footer-links a {
     color: var(--color-home-navigation-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 600;
     text-decoration: none;
     transition: color var(--transition-fast, 160ms ease);
@@ -141,7 +141,7 @@
     align-items: center;
     gap: 10px;
     margin: 0;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.15em;
     line-height: 1.7;
@@ -161,7 +161,7 @@
     max-width: 650px;
     margin: 24px 0 22px;
     font-family: var(--font-heading, Georgia, serif);
-    font-size: max(0.65rem, clamp(25.3px, 3.07vw, 41.3px));
+    font-size: max(0.55rem, clamp(18.07px, 2.19vw, 29.5px));
     font-weight: 500;
     letter-spacing: -0.045em;
     line-height: 1.1;
@@ -175,7 +175,7 @@
     max-width: 525px;
     margin: 0;
     color: var(--color-hero-text-78);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.9;
 }
 
@@ -195,7 +195,7 @@
     padding: 13px 18px;
     border: 1px solid transparent;
     border-radius: var(--radius-sm, 6px);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     text-decoration: none;
     transition: background var(--transition-fast, 160ms ease), color var(--transition-fast, 160ms ease), border-color var(--transition-fast, 160ms ease);
@@ -228,7 +228,7 @@
     max-width: 440px;
     margin-top: 36px;
     color: var(--color-hero-text-65);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.7;
 }
 
@@ -275,7 +275,7 @@
 .home-art-small,
 .home-art-diocese {
     color: var(--color-gold-300);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.22em;
 }
@@ -284,7 +284,7 @@
     margin-top: 5px;
     color: var(--color-hero-text);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 52px;
+    font-size: 37.14px;
     line-height: 1;
 }
 
@@ -298,7 +298,7 @@
 .home-art-star {
     position: absolute;
     color: var(--color-gold-300);
-    font-size: 16.7px;
+    font-size: 11.93px;
 }
 
 .home-art-star-one {
@@ -317,7 +317,7 @@
     bottom: 0;
     left: 0;
     color: var(--color-hero-text-58);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     letter-spacing: 0.19em;
     text-align: center;
 }
@@ -331,7 +331,7 @@
     align-items: center;
     gap: 15px;
     color: var(--color-hero-text-52);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.16em;
 }
@@ -369,7 +369,7 @@
     margin: 0;
     color: var(--color-brand-950);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: max(0.65rem, clamp(22.7px, 2.67vw, 32px));
+    font-size: max(0.55rem, clamp(16.21px, 1.91vw, 22.86px));
     font-weight: 500;
     letter-spacing: -0.04em;
     line-height: 1.16;
@@ -386,7 +386,7 @@
 .home-membership-heading > p {
     margin: 0 0 16px;
     color: var(--color-home-body-on-light);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.9;
 }
 
@@ -396,7 +396,7 @@
     gap: 12px;
     margin-top: 8px;
     color: var(--color-brand-700);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     text-decoration: none;
 }
@@ -420,7 +420,7 @@
 
 .home-principle-number {
     color: var(--color-home-principle-number);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -429,14 +429,14 @@
     margin: 20px 0 8px;
     color: var(--color-home-principle-heading);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 16px;
+    font-size: 11.43px;
     font-weight: 500;
 }
 
 .home-principle p {
     margin: 0;
     color: var(--color-home-principle-body);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.8;
 }
 
@@ -502,19 +502,19 @@
 
 .home-hierarchy-index {
     color: var(--color-gold-300);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
 
 .home-hierarchy-symbol {
     color: var(--color-gold-300);
-    font-size: 16.7px;
+    font-size: 11.93px;
 }
 
 .home-hierarchy-level {
     color: var(--color-hero-text-54);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -523,14 +523,14 @@
     margin: 7px 0;
     color: var(--color-hero-text);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 15.3px;
+    font-size: 10.93px;
     font-weight: 500;
 }
 
 .home-hierarchy-card p {
     margin: 0;
     color: var(--color-hero-text-66);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.7;
 }
 
@@ -592,7 +592,7 @@
 
 .home-membership-index {
     color: var(--color-home-membership-body);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -606,21 +606,21 @@
     border-radius: 50%;
     background: var(--color-home-membership-icon-background);
     color: var(--color-home-membership-icon-text);
-    font-size: 16px;
+    font-size: 11.43px;
 }
 
 .home-membership-card h3 {
     margin: 18px 0 8px;
     color: var(--color-home-membership-heading);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 15.3px;
+    font-size: 10.93px;
     font-weight: 500;
 }
 
 .home-membership-card p {
     margin: 0 0 22px;
     color: var(--color-home-membership-body);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.8;
 }
 
@@ -630,7 +630,7 @@
     gap: 12px;
     margin-top: auto;
     color: var(--color-home-membership-link);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     text-decoration: none;
 }
@@ -652,7 +652,7 @@
 
 .home-ranks-eyebrow {
     color: var(--color-home-ranks-eyebrow);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.13em;
 }
@@ -661,7 +661,7 @@
     margin: 9px 0 0;
     color: var(--color-home-ranks-heading);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 14.7px;
+    font-size: 10.5px;
     font-weight: 500;
 }
 
@@ -677,7 +677,7 @@
     border-radius: var(--radius-sm, 6px);
     background: var(--color-rank-chip-background);
     color: var(--color-rank-chip-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
 }
 
@@ -685,7 +685,7 @@
     grid-column: 1 / -1;
     margin: 0;
     color: var(--color-home-ranks-body);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.7;
 }
 
@@ -709,7 +709,7 @@
 .home-cta h2 {
     margin: 14px 0 10px;
     font-family: var(--font-heading, Georgia, serif);
-    font-size: max(0.65rem, clamp(19.3px, 2.33vw, 28px));
+    font-size: max(0.55rem, clamp(13.79px, 1.66vw, 20px));
     font-weight: 500;
     letter-spacing: -0.035em;
     line-height: 1.15;
@@ -719,7 +719,7 @@
     max-width: 520px;
     margin: 0;
     color: var(--color-hero-text-72);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.8;
 }
 
@@ -742,18 +742,18 @@
 
 .home-brand-footer .home-brand-mark {
     width: 40px;
-    font-size: 14px;
+    font-size: 10px;
 }
 
 .home-brand-footer .home-brand-copy strong {
-    font-size: 12px;
+    font-size: 0.55rem;
 }
 
 .home-footer > p {
     justify-self: end;
     margin: 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     text-align: right;
 }
 
@@ -764,13 +764,13 @@
 }
 
 .home-footer-links a {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .home-footer-copy {
     justify-self: end;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 @media (max-width: 900px) {
@@ -839,7 +839,7 @@
     }
 
     .home-nav a {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .home-nav .home-nav-register {
@@ -855,16 +855,16 @@
     }
 
     .home-eyebrow {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
         letter-spacing: 0.1em;
     }
 
     .home-hero h1 {
-        font-size: max(0.65rem, clamp(23.3px, 6.67vw, 32px));
+        font-size: max(0.55rem, clamp(16.64px, 4.76vw, 22.86px));
     }
 
     .home-hero-description {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .home-hero-actions {
@@ -895,18 +895,18 @@
     }
 
     .home-art-letter {
-        font-size: 41.3px;
+        font-size: 29.5px;
     }
 
     .home-art-caption {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .home-hero-bottom {
         right: 22px;
         left: 22px;
         gap: 8px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
         letter-spacing: 0.08em;
     }
 

@@ -16,14 +16,14 @@
 .registration-eyebrow {
     margin: 0 0 var(--space-3);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.1em;
 }
 
 .registration-title {
     margin: 0 0 var(--space-3);
-    font-size: 20px;
+    font-size: 14.29px;
     line-height: 1.25;
 }
 
@@ -49,7 +49,7 @@
     border-radius: var(--radius-control);
     background: var(--color-surface-muted);
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.6;
 }
 
@@ -66,13 +66,13 @@
 .registration-field label {
     display: block;
     margin-bottom: var(--space-2);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 600;
 }
 
 .registration-optional {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 400;
 }
 
@@ -101,12 +101,12 @@
 .registration-field-error {
     margin: var(--space-2) 0 0;
     color: var(--color-danger-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .registration-help {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .registration-error {
@@ -175,7 +175,7 @@
 .registration-footer {
     margin: var(--space-5) 0 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.5;
 }
 
@@ -262,14 +262,14 @@
 
 .registration-section-title {
     margin: 0 0 var(--space-2);
-    font-size: 13.3px;
+    font-size: 9.5px;
     line-height: 1.35;
 }
 
 .registration-section-description {
     margin: 0 0 var(--space-4);
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.6;
 }
 
@@ -286,11 +286,11 @@
 
 .registration-fixed-label {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .registration-fixed-value strong {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 600;
 }
 
@@ -309,7 +309,7 @@
     }
 
     .registration-section-title {
-        font-size: 12px;
+        font-size: 0.55rem;
     }
 }
 
@@ -371,13 +371,13 @@ body[data-mod-theme="command"] .registration-button:hover {
 
 .registration-error-summary h2 {
     margin: 0 0 var(--space-2);
-    font-size: 12px;
+    font-size: 0.55rem;
 }
 
 .registration-error-summary p {
     margin: 0 0 var(--space-3);
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .registration-error-summary ul {
@@ -857,7 +857,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 
 .registration-signature-label {
     color: var(--color-primary, #3657a7);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 800;
     letter-spacing: .08em;
 }
@@ -865,7 +865,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .registration-signature-instructions p {
     margin: 0;
     color: var(--color-text-muted, #5e6470);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.5;
 }
 
@@ -909,7 +909,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     margin: 0;
     padding: 20px;
     color: #f4f6f9;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.5;
     text-align: center;
 }
@@ -933,7 +933,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .registration-signature-crop-help {
     margin: 0;
     color: var(--color-text-muted, #5e6470);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.45;
 }
 
@@ -1019,7 +1019,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     border: 1px solid transparent;
     border-radius: 10px;
     font: inherit;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     cursor: pointer;
 }
@@ -1053,7 +1053,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     border-radius: 10px;
     background: var(--color-surface, #fff);
     color: var(--color-text-muted, #5e6470);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.45;
 }
 
@@ -1090,7 +1090,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 }
 
 .registration-signature-status {
-    font-size: max(0.65rem, var(--font-size-sm, 0.65rem));
+    font-size: max(0.55rem, var(--font-size-sm, 0.55rem));
 }
 
 .registration-signature-error {
@@ -1128,7 +1128,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .passport-capture-eyebrow {
     margin: 0;
     color: #78e5c9;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 800;
     letter-spacing: .12em;
 }
@@ -1136,7 +1136,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .passport-capture-title {
     margin: 0;
     color: #fff;
-    font-size: max(0.65rem, clamp(13.3px, 2vw, 17.3px));
+    font-size: max(0.55rem, clamp(9.5px, 1.43vw, 12.36px));
     font-weight: 700;
     line-height: 1.2;
 }
@@ -1148,7 +1148,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .passport-capture-instructions {
     margin: 0;
     color: #c0c7d2;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.45;
 }
 
@@ -1159,7 +1159,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     border: 1px solid #384252;
     border-radius: 999px;
     color: #dbe4ef;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.3;
 }
 
@@ -1242,7 +1242,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .passport-capture-header #passport-camera-placeholder {
     margin: 0;
     color: #e6eaf0;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.35;
 }
 
@@ -1260,7 +1260,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     border-radius: 12px;
     background: #181e27;
     color: #cbd3df;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.4;
 }
 
@@ -1278,7 +1278,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .passport-camera-countdown:not([hidden]) {
     border-color: #369d84;
     color: #9af0d8;
-    font-size: 12px;
+    font-size: 0.55rem;
     font-weight: 800;
     text-align: center;
 }
@@ -1323,7 +1323,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     border: 1px solid transparent;
     border-radius: 11px;
     font: inherit;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 700;
     cursor: pointer;
     transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
@@ -1354,7 +1354,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     min-height: 48px;
     background: #6de0c2;
     color: #07130f;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .passport-capture-card .passport-camera-button-primary:hover:not(:disabled) {
@@ -1378,7 +1378,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     border: 1px solid #303844;
     border-radius: 12px;
     color: #bfc8d4;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .passport-capture-card .registration-camera-auto-capture input {
@@ -1442,14 +1442,14 @@ body[data-mod-theme="command"] .registration-button:hover {
 
     body.passport-camera-stage-open .passport-capture-title {
         grid-column: 1;
-        font-size: 10.7px;
+        font-size: 0.55rem;
     }
 
     body.passport-camera-stage-open .passport-camera-indicator {
         grid-column: 2;
         grid-row: 1;
         padding: 3px 7px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     body.passport-camera-stage-open .passport-capture-header > #passport-camera-placeholder,
@@ -1487,12 +1487,12 @@ body[data-mod-theme="command"] .registration-button:hover {
     body.passport-camera-stage-open .passport-camera-button {
         min-height: 40px;
         padding: 6px 9px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     body.passport-camera-stage-open .passport-camera-button-primary {
         min-height: 44px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     body.passport-camera-stage-open .passport-white-scan-status,
@@ -1500,7 +1500,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     body.passport-camera-stage-open .passport-camera-countdown,
     body.passport-camera-stage-open .registration-camera-error {
         padding: 8px 10px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 }
 
@@ -1588,7 +1588,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 }
 
 .registration-signature-upload-status {
-    font-size: max(0.65rem, var(--font-size-sm, 0.65rem));
+    font-size: max(0.55rem, var(--font-size-sm, 0.55rem));
 }
 
 @media (max-width: 520px) {
@@ -1600,7 +1600,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     }
 
     .registration-signature-instructions p {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .registration-signature-camera-frame {
@@ -1614,7 +1614,7 @@ body[data-mod-theme="command"] .registration-button:hover {
     .registration-card .registration-signature-camera .registration-signature-button {
         min-height: 42px;
         padding-inline: 8px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 }
 
@@ -1633,7 +1633,7 @@ body[data-mod-theme="command"] .registration-button:hover {
 .registration-card select,
 .registration-card textarea {
     min-height: 48px;
-    font-size: max(10.7px, var(--font-size-base));
+    font-size: max(0.55rem, var(--font-size-base));
 }
 
 .registration-card textarea {
@@ -1712,17 +1712,17 @@ body[data-mod-theme="command"] .registration-button:hover {
     }
 
     .registration-title {
-        font-size: max(0.65rem, clamp(1rem, 4vw, 1.23rem));
+        font-size: max(0.55rem, clamp(0.71rem, 2.86vw, 0.88rem));
         line-height: 1.2;
     }
 
     .registration-section-title {
-        font-size: max(0.65rem, clamp(0.75rem, 3.2vw, 0.9rem));
+        font-size: max(0.55rem, clamp(0.55rem, 2.29vw, 0.64rem));
         line-height: 1.3;
     }
 
     .registration-section h3.registration-section-title {
-        font-size: 0.7rem;
+        font-size: 0.55rem;
     }
 
     .registration-consent {

@@ -17,7 +17,7 @@
 
 .review-dashboard__header h1 {
     margin: 0 0 var(--space-3);
-    font-size: max(0.65rem, clamp(18.7px, 2.67vw, 25.3px));
+    font-size: max(0.55rem, clamp(13.36px, 1.91vw, 18.07px));
     line-height: var(--line-height-tight);
 }
 
@@ -346,7 +346,7 @@
 }
 
 .review-application__header h3 {
-    font-size: 12.7px;
+    font-size: 9.07px;
     line-height: 1.4;
 }
 
@@ -444,7 +444,7 @@
     }
 
     .review-dashboard__header h1 {
-        font-size: max(0.65rem, clamp(16.7px, 4.67vw, 21.3px));
+        font-size: max(0.55rem, clamp(11.93px, 3.34vw, 15.21px));
         overflow-wrap: anywhere;
     }
 
@@ -462,7 +462,7 @@
     }
 
     .review-stat strong {
-        font-size: 18.7px;
+        font-size: 13.36px;
     }
 
     .review-panel__heading h2 {
@@ -529,7 +529,7 @@
 
 .review-detail-grid__item dt {
     margin-bottom: 0.35rem;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
     opacity: 0.75;
 }
@@ -619,7 +619,7 @@
 
 .review-document-header h1 {
     margin: var(--space-2) 0;
-    font-size: max(0.65rem, clamp(16.7px, 2.67vw, 24px));
+    font-size: max(0.55rem, clamp(11.93px, 1.91vw, 17.14px));
     line-height: var(--line-height-tight);
 }
 
@@ -725,7 +725,7 @@
     body {
         background: var(--color-surface) !important;
         color: var(--color-text) !important;
-        font-size: max(0.65rem, 6.67pt) ;
+        font-size: max(0.55rem, 6.67pt) ;
     }
 
     .no-print,
@@ -914,7 +914,7 @@
 .mod-approval-card h3 {
     margin: 0 0 0.85rem;
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     text-transform: uppercase;
 }
 
@@ -939,7 +939,7 @@
 .mod-approval-card dd {
     margin: 0;
     color: var(--color-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     overflow-wrap: anywhere;
 }
 
@@ -1065,7 +1065,7 @@
     border: var(--border-width-thin) solid var(--color-border);
     border-radius: var(--radius-card);
     font: inherit;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
     text-decoration: none;
     cursor: pointer;
@@ -1127,7 +1127,7 @@
     padding: var(--space-2);
     text-align: center;
     overflow-wrap: anywhere;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 800;
     line-height: var(--line-height-base);
 }
@@ -1140,7 +1140,7 @@
 .mod-profile-kicker {
     margin: 0 0 var(--space-2);
     color: var(--color-accent-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 800;
     letter-spacing: .13em;
     line-height: var(--line-height-base);
@@ -1153,7 +1153,7 @@
 .mod-profile-hero h1 {
     margin: 0;
     color: var(--color-on-primary);
-    font-size: max(0.65rem, clamp(1rem, 2.33vw, 1.63rem));
+    font-size: max(0.55rem, clamp(0.71rem, 1.66vw, 1.16rem));
     font-weight: 750;
     line-height: 1.15;
     overflow-wrap: anywhere;
@@ -1162,7 +1162,7 @@
 .mod-profile-hero__subtitle {
     margin: var(--space-2) 0 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     overflow-wrap: anywhere;
 }
 
@@ -1181,7 +1181,7 @@
     border-radius: var(--radius-pill);
     background: var(--color-surface-muted);
     color: var(--color-on-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
 }
 
@@ -1209,12 +1209,12 @@
 
 .mod-profile-hero__meta span {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-hero__meta strong {
     color: var(--color-on-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     overflow-wrap: anywhere;
 }
 
@@ -1242,7 +1242,7 @@
 .mod-profile-card__heading h2 {
     margin: 0;
     color: var(--color-primary);
-    font-size: 0.747rem;
+    font-size: 0.55rem;
     line-height: 1.35;
 }
 
@@ -1252,7 +1252,7 @@
 
 .mod-profile-section-note {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     text-align: right;
 }
 
@@ -1285,7 +1285,7 @@
     border-radius: var(--radius-md);
     background: var(--color-primary-subtle);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 800;
 }
 
@@ -1300,7 +1300,7 @@
 .mod-profile-approval-step h3 {
     margin: var(--space-3) 0 var(--space-1);
     color: var(--color-primary);
-    font-size: 0.653rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-approval-step p {
@@ -1310,13 +1310,13 @@
 
 .mod-profile-approval-step__person {
     color: var(--color-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 650;
 }
 
 .mod-profile-approval-step__date {
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-content {
@@ -1351,7 +1351,7 @@
     border-radius: var(--radius-card);
     background: var(--color-primary-subtle);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 850;
 }
 
@@ -1362,7 +1362,7 @@
 .mod-profile-card__heading p {
     margin: var(--space-1) 0 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-fields {
@@ -1382,7 +1382,7 @@
 .mod-profile-record dt {
     margin-bottom: var(--space-1);
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: 650;
 }
 
@@ -1390,14 +1390,14 @@
 .mod-profile-record dd {
     margin: 0;
     color: var(--color-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.55;
     overflow-wrap: anywhere;
 }
 
 .mod-profile-empty {
     color: var(--color-text-subtle);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-style: italic;
 }
 
@@ -1417,7 +1417,7 @@
 .mod-profile-record h3 {
     margin: 0 0 var(--space-2);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-record__decision {
@@ -1442,7 +1442,7 @@
 }
 
 .mod-profile-record dd {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-privacy-note {
@@ -1456,19 +1456,19 @@
 }
 
 .mod-profile-privacy-note > span {
-    font-size: 0.767rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-privacy-note h2 {
     margin: 0 0 var(--space-1);
     color: var(--color-warning-text);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-privacy-note p {
     margin: 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.55;
 }
 
@@ -1488,7 +1488,7 @@
 .mod-profile-media-item h3 {
     margin: 0 0 var(--space-3);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-image-link {
@@ -1497,7 +1497,7 @@
     align-items: flex-start;
     gap: var(--space-2);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
 }
 
@@ -1553,13 +1553,13 @@
 .mod-profile-history-list h3 {
     margin: 0 0 var(--space-1);
     color: var(--color-primary);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-profile-history-list p {
     margin: var(--space-1) 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     overflow-wrap: anywhere;
 }
 
@@ -1611,7 +1611,7 @@
     .mod-profile-button {
         width: 100%;
         padding-inline: var(--space-2);
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .mod-profile-hero {
@@ -1632,11 +1632,11 @@
     }
 
     .mod-profile-hero h1 {
-        font-size: 0.9rem;
+        font-size: 0.64rem;
     }
 
     .mod-profile-hero__subtitle {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .mod-profile-hero__meta {
@@ -1778,12 +1778,12 @@
 }
 
 .mod-member-profile .mod-profile-hero h1 {
-    font-size: max(0.65rem, clamp(0.8rem, 1.67vw, 1.13rem));
+    font-size: max(0.55rem, clamp(0.57rem, 1.19vw, 0.81rem));
 }
 
 .mod-member-profile .mod-profile-hero__subtitle {
     margin-top: var(--space-1);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-badges {
@@ -1794,7 +1794,7 @@
 .mod-member-profile .mod-profile-badge {
     min-height: 24px;
     padding: 3px var(--space-2);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-hero__meta > div {
@@ -1803,11 +1803,11 @@
 }
 
 .mod-member-profile .mod-profile-hero__meta span {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-hero__meta strong {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-approval-overview {
@@ -1835,7 +1835,7 @@
 
 .mod-member-profile .mod-profile-approval-step h3 {
     margin: 6px 0 3px;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-approval-step p {
@@ -1869,7 +1869,7 @@
 }
 
 .mod-member-profile .mod-profile-card__heading p {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-fields {
@@ -1883,12 +1883,12 @@
 .mod-member-profile .mod-profile-field dt,
 .mod-member-profile .mod-profile-record dt {
     margin-bottom: 2px;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-field dd,
 .mod-member-profile .mod-profile-record dd {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.4;
 }
 
@@ -1902,7 +1902,7 @@
 
 .mod-member-profile .mod-profile-media-item h3 {
     margin-bottom: 5px;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-image-link img {
@@ -1918,7 +1918,7 @@
 }
 
 .mod-member-profile .mod-profile-record h3 {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .mod-member-profile .mod-profile-privacy-note {
@@ -1994,7 +1994,7 @@
     flex: 0 0 auto;
     margin: 0;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
 }
 
@@ -2006,7 +2006,7 @@
     flex: 0 1 auto;
     min-width: 0;
     margin: 0;
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.4;
     overflow-wrap: anywhere;
 }
@@ -2028,7 +2028,7 @@
     flex-wrap: wrap;
     gap: 5px var(--space-4);
     margin-top: var(--space-2);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     line-height: 1.45;
     overflow-wrap: anywhere;
 }
@@ -2181,7 +2181,7 @@
     content: "+";
     flex: 0 0 auto;
     color: var(--color-text-muted);
-    font-size: max(0.65rem, 0.733em) ;
+    font-size: max(0.55rem, 0.52em) ;
 }
 
 .parish-decision-dropdown[open] > summary::after,
@@ -2193,7 +2193,7 @@
 .parish-decision-list__count {
     margin-left: auto;
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-variant-numeric: tabular-nums;
 }
 
@@ -2221,7 +2221,7 @@
     min-width: 0;
     padding: var(--space-3);
     border-bottom: var(--border-width-thin) solid var(--color-border);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .decision-application-row:last-child {
@@ -2249,7 +2249,7 @@
     margin: 0;
     padding: var(--space-3);
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 @media (max-width: 760px) {
@@ -2267,7 +2267,7 @@
         display: block;
         margin-bottom: 0.15rem;
         color: var(--color-text-muted);
-        font-size: 0.65rem;
+        font-size: 0.55rem;
         font-weight: var(--font-weight-bold);
     }
 
@@ -2285,7 +2285,7 @@
     margin: 0;
     padding: var(--space-3);
     color: var(--color-text-muted);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 .parish-decision-dropdown summary:focus-visible,

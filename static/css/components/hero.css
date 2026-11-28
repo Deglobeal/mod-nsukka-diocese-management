@@ -68,7 +68,7 @@
     margin: var(--space-6) 0 var(--space-5);
     color: var(--color-text-inverse);
     font-family: var(--font-family-heading);
-    font-size: max(0.65rem, clamp(24px, 3.07vw, 40px));
+    font-size: max(0.55rem, clamp(17.14px, 2.19vw, 28.57px));
     font-weight: var(--font-weight-medium);
     letter-spacing: -0.045em;
     line-height: 1.1;
@@ -185,7 +185,7 @@
 .mod-hero__emblem-label,
 .mod-hero__emblem-diocese {
     color: var(--hero-accent);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.2em;
 }
@@ -194,7 +194,7 @@
     margin-top: 5px;
     color: var(--color-text-inverse);
     font-family: var(--font-family-heading);
-    font-size: 50.7px;
+    font-size: 36.21px;
     line-height: 1;
 }
 
@@ -208,7 +208,7 @@
 .mod-hero__star {
     position: absolute;
     color: var(--hero-accent);
-    font-size: 16.7px;
+    font-size: 11.93px;
 }
 
 .mod-hero__star--one {
@@ -227,7 +227,7 @@
     bottom: 0;
     left: 0;
     color: var(--color-hero-text-58);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     letter-spacing: 0.15em;
     text-align: center;
 }
@@ -241,7 +241,7 @@
     align-items: center;
     gap: 15px;
     color: var(--color-hero-text-55);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.13em;
 }
@@ -259,7 +259,7 @@
 }
 
 .mod-hero--compact .mod-hero__title {
-    font-size: max(0.65rem, clamp(20px, 2.33vw, 29.3px));
+    font-size: max(0.55rem, clamp(14.29px, 1.66vw, 20.93px));
 }
 
 .mod-hero--compact .mod-hero__art {
@@ -279,7 +279,7 @@
 }
 
 .mod-hero--compact .mod-hero__emblem-letter {
-    font-size: 32px;
+    font-size: 22.86px;
 }
 
 .mod-hero--compact .mod-hero__emblem-rule {
@@ -288,7 +288,7 @@
 
 .mod-hero--compact .mod-hero__emblem-label,
 .mod-hero--compact .mod-hero__emblem-diocese {
-    font-size: 0.65rem;
+    font-size: 0.55rem;
 }
 
 @media (max-width: 900px) {
@@ -317,12 +317,12 @@
     }
 
     .mod-hero__eyebrow {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
         letter-spacing: 0.08em;
     }
 
     .mod-hero__title {
-        font-size: max(0.65rem, clamp(22.7px, 6.67vw, 30.7px));
+        font-size: max(0.55rem, clamp(16.21px, 4.76vw, 21.93px));
     }
 
     .mod-hero__description {
@@ -357,18 +357,18 @@
     }
 
     .mod-hero__emblem-letter {
-        font-size: 40px;
+        font-size: 28.57px;
     }
 
     .mod-hero__art-caption {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
     }
 
     .mod-hero__bottom {
         right: 20px;
         left: 20px;
         gap: 8px;
-        font-size: 0.65rem;
+        font-size: 0.55rem;
         letter-spacing: 0.07em;
     }
 
