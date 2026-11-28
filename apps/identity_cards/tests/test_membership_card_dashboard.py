@@ -9,13 +9,14 @@ from django.utils import timezone
 from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import (
     MembershipCard,
+    MembershipIdentity,
     OfficeAppointment,
     ReservedOffice,
 )
 from apps.identity_cards.services.membership_card_issuance import (
     issue_membership_card,
 )
-from apps.members.models import Member
+from apps.members.models import Member, MemberAccount
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.medical.models import MemberMedicalProfile
 from apps.verification.models import MembershipApplication
@@ -62,6 +63,22 @@ class MembershipCardDashboardTests(TestCase):
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
         )
+        cls.chairman_member = Member.objects.create(
+            first_name="Dashboard", last_name="Chairman", parish=cls.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MemberAccount.objects.create(
+            user=cls.diocese_admin, member=cls.chairman_member,
+            linked_by=cls.diocese_admin,
+        )
+        cls.chairman_appointment = OfficeAppointment.objects.create(
+            reserved_office=ReservedOffice.objects.get(
+                diocese=cls.diocese,
+                office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            ),
+            member=cls.chairman_member,
+            appointed_by=cls.diocese_admin,
+        )
         OfficeAssignment.objects.create(
             user=cls.parish_admin,
             role=OfficeAssignment.Role.PARISH_ADMIN,
@@ -81,6 +98,11 @@ class MembershipCardDashboardTests(TestCase):
             stage=MembershipApplication.Stage.APPROVED,
             final_decision_at=timezone.now(),
         )
+        MembershipIdentity.objects.create(
+            member=cls.local_member,
+            official_membership_id="MOD-LOCAL-0001",
+            uniform_id="LO000001",
+        )
 
         cls.foreign_member = Member.objects.create(
             first_name="Chika",
@@ -92,6 +114,11 @@ class MembershipCardDashboardTests(TestCase):
             member=cls.foreign_member,
             stage=MembershipApplication.Stage.APPROVED,
             final_decision_at=timezone.now(),
+        )
+        MembershipIdentity.objects.create(
+            member=cls.foreign_member,
+            official_membership_id="MOD-OTHER-0001",
+            uniform_id="OT000001",
         )
 
         issue_membership_card(
@@ -118,6 +145,15 @@ class MembershipCardDashboardTests(TestCase):
         response = self.client.get(self.dashboard_url)
 
         self.assertEqual(response.status_code, 403)
+
+    def test_superuser_is_not_a_card_issuer(self):
+        superuser = get_user_model().objects.create_superuser(
+            username="card-superuser",
+            email="card-superuser@example.test",
+            password="test-password",
+        )
+        self.client.force_login(superuser)
+        self.assertEqual(self.client.get(self.dashboard_url).status_code, 403)
 
     def test_diocese_admin_can_load_dashboard(self):
         self.client.force_login(self.diocese_admin)
@@ -160,6 +196,32 @@ class MembershipCardDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="csrfmiddlewaretoken"')
 
+    def test_dashboard_lists_and_inspects_eligible_member_details(self):
+        self.client.force_login(self.diocese_admin)
+        response = self.client.get(self.dashboard_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Members awaiting ID cards")
+        self.assertContains(response, "MOD-LOCAL-0001")
+        self.assertContains(response, "Inspect approved membership details")
+
+    def test_active_chairman_can_issue_from_leadership_card_dashboard(self):
+        self.client.force_login(self.diocese_admin)
+        response = self.client.post(
+            self.dashboard_url,
+            {
+                "member": self.local_member.pk,
+                "official_membership_id": "MOD-LOCAL-0001",
+                "reason": "Initial Diocesan card issue",
+            },
+        )
+        self.assertRedirects(response, self.dashboard_url, fetch_redirect_response=False)
+        card = MembershipCard.objects.get(member=self.local_member)
+        event = card.status_events.get(action="issued")
+        self.assertEqual(card.issued_by, self.diocese_admin)
+        self.assertEqual(event.actor, self.diocese_admin)
+        self.assertEqual(event.chairman_appointment, self.chairman_appointment)
+        self.assertEqual(event.reason, "Initial Diocesan card issue")
+
     def test_dashboard_references_external_stylesheet(self):
         self.client.force_login(self.diocese_admin)
 
@@ -170,44 +232,23 @@ class MembershipCardDashboardTests(TestCase):
             "css/pages/identity-card-dashboard.css",
         )
 
-    def test_card_preview_requires_a_current_diocesan_chairman(self):
+    def test_former_chairman_cannot_manage_card_dashboard(self):
+        self.chairman_appointment.ended_at = timezone.now()
+        self.chairman_appointment.save(update_fields=("ended_at",))
         self.client.force_login(self.diocese_admin)
-        card = MembershipCard.objects.get(member=self.foreign_member)
-
-        response = self.client.get(
-            reverse("identity_cards_web:card-preview", args=[card.pk])
-        )
-
-        self.assertEqual(response.status_code, 409)
-        self.assertContains(response, "No current active Diocesan Chairman", status_code=409)
+        self.assertEqual(self.client.get(self.dashboard_url).status_code, 403)
 
     @override_settings(PUBLIC_BASE_URL="https://membership.example")
     def test_preview_uses_current_chairman_and_approved_member_records(self):
         card = MembershipCard.objects.get(member=self.foreign_member)
         member_application = MembershipApplication.objects.get(member=self.foreign_member)
         member_application.passport_photo = "private/member-photo.png"
-        member_application.signature_image = "private/member-signature.png"
+        member_application.signature_image = ""
         member_application.save(update_fields=("passport_photo", "signature_image"))
-        chairman = Member.objects.create(
-            first_name="Current",
-            last_name="Chairman",
-            parish=self.parish,
-            status=Member.Status.ACTIVE,
-        )
+        chairman = self.chairman_member
         chairman_application = MembershipApplication.objects.create(
-            member=chairman,
-            stage=MembershipApplication.Stage.APPROVED,
-            final_decision_at=timezone.now(),
-            signature_image="private/chairman-signature.png",
-        )
-        office = ReservedOffice.objects.get(
-            diocese=self.diocese,
-            office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
-        )
-        OfficeAppointment.objects.create(
-            reserved_office=office,
-            member=chairman,
-            appointed_by=self.diocese_admin,
+            member=chairman, stage=MembershipApplication.Stage.APPROVED,
+            final_decision_at=timezone.now(), signature_image="private/chairman-signature.png",
         )
         MemberMedicalProfile.objects.create(member=self.foreign_member)
         self.client.force_login(self.diocese_admin)

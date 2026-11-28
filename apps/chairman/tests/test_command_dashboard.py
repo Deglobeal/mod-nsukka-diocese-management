@@ -662,6 +662,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertContains(response, 'aria-current="page">Overview</a>')
         for label in (
             "Membership Directory",
+            "Membership ID Cards",
             "Membership Applications",
             "Deaneries",
             "Parishes",
@@ -1289,7 +1290,7 @@ class ChairmanCommandDashboardTests(TestCase):
         self.assertEqual(response.context["active_parish_count"], 2)
         self.assertEqual(response.context["identity_record_count"], 1)
         self.assertEqual(response.context["issued_card_count"], 1)
-        self.assertEqual(response.context["eligible_card_count"], 2)
+        self.assertEqual(response.context["eligible_card_count"], 1)
 
         category_totals = {
             item["key"]: item["count"]

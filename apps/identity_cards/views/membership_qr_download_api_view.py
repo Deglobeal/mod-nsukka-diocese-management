@@ -1,6 +1,7 @@
 """Authorized download endpoint for membership verification QR codes."""
 
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -15,6 +16,9 @@ from apps.identity_cards.services.membership_qr import (
 
 from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.identity_cards.views.membership_card_dashboard_view import (
+    _get_active_chairman_assignment,
+)
 from apps.verification.models import MembershipApplication
 
 
@@ -22,13 +26,23 @@ class MembershipQRDownloadAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, card_id=None, identity_id=None):
-        authorized_dioceses = OfficeAssignment.objects.filter(
-            user=request.user,
-            role=OfficeAssignment.Role.DIOCESE_ADMIN,
-            is_active=True,
-            deanery__isnull=True,
-            parish__isnull=True,
-        ).values_list("diocese_id", flat=True)
+        if card_id is not None:
+            try:
+                assignment = _get_active_chairman_assignment(request.user)
+            except PermissionDenied:
+                return Response(
+                    {"detail": "This card is unavailable."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            authorized_dioceses = (assignment.diocese_id,)
+        else:
+            authorized_dioceses = OfficeAssignment.objects.filter(
+                user=request.user,
+                role=OfficeAssignment.Role.DIOCESE_ADMIN,
+                is_active=True,
+                deanery__isnull=True,
+                parish__isnull=True,
+            ).values_list("diocese_id", flat=True)
 
         card_scope = Q(member__parish__deanery__diocese_id__in=authorized_dioceses) | Q(
             member__deanery__diocese_id__in=authorized_dioceses
@@ -95,9 +109,20 @@ class MembershipQRDownloadAPIView(APIView):
             linked_card = (
                 record
                 if card_id is not None
-                else MembershipCard.objects.filter(member=record.member).first()
+                else MembershipCard.objects.filter(
+                    member=record.member,
+                    status=MembershipCard.Status.ACTIVE,
+                ).order_by("-issued_at", "-pk").first()
             )
             if linked_card is not None:
+                if card_id is None:
+                    try:
+                        _get_active_chairman_assignment(request.user)
+                    except PermissionDenied:
+                        return Response(
+                            {"detail": "This card is unavailable."},
+                            status=status.HTTP_404_NOT_FOUND,
+                        )
                 if linked_card.status != MembershipCard.Status.ACTIVE:
                     return Response(
                         {"detail": "This membership card is not active."},

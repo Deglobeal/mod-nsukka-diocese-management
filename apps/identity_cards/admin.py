@@ -44,6 +44,7 @@ class MembershipIdentityAdmin(admin.ModelAdmin):
 @admin.register(MembershipCard)
 class MembershipCardAdmin(admin.ModelAdmin):
     list_display = (
+        "card_number",
         "official_membership_id",
         "uniform_id",
         "member",
@@ -60,6 +61,7 @@ class MembershipCardAdmin(admin.ModelAdmin):
     )
     list_select_related = ("member", "issued_by")
     readonly_fields = (
+        "card_number",
         "member",
         "official_membership_id",
         "uniform_id",

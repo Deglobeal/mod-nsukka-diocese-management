@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -43,3 +44,11 @@ class MembershipCardStatusEvent(models.Model):
 
     def __str__(self):
         return f"{self.card.official_membership_id} — {self.get_action_display()}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Membership-card history records are immutable.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Membership-card history records cannot be deleted.")

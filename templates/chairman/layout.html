@@ -46,6 +46,9 @@
             <a class="chairman-nav__link{% if active_section == 'members' %} is-active{% endif %}"
                href="{% url 'chairman:members' %}"
                {% if active_section == "members" %}aria-current="page"{% endif %}>Membership Directory</a>
+            <a class="chairman-nav__link{% if active_path == 'membership-cards' %} is-active{% endif %}"
+               href="{% url 'identity_cards_web:dashboard' %}"
+               {% if active_path == "membership-cards" %}aria-current="page"{% endif %}>Membership ID Cards</a>
             <a class="chairman-nav__link{% if active_section == 'applications' %} is-active{% endif %}"
                href="{% url 'chairman:dashboard' %}#membership-applications"
                {% if active_section == "applications" %}aria-current="page"{% endif %}>Membership Applications</a>

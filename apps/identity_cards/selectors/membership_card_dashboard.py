@@ -1,4 +1,4 @@
-from django.db.models import Exists, OuterRef, Q, Subquery
+from django.db.models import Case, CharField, Exists, OuterRef, Q, Subquery, Value, When
 
 from apps.identity_cards.models import MembershipCard
 from apps.members.models import Member
@@ -33,6 +33,7 @@ def eligible_members_for_card_issuance(*, diocese):
     return (
         Member.objects
         .filter(status=Member.Status.ACTIVE)
+        .filter(membership_identity__isnull=False)
         .annotate(
             latest_application_stage=Subquery(
                 latest_application.values("stage")[:1]
@@ -40,7 +41,19 @@ def eligible_members_for_card_issuance(*, diocese):
             latest_application_final_decision_at=Subquery(
                 latest_application.values("final_decision_at")[:1]
             ),
+            latest_application_id=Subquery(latest_application.values("pk")[:1]),
+            latest_application_category=Subquery(latest_application.values("category")[:1]),
             has_membership_card=Exists(already_has_card),
+        )
+        .annotate(
+            latest_application_category_label=Case(
+                *[
+                    When(latest_application_category=key, then=Value(label))
+                    for key, label in MembershipApplication.Category.choices
+                ],
+                default=Value("—"),
+                output_field=CharField(),
+            )
         )
         .filter(
             latest_application_stage=MembershipApplication.Stage.APPROVED,
@@ -49,6 +62,6 @@ def eligible_members_for_card_issuance(*, diocese):
         )
         .filter(member_scope)
         .distinct()
-        .select_related("parish", "parish__deanery", "deanery")
+        .select_related("parish", "parish__deanery", "deanery", "membership_identity")
         .order_by("last_name", "first_name", "pk")
     )

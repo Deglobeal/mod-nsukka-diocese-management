@@ -1,16 +1,14 @@
-from unittest.mock import patch
-
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import MembershipCard, MembershipIdentity, ReservedOffice
+from apps.identity_cards.models import MembershipCard, MembershipIdentity, OfficeAppointment, ReservedOffice
 from apps.identity_cards.services.membership_card_issuance import (
     issue_membership_card,
 )
-from apps.members.models import Member
+from apps.members.models import Member, MemberAccount
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication
 
@@ -48,6 +46,22 @@ class MembershipCardIssuanceTests(TestCase):
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             diocese=cls.diocese,
         )
+        cls.chairman_member = Member.objects.create(
+            first_name="Card", last_name="Chairman", parish=cls.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MemberAccount.objects.create(
+            user=cls.diocese_admin, member=cls.chairman_member,
+            linked_by=cls.diocese_admin,
+        )
+        OfficeAppointment.objects.create(
+            reserved_office=ReservedOffice.objects.get(
+                diocese=cls.diocese,
+                office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            ),
+            member=cls.chairman_member,
+            appointed_by=cls.diocese_admin,
+        )
         OfficeAssignment.objects.create(
             user=cls.parish_admin,
             role=OfficeAssignment.Role.PARISH_ADMIN,
@@ -72,6 +86,14 @@ class MembershipCardIssuanceTests(TestCase):
         )
 
     def issue(self, member, *, issuer=None, official_id="MOD-TEST-0001"):
+        if not MembershipIdentity.objects.filter(member=member).exists() and not MembershipIdentity.objects.filter(
+            official_membership_id=official_id
+        ).exists():
+            MembershipIdentity.objects.create(
+                member=member,
+                official_membership_id=official_id,
+                uniform_id=f"AB{member.pk:06d}",
+            )
         return issue_membership_card(
             member_id=member.pk,
             issuer=issuer or self.diocese_admin,
@@ -82,18 +104,37 @@ class MembershipCardIssuanceTests(TestCase):
         member = self.create_member()
         self.approve_member(member)
 
-        with patch(
-            "apps.identity_cards.services.membership_card_issuance"
-            "._generate_uniform_id",
-            return_value="AB234567",
-        ):
-            card = self.issue(member)
+        card = self.issue(member)
 
         self.assertEqual(card.member, member)
         self.assertEqual(card.official_membership_id, "MOD-TEST-0001")
-        self.assertEqual(card.uniform_id, "AB234567")
+        self.assertEqual(card.uniform_id, member.membership_identity.uniform_id)
         self.assertEqual(card.issued_by, self.diocese_admin)
+        event = card.status_events.get(action="issued")
+        self.assertEqual(event.actor, self.diocese_admin)
+        self.assertEqual(event.chairman_appointment.member, self.chairman_member)
         self.assertEqual(MembershipCard.objects.count(), 1)
+
+    def test_non_chairman_diocese_officer_cannot_issue_cards(self):
+        other_officer = get_user_model().objects.create_user(username="other-officer")
+        OfficeAssignment.objects.create(
+            user=other_officer,
+            role=OfficeAssignment.Role.DIOCESE_ADMIN,
+            diocese=self.diocese,
+        )
+        member = self.create_member()
+        self.approve_member(member)
+        with self.assertRaises(PermissionDenied):
+            self.issue(member, issuer=other_officer)
+
+    def test_former_chairman_cannot_issue_cards(self):
+        appointment = OfficeAppointment.objects.get(member=self.chairman_member)
+        appointment.ended_at = timezone.now()
+        appointment.save(update_fields=("ended_at",))
+        member = self.create_member()
+        self.approve_member(member)
+        with self.assertRaises(PermissionDenied):
+            self.issue(member)
 
     def test_pending_member_cannot_receive_identifiers(self):
         member = self.create_member(status=Member.Status.PENDING_REVIEW)
@@ -111,6 +152,56 @@ class MembershipCardIssuanceTests(TestCase):
             self.issue(member)
 
         self.assertFalse(MembershipCard.objects.exists())
+
+    def test_member_without_permanent_identity_cannot_receive_card(self):
+        member = self.create_member()
+        self.approve_member(member)
+        with self.assertRaisesMessage(ValidationError, "permanent membership identity"):
+            issue_membership_card(
+                member_id=member.pk,
+                issuer=self.diocese_admin,
+                official_membership_id="MOD-TEST-0001",
+            )
+        self.assertFalse(MembershipCard.objects.exists())
+
+    def test_revocation_requires_reason_and_is_attributed_to_chairman(self):
+        member = self.create_member()
+        self.approve_member(member)
+        card = self.issue(member)
+        from apps.identity_cards.services.membership_card_issuance import update_membership_card_status
+        with self.assertRaisesMessage(ValidationError, "reason is required"):
+            update_membership_card_status(
+                card_id=card.pk, issuer=self.diocese_admin,
+                status=MembershipCard.Status.REVOKED,
+            )
+        update_membership_card_status(
+            card_id=card.pk, issuer=self.diocese_admin,
+            status=MembershipCard.Status.REVOKED, reason="Member requested revocation",
+        )
+        event = card.status_events.get(action="revoked")
+        self.assertEqual(event.actor, self.diocese_admin)
+        self.assertEqual(event.chairman_appointment.member, self.chairman_member)
+        self.assertEqual(event.reason, "Member requested revocation")
+
+    def test_replacement_creates_a_new_card_and_preserves_previous_history(self):
+        from apps.identity_cards.services.membership_card_issuance import replace_membership_card
+        member = self.create_member()
+        self.approve_member(member)
+        old_card = self.issue(member)
+        new_card = replace_membership_card(
+            card_id=old_card.pk,
+            issuer=self.diocese_admin,
+            reason="Original card damaged",
+        )
+        old_card.refresh_from_db()
+        self.assertNotEqual(new_card.pk, old_card.pk)
+        self.assertNotEqual(new_card.card_number, old_card.card_number)
+        self.assertEqual(new_card.replaces_card, old_card)
+        self.assertEqual(old_card.status, MembershipCard.Status.REVOKED)
+        self.assertEqual(new_card.uniform_id, old_card.uniform_id)
+        event = new_card.status_events.get(action="replaced")
+        self.assertEqual(event.actor, self.diocese_admin)
+        self.assertEqual(event.reason, "Original card damaged")
 
     def test_latest_rejected_application_blocks_issuance(self):
         member = self.create_member()

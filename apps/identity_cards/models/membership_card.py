@@ -6,10 +6,8 @@ import uuid
 
 class MembershipCard(models.Model):
     """
-    Stable membership identifiers issued after final diocesan approval.
-
-    Card printing, replacements, and QR verification will be separate
-    workflows. This record does not itself approve a membership application.
+    A record for one physical card issuance. Replacement records preserve
+    the previous card history and use a fresh, revocable QR credential.
     """
 
     class Status(models.TextChoices):
@@ -18,14 +16,13 @@ class MembershipCard(models.Model):
         LOST = "lost", "Lost"
         REVOKED = "revoked", "Revoked"
 
-    member = models.OneToOneField(
+    member = models.ForeignKey(
         "members.Member",
         on_delete=models.PROTECT,
-        related_name="membership_card",
+        related_name="membership_cards",
     )
     official_membership_id = models.CharField(
         max_length=80,
-        unique=True,
         help_text=(
             "Official identifier assigned according to the approved "
             "national numbering rules."
@@ -33,7 +30,6 @@ class MembershipCard(models.Model):
     )
     uniform_id = models.CharField(
         max_length=8,
-        unique=True,
         help_text="Short, system-generated ID for uniform-name-tag lookup.",
     )
     issued_by = models.ForeignKey(
@@ -42,6 +38,7 @@ class MembershipCard(models.Model):
         related_name="issued_membership_cards",
     )
     issued_at = models.DateTimeField(auto_now_add=True)
+    card_number = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     status = models.CharField(
         max_length=16,
         choices=Status.choices,
@@ -52,11 +49,25 @@ class MembershipCard(models.Model):
         unique=True,
         editable=False,
     )
+    replaces_card = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="replacement_cards",
+    )
 
     class Meta:
         ordering = ["official_membership_id"]
         verbose_name = "Issued Membership Card"
         verbose_name_plural = "Issued Membership Cards"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("member",),
+                condition=models.Q(status="active"),
+                name="uniq_active_membership_card_per_member",
+            ),
+        ]
 
     def clean(self):
         super().clean()

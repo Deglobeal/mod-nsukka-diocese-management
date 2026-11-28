@@ -11,14 +11,14 @@ from apps.identity_cards.services.membership_card_issuance import (
     update_membership_card_status,
 )
 from apps.identity_cards.views.membership_card_dashboard_view import (
-    _get_diocese_assignment,
+    _get_active_chairman_assignment,
 )
 
 
 @login_required
 @require_POST
 def membership_card_lifecycle(request, card_id):
-    assignment = _get_diocese_assignment(request.user)
+    assignment = _get_active_chairman_assignment(request.user)
     diocese = assignment.diocese
     scope = Q(member__parish__deanery__diocese=diocese) | Q(
         member__deanery__diocese=diocese

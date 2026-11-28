@@ -15,7 +15,8 @@ from apps.identity_cards.services.membership_card_issuance import (
     replace_membership_card,
     update_membership_card_status,
 )
-from apps.members.models import Member
+from apps.members.models import Member, MemberAccount
+from apps.medical.models import MemberMedicalProfile
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication
 
@@ -58,6 +59,11 @@ class MembershipVerificationAPITests(TestCase):
             ),
             member=cls.current_chairman,
             appointed_by=cls.issuer,
+        )
+        MemberAccount.objects.create(
+            user=cls.issuer,
+            member=cls.current_chairman,
+            linked_by=cls.issuer,
         )
 
         cls.member = Member.objects.create(
@@ -145,6 +151,11 @@ class MembershipVerificationAPITests(TestCase):
         self.assertEqual(replaced.official_membership_id, "MOD-VERIFY-0001")
         self.assertEqual(replaced.uniform_id, "AB234567")
         self.assertEqual(replaced.status_events.first().action, "replaced")
+        self.assertEqual(replaced.replaces_card_id, self.card.pk)
+        self.assertEqual(
+            MembershipCard.objects.get(pk=self.card.pk).status,
+            MembershipCard.Status.REVOKED,
+        )
 
         old_qr_response = self.client.get(
             self.url,
@@ -159,7 +170,8 @@ class MembershipVerificationAPITests(TestCase):
             {"identifier": str(replaced.verification_token)},
         )
         self.assertEqual(old_qr_response.status_code, 404)
-        self.assertEqual(legacy_uniform_qr_response.status_code, 404)
+        self.assertEqual(legacy_uniform_qr_response.status_code, 200)
+        self.assertTrue(legacy_uniform_qr_response.data["active"])
         self.assertEqual(new_qr_response.status_code, 200)
         self.assertTrue(new_qr_response.data["active"])
 
@@ -225,6 +237,12 @@ class MembershipVerificationAPITests(TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_response_contains_only_public_fields(self):
+        MemberMedicalProfile.objects.create(
+            member=self.member,
+            blood_group="O+",
+            genotype="AA",
+            important_conditions="Private test condition",
+        )
         response = self.client.get(
             self.url,
             {"identifier": self.card.official_membership_id},
