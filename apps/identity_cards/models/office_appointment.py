@@ -19,6 +19,11 @@ class OfficeAppointment(models.Model):
     )
 
     appointed_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Optional scheduled end of this Diocesan office appointment.",
+    )
 
     appointed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -52,6 +57,11 @@ class OfficeAppointment(models.Model):
                 fields=["reserved_office"],
                 condition=Q(ended_at__isnull=True),
                 name="uniq_current_appointment_per_reserved_office",
+            ),
+            models.UniqueConstraint(
+                fields=["member"],
+                condition=Q(ended_at__isnull=True),
+                name="uniq_current_diocesan_office_per_member",
             ),
         ]
 
@@ -113,6 +123,15 @@ class OfficeAppointment(models.Model):
                 "The appointment end date cannot precede its start date."
             )
 
+        if (
+            self.appointed_at
+            and self.expires_at
+            and self.expires_at < self.appointed_at
+        ):
+            errors["expires_at"] = (
+                "The appointment expiry date cannot precede its start date."
+            )
+
         if errors:
             raise ValidationError(errors)
 
@@ -122,7 +141,13 @@ class OfficeAppointment(models.Model):
 
     @property
     def is_current(self):
-        return self.ended_at is None
+        return (
+            self.ended_at is None
+            and (
+                self.expires_at is None
+                or self.expires_at > timezone.now()
+            )
+        )
 
     def __str__(self):
         return (

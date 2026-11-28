@@ -39,7 +39,9 @@
                 <header class="review-application__header">
                     <div>
                         <h3>{{ identity.member.full_name }}</h3>
-                        <p>Official ID: <strong>{{ identity.official_membership_id }}</strong></p>
+                        <p>Permanent personal ID: <strong>{{ identity.official_membership_id }}</strong></p>
+                        <p>Active official ID: <strong>{{ identity.member.active_official_membership_id|default:"Not allocated" }}</strong></p>
+                        {% if identity.member.active_office_title %}<p>Current office: {{ identity.member.active_office_title }}</p>{% endif %}
                     </div>
                     <span class="review-stage">Allocated</span>
                 </header>

@@ -14,6 +14,9 @@ from apps.identity_cards.models import (
 from apps.members.models import Member
 from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
+from apps.identity_cards.services.official_identity import (
+    resolve_active_official_identity,
+)
 
 
 def _authorize_issuer(*, issuer, member):
@@ -145,19 +148,28 @@ def issue_membership_card(*, member_id, issuer, official_membership_id, reason="
         raise ValidationError(
             "A permanent membership identity must exist before card issuance."
         )
-    if identity.official_membership_id != official_membership_id:
+    active_identity = resolve_active_official_identity(member)
+    if active_identity is None:
+        raise ValidationError("A permanent or active office identity is required before card issuance.")
+    if active_identity.official_membership_id != official_membership_id:
         raise ValidationError(
-            "This member already has a permanent official Membership ID. Use that exact ID for card issuance."
-        )
-    if not identity and "/DIR/" in official_membership_id:
-        raise ValidationError(
-            "Direct Diocesan IDs must be allocated by the membership identity service."
+            "Use the member's currently active official identity for card issuance."
         )
 
-    if ReservedOffice.objects.filter(official_identifier=official_membership_id).exists():
-        raise ValidationError("Reserved office identifiers cannot be assigned to a personal membership.")
+    is_reserved_office_identity = active_identity.is_office_identity
+    if (
+        not is_reserved_office_identity
+        and ReservedOffice.objects.filter(
+            official_identifier=official_membership_id
+        ).exists()
+    ):
+        raise ValidationError(
+            "Reserved office identifiers can only be used by their active officeholder."
+        )
+    if not is_reserved_office_identity and "/DIR/" in official_membership_id and not identity:
+        raise ValidationError("Direct Diocesan IDs must be allocated by the membership identity service.")
 
-    if MembershipIdentity.objects.filter(
+    if not is_reserved_office_identity and MembershipIdentity.objects.filter(
         official_membership_id=official_membership_id
     ).exclude(member=member).exists():
         raise ValidationError("That official membership ID is already assigned to another member.")
@@ -166,7 +178,7 @@ def issue_membership_card(*, member_id, issuer, official_membership_id, reason="
         with transaction.atomic():
             card = MembershipCard.objects.create(
                 member=member,
-                official_membership_id=identity.official_membership_id,
+                official_membership_id=active_identity.official_membership_id,
                 uniform_id=identity.uniform_id,
                 issued_by=issuer,
             )
@@ -193,6 +205,10 @@ def replace_membership_card(*, card_id, issuer, reason=""):
     )
     if card is None:
         raise ValidationError("The membership card does not exist.")
+
+    # Serialize card lifecycle operations for this member and prevent a
+    # superseded card from becoming the parent of another active replacement.
+    card.member = Member.objects.select_for_update().get(pk=card.member_id)
     diocese_id, chairman_appointment = _authorize_issuer(issuer=issuer, member=card.member)
     if card.member.status != Member.Status.ACTIVE:
         raise ValidationError("Only an active member may receive a replacement card.")
@@ -200,30 +216,58 @@ def replace_membership_card(*, card_id, issuer, reason=""):
         raise ValidationError("A reason is required for card replacement or reprint.")
     if len(reason) > 2000:
         raise ValidationError("The reason must be 2,000 characters or fewer.")
-    if card.status != MembershipCard.Status.REVOKED:
-        card.status = MembershipCard.Status.REVOKED
-        card.save(update_fields=("status",))
-    replacement = MembershipCard.objects.create(
+    if card.replacement_cards.exists():
+        raise ValidationError("This card has been superseded and cannot be replaced again.")
+    active_identity = resolve_active_official_identity(card.member)
+    active_official_id = (
+        active_identity.official_membership_id
+        if active_identity
+        else card.official_membership_id
+    )
+    identity_changed = card.official_membership_id != active_official_id
+    if card.status not in {
+        MembershipCard.Status.ACTIVE,
+        MembershipCard.Status.SUSPENDED,
+        MembershipCard.Status.LOST,
+    } and not (card.status == MembershipCard.Status.REVOKED and identity_changed):
+        raise ValidationError("Only the current active, suspended, or lost card can be replaced.")
+    if MembershipCard.objects.filter(
         member=card.member,
-        official_membership_id=card.official_membership_id,
-        uniform_id=card.uniform_id,
-        issued_by=issuer,
-        replaces_card=card,
-    )
-    MembershipCardStatusEvent.objects.create(
-        card=replacement,
-        action=MembershipCardStatusEvent.Action.REPLACED,
-        actor=issuer,
-        chairman_appointment=chairman_appointment,
-        reason=reason.strip(),
-    )
-    MembershipCardStatusEvent.objects.create(
-        card=card,
-        action=MembershipCardStatusEvent.Action.REVOKED,
-        actor=issuer,
-        chairman_appointment=chairman_appointment,
-        reason=f"Replaced by card {replacement.pk}: {reason.strip()}",
-    )
+        status=MembershipCard.Status.ACTIVE,
+    ).exclude(pk=card.pk).exists():
+        raise ValidationError("A newer active card already exists for this member.")
+
+    try:
+        # Keep the status change, replacement, and audit events atomic. The
+        # partial unique constraint remains the final guard against races.
+        with transaction.atomic():
+            card.status = MembershipCard.Status.REVOKED
+            card.save(update_fields=("status",))
+            replacement = MembershipCard.objects.create(
+                member=card.member,
+                official_membership_id=active_official_id,
+                uniform_id=card.uniform_id,
+                issued_by=issuer,
+                replaces_card=card,
+            )
+            MembershipCardStatusEvent.objects.create(
+                card=replacement,
+                action=MembershipCardStatusEvent.Action.REPLACED,
+                actor=issuer,
+                chairman_appointment=chairman_appointment,
+                reason=reason.strip(),
+            )
+            MembershipCardStatusEvent.objects.create(
+                card=card,
+                action=MembershipCardStatusEvent.Action.REVOKED,
+                actor=issuer,
+                chairman_appointment=chairman_appointment,
+                reason=f"Replaced by card {replacement.pk}: {reason.strip()}",
+            )
+    except IntegrityError as error:
+        raise ValidationError(
+            "A newer active card already exists for this member; refresh the card list."
+        ) from error
     return replacement
 
 
@@ -248,6 +292,15 @@ def update_membership_card_status(*, card_id, issuer, status, reason=""):
     _diocese_id, chairman_appointment = _authorize_issuer(issuer=issuer, member=card.member)
     if card.status == MembershipCard.Status.REVOKED:
         raise ValidationError("A revoked card cannot be reactivated.")
+    if status == MembershipCard.Status.ACTIVE:
+        active_identity = resolve_active_official_identity(card.member)
+        if (
+            active_identity is not None
+            and card.official_membership_id != active_identity.official_membership_id
+        ):
+            raise ValidationError(
+                "A card with an outdated official identity cannot be reactivated. Issue an authorized replacement."
+            )
     if not isinstance(reason, str):
         raise ValidationError("Enter a valid reason.")
     if len(reason) > 2000:

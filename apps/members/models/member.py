@@ -88,5 +88,23 @@ class Member(models.Model):
             if part and part.strip()
         )
 
+    @property
+    def active_official_identity(self):
+        from apps.identity_cards.services.official_identity import (
+            resolve_active_official_identity,
+        )
+
+        return resolve_active_official_identity(self)
+
+    @property
+    def active_official_membership_id(self):
+        identity = self.active_official_identity
+        return identity.official_membership_id if identity else ""
+
+    @property
+    def active_office_title(self):
+        identity = self.active_official_identity
+        return identity.office_title if identity else ""
+
     def __str__(self):
         return self.full_name

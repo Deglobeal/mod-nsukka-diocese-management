@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Office appointment ended | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block content %}
+<main class="review-dashboard">
+    <section class="review-panel">
+        <header class="review-panel__heading">
+            <h1>Office appointment ended</h1>
+            <p>{{ appointment.member.full_name }} is no longer appointed as {{ appointment.reserved_office.name }}.</p>
+        </header>
+        <p>The office identity is no longer active. The member's current official ID is <strong>{{ active_official_membership_id|default:"Not allocated" }}</strong>.</p>
+        <p>The appointment and identity change have been recorded. Chairman dashboard access has ended for this account.</p>
+        <a href="{% url 'accounts:login' %}">Return to sign in</a>
+    </section>
+</main>
+{% endblock %}

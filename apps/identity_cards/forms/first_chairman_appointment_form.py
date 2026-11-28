@@ -41,6 +41,7 @@ class FirstChairmanAppointmentForm(forms.Form):
                 has_approved_unassigned_category=Exists(approved_unassigned),
             )
             .filter(status=Member.Status.ACTIVE)
+            .filter(membership_identity__isnull=False)
             .filter(
                 Q(parish__deanery__diocese_id=diocese_id)
                 | Q(parish__isnull=True, deanery__diocese_id=diocese_id)

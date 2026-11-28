@@ -41,7 +41,7 @@ def first_diocesan_chairman_appointment(request):
         has_history = history.exists()
         current_appointment = history.filter(ended_at__isnull=True).first()
 
-        if not has_history:
+        if current_appointment is None:
             form = FirstChairmanAppointmentForm(
                 request.POST or None,
                 diocese_id=office.diocese_id,
@@ -60,8 +60,8 @@ def first_diocesan_chairman_appointment(request):
                             queryset=OfficeAppointment.objects.filter(pk=appointment.pk),
                             action_flag=ADDITION,
                             change_message=(
-                                f"Appointed {appointment.member.full_name} as the first "
-                                f"Diocesan Chairman using reserved office {OFFICE_IDENTIFIER}."
+                                f"Appointed {appointment.member.full_name} as Diocesan Chairman "
+                                f"using reserved office {OFFICE_IDENTIFIER}."
                             ),
                         )
                 except (ValidationError, PermissionDenied) as error:

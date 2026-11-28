@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.shortcuts import redirect, render
 
 from apps.accounts.models import OfficeAssignment
@@ -143,9 +143,18 @@ def membership_card_dashboard(request):
         ).values("member_id")
         card_scope |= Q(member_id__in=unassigned_member_ids)
 
+    superseding_cards = MembershipCard.objects.filter(replaces_card_id=OuterRef("pk"))
+    other_active_cards = MembershipCard.objects.filter(
+        member_id=OuterRef("member_id"),
+        status=MembershipCard.Status.ACTIVE,
+    ).exclude(pk=OuterRef("pk"))
     cards = (
         MembershipCard.objects.filter(card_scope)
         .distinct()
+        .annotate(
+            has_replacement=Exists(superseding_cards),
+            has_other_active_card=Exists(other_active_cards),
+        )
         .select_related(
             "member",
             "member__parish",

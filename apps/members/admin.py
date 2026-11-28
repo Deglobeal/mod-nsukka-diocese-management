@@ -39,6 +39,7 @@ class MemberAdmin(admin.ModelAdmin):
     list_display = (
         "full_name",
         "official_membership_id",
+        "active_official_membership_id",
         "uniform_id",
         "membership_category",
         "diocese_name",
@@ -98,10 +99,14 @@ class MemberAdmin(admin.ModelAdmin):
             )
         ).distinct()
 
-    @admin.display(description="Official Membership ID", ordering="membership_identity__official_membership_id")
+    @admin.display(description="Permanent Personal ID", ordering="membership_identity__official_membership_id")
     def official_membership_id(self, obj):
         identity = getattr(obj, "membership_identity", None)
         return identity.official_membership_id if identity else "—"
+
+    @admin.display(description="Active Official ID")
+    def active_official_membership_id(self, obj):
+        return obj.active_official_membership_id or "—"
 
     @admin.display(description="Uniform ID", ordering="membership_identity__uniform_id")
     def uniform_id(self, obj):

@@ -112,10 +112,11 @@
                     {% endfor %}
                 </ul>
             </details>
-            <span class="chairman-nav__unavailable">
+            <a class="chairman-nav__link{% if active_section == 'leadership' %} is-active{% endif %}"
+               href="{% url 'chairman:deanery-leadership' %}"
+               {% if active_section == "leadership" %}aria-current="page"{% endif %}>
                 Leadership and Appointments
-                <small>Coming later</small>
-            </span>
+            </a>
             <a class="chairman-nav__link{% if active_section == 'notifications' %} is-active{% endif %}"
                href="{% url 'chairman:notifications' %}"
                {% if active_section == "notifications" %}aria-current="page"{% endif %}>

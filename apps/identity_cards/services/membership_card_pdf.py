@@ -12,6 +12,9 @@ from reportlab.pdfgen import canvas
 from apps.identity_cards.services.membership_qr import (
     generate_card_verification_qr_png,
 )
+from apps.identity_cards.services.official_identity import (
+    resolve_active_official_identity,
+)
 from apps.medical.models import MemberMedicalProfile
 from apps.medical.services.medical_access_qr import generate_medical_access_qr_png
 
@@ -186,7 +189,6 @@ def render_membership_card_pdf(
     chairman,
     chairman_application,
     contact,
-    member_office_identifier="",
 ):
     """Return a two-page, CR80-sized front/back PDF assembled from trusted records."""
     output = BytesIO()
@@ -194,6 +196,9 @@ def render_membership_card_pdf(
     pdf.setTitle(f"M.O.D. Membership Card {card.official_membership_id}")
     pdf.setAuthor("Man of Order and Discipline Movement of Nigeria")
     member = card.member
+    active_identity = resolve_active_official_identity(member)
+    if active_identity and card.official_membership_id != active_identity.official_membership_id:
+        raise ValueError("This card does not match the member's current official identity.")
     app_category = application.get_category_display()
     photo = _image_bytes(application.passport_photo)
 
@@ -249,13 +254,18 @@ def render_membership_card_pdf(
         detail_fields.append(("Rank", application.current_rank, 5.2))
     deanery_name = member.parish.deanery.name if member.parish_id else member.deanery.name if member.deanery_id else "Diocesan"
     if member.parish_id:
-        parish_value = member.parish.name
-        if len(parish_value) > 20:
-            parish_value = f"{parish_value[:19].rstrip()}…"
-        detail_fields.append(("Parish", parish_value, 5.2))
+        detail_fields.append(("Parish", member.parish.name, 5.2))
     deanery_value = deanery_name if len(deanery_name) <= 20 else f"{deanery_name[:19].rstrip()}…"
-    printed_identifier = member_office_identifier or card.official_membership_id
-    identifier_label = "Reserved Office ID" if member_office_identifier else "Permanent Membership ID"
+    printed_identifier = (
+        active_identity.official_membership_id
+        if active_identity
+        else card.official_membership_id
+    )
+    identifier_label = (
+        "Reserved Office ID"
+        if active_identity and active_identity.is_office_identity
+        else "Permanent Membership ID"
+    )
     detail_fields.extend(
         (
             ("Deanery", deanery_value, 5.2),

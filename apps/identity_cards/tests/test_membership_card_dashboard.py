@@ -238,6 +238,36 @@ class MembershipCardDashboardTests(TestCase):
         self.client.force_login(self.diocese_admin)
         self.assertEqual(self.client.get(self.dashboard_url).status_code, 403)
 
+    def test_superseded_card_replacement_request_is_a_controlled_dashboard_error(self):
+        old_card = MembershipCard.objects.get(member=self.foreign_member)
+        from apps.identity_cards.services.membership_card_issuance import replace_membership_card
+
+        current_card = replace_membership_card(
+            card_id=old_card.pk,
+            issuer=self.diocese_admin,
+            reason="Replace damaged card",
+        )
+        self.client.force_login(self.diocese_admin)
+
+        response = self.client.post(
+            reverse("identity_cards_web:card-lifecycle", args=[old_card.pk]),
+            {"action": "replace", "reason": "Try old card again"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        dashboard = self.client.get(self.dashboard_url)
+        self.assertContains(dashboard, "Superseded card")
+        self.assertEqual(MembershipCard.objects.filter(member=self.foreign_member).count(), 2)
+        self.assertEqual(
+            MembershipCard.objects.filter(
+                member=self.foreign_member,
+                status=MembershipCard.Status.ACTIVE,
+            ).count(),
+            1,
+        )
+        current_card.refresh_from_db()
+        self.assertEqual(current_card.status, MembershipCard.Status.ACTIVE)
+
     @override_settings(PUBLIC_BASE_URL="https://membership.example")
     def test_preview_uses_current_chairman_and_approved_member_records(self):
         card = MembershipCard.objects.get(member=self.foreign_member)
@@ -267,6 +297,15 @@ class MembershipCardDashboardTests(TestCase):
         self.assertEqual(renderer.call_args.kwargs["chairman"], chairman)
         self.assertEqual(renderer.call_args.kwargs["chairman_application"], chairman_application)
         self.assertEqual(renderer.call_args.kwargs["application"], member_application)
+        self.assertNotIn("member_office_identifier", renderer.call_args.kwargs)
+        self.assertEqual(MembershipCard.objects.filter(member=self.foreign_member).count(), 1)
+        self.assertEqual(
+            MembershipCard.objects.filter(
+                member=self.foreign_member,
+                status=MembershipCard.Status.ACTIVE,
+            ).count(),
+            1,
+        )
         print_event = card.status_events.first()
         self.assertEqual(
             print_event.action,

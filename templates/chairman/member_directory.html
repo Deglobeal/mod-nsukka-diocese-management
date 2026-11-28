@@ -47,8 +47,8 @@
                         <tr>
                             <th scope="row">{{ member.full_name }}</th>
                             <td>
-                                {% if member.membership_identity %}
-                                    {{ member.membership_identity.official_membership_id }}
+                                {% if member.active_official_membership_id %}
+                                    {{ member.active_official_membership_id }}
                                 {% else %}
                                     <span class="chairman-muted">Not allocated</span>
                                 {% endif %}

@@ -25,6 +25,7 @@ from apps.verification.selectors.membership_review_queue import (
 )
 from apps.organizations.models import Diocese
 from apps.identity_cards.models import MembershipCard
+from apps.identity_cards.services.official_identity import resolve_active_official_identity
 
 
 STAGE_CONFIG = {
@@ -395,6 +396,10 @@ def membership_application_detail(request, application_id):
             ),
             "membership_identity": (
                 getattr(application.member, "membership_identity", None)
+                if application.member_id else None
+            ),
+            "active_official_identity": (
+                resolve_active_official_identity(application.member)
                 if application.member_id else None
             ),
             "sections": sections,

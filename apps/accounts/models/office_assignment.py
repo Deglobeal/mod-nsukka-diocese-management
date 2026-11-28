@@ -15,6 +15,14 @@ class OfficeAssignment(models.Model):
         related_name="office_assignments",
     )
 
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="office_assignments_created",
+        null=True,
+        blank=True,
+    )
+
     role = models.CharField(
         max_length=30,
         choices=Role.choices,

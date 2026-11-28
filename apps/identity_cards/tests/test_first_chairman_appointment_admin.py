@@ -33,6 +33,11 @@ class FirstChairmanAppointmentAdminTests(TestCase):
             parish=cls.parish,
             status=Member.Status.ACTIVE,
         )
+        MembershipIdentity.objects.create(
+            member=cls.active_member,
+            official_membership_id="MOD/TEST/000901",
+            uniform_id="TST0901",
+        )
         cls.inactive_member = Member.objects.create(
             first_name="Pending",
             last_name="Applicant",
@@ -89,11 +94,7 @@ class FirstChairmanAppointmentAdminTests(TestCase):
         self.assertNotContains(response, "Pending Applicant")
 
     def test_success_calls_service_records_reserved_office_and_preserves_personal_id(self):
-        identity = MembershipIdentity.objects.create(
-            member=self.active_member,
-            official_membership_id="MOD/TEST/000901",
-            uniform_id="TST0901",
-        )
+        identity = self.active_member.membership_identity
         self.client.force_login(self.superuser)
 
         response = self.client.post(self.url, {
@@ -136,7 +137,7 @@ class FirstChairmanAppointmentAdminTests(TestCase):
         self.assertContains(response, "The first appointment is complete")
         self.assertContains(response, "Ada Ngozi Okafor")
 
-    def test_ended_chairman_history_does_not_reopen_superuser_action(self):
+    def test_ended_chairman_history_offers_authorized_successor_workflow(self):
         appointment = appoint_reserved_office(
             actor=self.superuser,
             reserved_office_id=self.chairman_office.pk,
@@ -149,8 +150,9 @@ class FirstChairmanAppointmentAdminTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.context["form"])
-        self.assertContains(response, "superuser first-appointment action is no longer available")
+        self.assertIsNotNone(response.context["form"])
+        self.assertContains(response, "No Chairman is currently appointed")
+        self.assertContains(response, "Appoint successor Chairman")
 
     def test_inactive_member_post_is_rejected_and_does_not_create_appointment(self):
         self.client.force_login(self.superuser)

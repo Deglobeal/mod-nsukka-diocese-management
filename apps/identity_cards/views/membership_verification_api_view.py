@@ -5,9 +5,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import models
+from django.utils import timezone
 
-from apps.identity_cards.models import MembershipCard, MembershipIdentity
+from apps.identity_cards.models import MembershipCard, MembershipIdentity, OfficeAppointment
 from apps.organizations.models import Diocese
+from apps.identity_cards.services.official_identity import resolve_active_official_identity
 
 
 class MembershipVerificationAPIView(APIView):
@@ -88,6 +91,7 @@ class MembershipVerificationAPIView(APIView):
             )
 
         identity = None
+        office_member = None
         if card is None:
             identity = (
                 MembershipIdentity.objects
@@ -111,18 +115,59 @@ class MembershipVerificationAPIView(APIView):
                     .first()
                 )
 
-        if card is None and identity is None:
+            if identity is None:
+                office_appointment = (
+                    OfficeAppointment.objects.select_related("member")
+                    .filter(
+                        reserved_office__official_identifier=identifier,
+                        reserved_office__is_active=True,
+                        ended_at__isnull=True,
+                        member__status="active",
+                    )
+                    .filter(
+                        models.Q(expires_at__isnull=True)
+                        | models.Q(expires_at__gt=timezone.now())
+                    )
+                    .order_by("-appointed_at", "-pk")
+                    .first()
+                )
+                office_member = office_appointment.member if office_appointment else None
+
+        if card is None and identity is None and office_member is None:
             return Response(
                 {"detail": "No recognized membership identity was found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        member = card.member if card is not None else identity.member
+        member = card.member if card is not None else identity.member if identity is not None else office_member
+        active_identity = resolve_active_official_identity(member)
+        if active_identity is None and card is None:
+            return Response(
+                {"detail": "No current official membership identity was found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if card is not None and active_identity is not None and (
+            member.status != member.Status.ACTIVE
+            or card.official_membership_id != active_identity.official_membership_id
+        ):
+            return Response(
+                {"detail": "This card is no longer the member's current official identity."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         official_id = (
-            card.official_membership_id if card is not None
-            else identity.official_membership_id
+            active_identity.official_membership_id
+            if active_identity
+            else card.official_membership_id
         )
-        uniform_id = card.uniform_id if card is not None else identity.uniform_id
+        uniform_id = (
+            active_identity.uniform_id
+            if active_identity and active_identity.uniform_id
+            else card.uniform_id
+            if card is not None
+            else identity.uniform_id
+            if identity
+            else ""
+        )
         if member.parish_id:
             diocese_name = member.parish.deanery.diocese.name
         elif member.deanery_id:
