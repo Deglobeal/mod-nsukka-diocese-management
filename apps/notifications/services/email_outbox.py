@@ -43,13 +43,18 @@ def _recover_stale_claims(now, lease_minutes):
     )
 
 
-def _claim_next(now):
+def _claim_next(now, *, application_id=None, kinds=None):
     with transaction.atomic():
         queryset = EmailNotification.objects.filter(
             status=EmailNotification.Status.QUEUED,
             next_attempt_at__lte=now,
             attempt_count__lt=F("max_attempts"),
-        ).order_by("created_at", "pk")
+        )
+        if application_id is not None:
+            queryset = queryset.filter(application_id=application_id)
+        if kinds is not None:
+            queryset = queryset.filter(kind__in=kinds)
+        queryset = queryset.order_by("created_at", "pk")
         if connection.features.has_select_for_update_skip_locked:
             queryset = queryset.select_for_update(skip_locked=True)
         else:
@@ -115,7 +120,8 @@ def _record_failure(notification_id, *, now, message, retryable,
 
 
 def process_email_outbox(*, batch_size=25, simulate=True, now=None,
-                         lease_minutes=STALE_LEASE_MINUTES):
+                         lease_minutes=STALE_LEASE_MINUTES,
+                         application_id=None, kinds=None):
     """Process email records; real Gmail calls require explicit configuration."""
     if not isinstance(simulate, bool):
         raise ValueError("simulate must be a boolean.")
@@ -139,7 +145,9 @@ def process_email_outbox(*, batch_size=25, simulate=True, now=None,
 
     processed = simulated_count = accepted = failed = retried = outcome_unknown = 0
     while processed < batch_size:
-        notification_id = _claim_next(now)
+        notification_id = _claim_next(
+            now, application_id=application_id, kinds=kinds
+        )
         if notification_id is None:
             break
         processed += 1
