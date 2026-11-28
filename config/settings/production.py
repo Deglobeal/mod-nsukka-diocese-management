@@ -4,6 +4,10 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 
+# Vercel's deployed filesystem is read-only; sensitive uploads use a private,
+# project-connected Blob store with access limited to authenticated app views.
+PRIVATE_MEDIA_BACKEND = os.getenv("PRIVATE_MEDIA_BACKEND", "vercel_blob").strip()
+
 # Serve collected static assets through WhiteNoise in production.
 MIDDLEWARE = [MIDDLEWARE[0], "whitenoise.middleware.WhiteNoiseMiddleware", *MIDDLEWARE[1:]]
 STORAGES = {

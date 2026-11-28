@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Parish Chairman Account Setup | M.O.D. Nsukka Diocese{% endblock %}
+
+{% block content %}
+<main class="auth-page">
+    <section class="auth-card" aria-labelledby="setup-title">
+        {% if unavailable %}
+            <h1 id="setup-title">Setup link unavailable</h1>
+            <p>This account setup link is invalid, expired, or no longer current. Contact the Diocese for a new appointment link.</p>
+        {% else %}
+            <h1 id="setup-title">Set up your Parish Chairman account</h1>
+            <p>You are setting up the account for {{ setup.assignment.user.member_account.member.full_name }} at {{ setup.assignment.parish.name }}.</p>
+            <p>This one-time link expires {{ setup.expires_at|date:"j M Y, H:i" }}.</p>
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}<div role="alert">{{ form.non_field_errors }}</div>{% endif %}
+                {% for field in form %}
+                    <div class="form-field">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit">Accept appointment and activate account</button>
+            </form>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

@@ -117,6 +117,11 @@
                {% if active_section == "leadership" %}aria-current="page"{% endif %}>
                 Leadership and Appointments
             </a>
+            <a class="chairman-nav__link{% if active_path == 'parish-chairmen' %} is-active{% endif %}"
+               href="{% url 'chairman:parish-leadership' %}"
+               {% if active_path == "parish-chairmen" %}aria-current="page"{% endif %}>
+                Parish Chairmen
+            </a>
             <a class="chairman-nav__link{% if active_section == 'notifications' %} is-active{% endif %}"
                href="{% url 'chairman:notifications' %}"
                {% if active_section == "notifications" %}aria-current="page"{% endif %}>
