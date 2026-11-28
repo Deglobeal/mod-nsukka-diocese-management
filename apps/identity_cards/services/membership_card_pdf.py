@@ -361,7 +361,7 @@ def render_membership_card_pdf(
     _draw_fit(pdf, chairman.full_name, 16, 38, CARD_WIDTH - 32, size=5.1)
     pdf.setFillColor(MUTED)
     pdf.setFont("Helvetica", 3.8)
-    pdf.drawString(16, 33, f"Issued {timezone.localtime(card.issued_at).strftime('%d %b %Y')}  •  Card No. {card.card_number.hex[:8].upper()}")
+    pdf.drawString(16, 33, f"Issued {timezone.localtime(card.issued_at).strftime('%d %b %Y')}  •  Card No: {card.card_number.hex[:8].upper()}")
 
     address = contact[0] if contact else "Diocesan Headquarters, Nsukka Diocese"
     phone = contact[1] if len(contact) > 1 else ""
@@ -370,11 +370,14 @@ def render_membership_card_pdf(
     pdf.roundRect(14, 9, CARD_WIDTH - 28, 22, 2, stroke=1, fill=0)
     pdf.setFillColor(NAVY)
     pdf.setFont("Helvetica-Bold", 4)
-    pdf.drawCentredString(CARD_WIDTH / 2, 25, "PROPERTY OF M.O.D. NSUKKA DIOCESE")
+    pdf.drawCentredString(CARD_WIDTH / 2, 27, "PROPERTY OF M.O.D. NSUKKA DIOCESE")
     pdf.setFillColor(CHARCOAL)
-    _draw_center_fit(pdf, address, CARD_WIDTH / 2, 19, CARD_WIDTH - 36, size=3.8, font="Helvetica")
+    _draw_center_fit(pdf, address, CARD_WIDTH / 2, 22, CARD_WIDTH - 36, size=3.8, font="Helvetica")
     if phone or email:
-        _draw_center_fit(pdf, "  •  ".join(value for value in (phone, email) if value), CARD_WIDTH / 2, 13, CARD_WIDTH - 30, size=3.4, font="Helvetica")
+        _draw_center_fit(pdf, "  •  ".join(value for value in (phone, email) if value), CARD_WIDTH / 2, 17, CARD_WIDTH - 30, size=3.4, font="Helvetica")
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Helvetica-Bold", 3.2)
+    pdf.drawCentredString(CARD_WIDTH / 2, 11, "NOT A NATIONAL IDENTITY CARD")
     pdf.showPage()
     pdf.save()
     return output.getvalue()
