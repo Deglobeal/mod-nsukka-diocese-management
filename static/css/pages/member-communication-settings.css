@@ -18,7 +18,7 @@
 
 .communication-settings-eyebrow {
     color: var(--color-accent-text);
-    font-size: var(--font-size-xs);
+    font-size:var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
     letter-spacing: var(--letter-spacing-wide);
 }

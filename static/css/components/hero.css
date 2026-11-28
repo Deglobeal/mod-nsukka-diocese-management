@@ -51,7 +51,7 @@
     gap: 10px;
     margin: 0;
     color: var(--hero-accent);
-    font-size: var(--font-size-xs);
+    font-size:var(--font-size-xs);
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.12em;
     line-height: var(--line-height-relaxed);
@@ -68,7 +68,7 @@
     margin: var(--space-6) 0 var(--space-5);
     color: var(--color-text-inverse);
     font-family: var(--font-family-heading);
-    font-size: clamp(36px, 4.6vw, 60px);
+    font-size: max(0.65rem, clamp(24px, 3.07vw, 40px));
     font-weight: var(--font-weight-medium);
     letter-spacing: -0.045em;
     line-height: 1.1;
@@ -82,7 +82,7 @@
     max-width: 525px;
     margin: 0;
     color: var(--color-hero-text-78);
-    font-size: var(--font-size-sm);
+    font-size:var(--font-size-sm);
     line-height: 1.9;
 }
 
@@ -102,7 +102,7 @@
     padding: 12px 17px;
     border: 1px solid transparent;
     border-radius: var(--radius-control);
-    font-size: var(--font-size-sm);
+    font-size:var(--font-size-sm);
     font-weight: var(--font-weight-bold);
     text-decoration: none;
     transition:
@@ -138,7 +138,7 @@
     max-width: 440px;
     margin-top: var(--space-8);
     color: var(--color-hero-text-68);
-    font-size: var(--font-size-xs);
+    font-size:var(--font-size-xs);
     line-height: var(--line-height-relaxed);
 }
 
@@ -185,7 +185,7 @@
 .mod-hero__emblem-label,
 .mod-hero__emblem-diocese {
     color: var(--hero-accent);
-    font-size: 9px;
+    font-size: 0.65rem;
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.2em;
 }
@@ -194,7 +194,7 @@
     margin-top: 5px;
     color: var(--color-text-inverse);
     font-family: var(--font-family-heading);
-    font-size: 76px;
+    font-size: 50.7px;
     line-height: 1;
 }
 
@@ -208,7 +208,7 @@
 .mod-hero__star {
     position: absolute;
     color: var(--hero-accent);
-    font-size: 25px;
+    font-size: 16.7px;
 }
 
 .mod-hero__star--one {
@@ -227,7 +227,7 @@
     bottom: 0;
     left: 0;
     color: var(--color-hero-text-58);
-    font-size: 9px;
+    font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-align: center;
 }
@@ -241,7 +241,7 @@
     align-items: center;
     gap: 15px;
     color: var(--color-hero-text-55);
-    font-size: 9px;
+    font-size: 0.65rem;
     font-weight: var(--font-weight-bold);
     letter-spacing: 0.13em;
 }
@@ -259,7 +259,7 @@
 }
 
 .mod-hero--compact .mod-hero__title {
-    font-size: clamp(30px, 3.5vw, 44px);
+    font-size: max(0.65rem, clamp(20px, 2.33vw, 29.3px));
 }
 
 .mod-hero--compact .mod-hero__art {
@@ -279,7 +279,7 @@
 }
 
 .mod-hero--compact .mod-hero__emblem-letter {
-    font-size: 48px;
+    font-size: 32px;
 }
 
 .mod-hero--compact .mod-hero__emblem-rule {
@@ -288,7 +288,7 @@
 
 .mod-hero--compact .mod-hero__emblem-label,
 .mod-hero--compact .mod-hero__emblem-diocese {
-    font-size: 7px;
+    font-size: 0.65rem;
 }
 
 @media (max-width: 900px) {
@@ -317,16 +317,16 @@
     }
 
     .mod-hero__eyebrow {
-        font-size: 9px;
+        font-size: 0.65rem;
         letter-spacing: 0.08em;
     }
 
     .mod-hero__title {
-        font-size: clamp(34px, 10vw, 46px);
+        font-size: max(0.65rem, clamp(22.7px, 6.67vw, 30.7px));
     }
 
     .mod-hero__description {
-        font-size: var(--font-size-sm);
+        font-size:var(--font-size-sm);
     }
 
     .mod-hero__actions {
@@ -357,18 +357,18 @@
     }
 
     .mod-hero__emblem-letter {
-        font-size: 60px;
+        font-size: 40px;
     }
 
     .mod-hero__art-caption {
-        font-size: 8px;
+        font-size: 0.65rem;
     }
 
     .mod-hero__bottom {
         right: 20px;
         left: 20px;
         gap: 8px;
-        font-size: 7px;
+        font-size: 0.65rem;
         letter-spacing: 0.07em;
     }
 
