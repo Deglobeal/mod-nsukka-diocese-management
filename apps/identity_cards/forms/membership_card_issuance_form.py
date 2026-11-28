@@ -41,7 +41,7 @@ class MembershipCardIssuanceForm(forms.Form):
             eligible_members_for_card_issuance(diocese=diocese)
         )
         self.fields["official_membership_id"].help_text = (
-            "For a member with an allocated identity, enter that permanent ID exactly."
+            "Enter the member's currently active official ID. This may be a reserved office ID during an active Diocesan appointment."
         )
 
     def clean_official_membership_id(self):
@@ -57,12 +57,14 @@ class MembershipCardIssuanceForm(forms.Form):
         member = cleaned_data.get("member")
         official_id = cleaned_data.get("official_membership_id")
         if member and official_id:
-            from apps.identity_cards.models import MembershipIdentity
+            from apps.identity_cards.services.official_identity import (
+                resolve_active_official_identity,
+            )
 
-            identity = MembershipIdentity.objects.filter(member=member).first()
+            identity = resolve_active_official_identity(member)
             if identity and identity.official_membership_id != official_id:
                 self.add_error(
                     "official_membership_id",
-                    "Use the member's already allocated permanent Membership ID.",
+                    "Use the member's currently active official identity.",
                 )
         return cleaned_data

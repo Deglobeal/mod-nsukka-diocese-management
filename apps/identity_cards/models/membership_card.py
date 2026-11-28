@@ -102,3 +102,15 @@ class MembershipCard(models.Model):
             f"{self.official_membership_id} — "
             f"{self.member.full_name}"
         )
+
+    @property
+    def identity_changed(self):
+        from apps.identity_cards.services.official_identity import (
+            resolve_active_official_identity,
+        )
+
+        identity = resolve_active_official_identity(self.member)
+        return bool(
+            identity
+            and identity.official_membership_id != self.official_membership_id
+        )

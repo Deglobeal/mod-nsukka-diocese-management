@@ -40,9 +40,15 @@
                         {% if membership_identity %}{{ membership_identity.uniform_id }}{% elif membership_card %}{{ membership_card.uniform_id|default:"Not issued" }}{% else %}Not issued{% endif %}
                     </span>
                     <span>
-                        <strong>M.O.D. ID No.</strong>
+                        <strong>Permanent Personal ID</strong>
                         {% if membership_identity %}{{ membership_identity.official_membership_id }}{% elif membership_card %}{{ membership_card.official_membership_id|default:"Not issued" }}{% else %}Not issued{% endif %}
                     </span>
+                    {% if active_official_identity.is_office_identity %}
+                        <span>
+                            <strong>Active Official ID · {{ active_official_identity.office_title }}</strong>
+                            {{ active_official_identity.official_membership_id }}
+                        </span>
+                    {% endif %}
                 </div>
                 <div class="mod-profile-badges">
                     <span class="mod-profile-badge">{{ application.get_stage_display }}</span>

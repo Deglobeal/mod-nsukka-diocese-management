@@ -86,7 +86,11 @@
                 <h2 id="member-name">{{ member.full_name }}</h2>
                 <p>{{ parish_name }} · {{ station_name }}</p>
                 <p>{{ deanery_name }} · {{ diocese_name }}</p>
-                <p>Official ID: {{ identity_record.official_membership_id }}</p>
+                <p>Active official ID: {{ active_official_membership_id }}</p>
+                {% if active_official_identity.is_office_identity %}
+                    <p>Current Diocesan office: {{ active_official_identity.office_title }}</p>
+                    <p>Permanent personal ID: {{ active_official_identity.permanent_membership_id }}</p>
+                {% endif %}
                 <p>Uniform ID: {{ identity_record.uniform_id }}</p>
             </div>
 

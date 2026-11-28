@@ -15,6 +15,9 @@ from apps.identity_cards.services.membership_card_issuance import (
     replace_membership_card,
     update_membership_card_status,
 )
+from apps.identity_cards.services.office_appointment import (
+    end_reserved_office_appointment,
+)
 from apps.members.models import Member, MemberAccount
 from apps.medical.models import MemberMedicalProfile
 from apps.organizations.models import Diocese, Deanery, Parish
@@ -133,6 +136,77 @@ class MembershipVerificationAPITests(TestCase):
             self.card.uniform_id,
         )
 
+    def test_chairman_qr_verifies_active_reserved_office_id(self):
+        personal_id = "MOD036/CHAIR/P001/000001"
+        reserved_office_id = ReservedOffice.objects.get(
+            diocese=self.diocese,
+            office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+        ).official_identifier
+        identity = MembershipIdentity.objects.create(
+            member=self.current_chairman,
+            official_membership_id=personal_id,
+            uniform_id="CH123456",
+        )
+        chairman_card = MembershipCard.objects.create(
+            member=self.current_chairman,
+            official_membership_id=reserved_office_id,
+            uniform_id=identity.uniform_id,
+            issued_by=self.issuer,
+        )
+
+        response = self.client.get(
+            self.url,
+            {"identifier": str(chairman_card.verification_token)},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["active"])
+        self.assertEqual(response.data["official_membership_id"], reserved_office_id)
+        self.assertNotIn("office_title", response.data)
+        self.assertEqual(identity.official_membership_id, personal_id)
+
+    def test_office_card_qr_stops_verifying_after_appointment_ends(self):
+        identity = self.direct_identity
+        office = ReservedOffice.objects.get(
+            diocese=self.diocese,
+            office_type=ReservedOffice.OfficeType.CHIEF_CHAPLAIN,
+        )
+        appointment = OfficeAppointment.objects.create(
+            reserved_office=office,
+            member=self.direct_member,
+            appointed_by=self.issuer,
+        )
+        office_card = MembershipCard.objects.create(
+            member=self.direct_member,
+            official_membership_id=office.official_identifier,
+            uniform_id=identity.uniform_id,
+            issued_by=self.issuer,
+        )
+        old_token = office_card.verification_token
+        current_response = self.client.get(
+            self.url,
+            {"identifier": str(old_token)},
+        )
+        self.assertEqual(current_response.status_code, 200)
+        self.assertEqual(
+            current_response.data["official_membership_id"],
+            office.official_identifier,
+        )
+
+        end_reserved_office_appointment(
+            actor=self.issuer,
+            appointment_id=appointment.pk,
+            reason="Appointment ended",
+        )
+
+        old_response = self.client.get(
+            self.url,
+            {"identifier": str(old_token)},
+        )
+        self.assertEqual(old_response.status_code, 404)
+        office_card.refresh_from_db()
+        self.assertEqual(office_card.status, MembershipCard.Status.REVOKED)
+
     def test_card_specific_qr_token_verifies_and_is_revoked_on_replacement(self):
         old_token = self.card.verification_token
         old_response = self.client.get(
@@ -238,7 +312,7 @@ class MembershipVerificationAPITests(TestCase):
 
     def test_response_contains_only_public_fields(self):
         MemberMedicalProfile.objects.create(
-            member=self.member,
+            member=self.direct_member,
             blood_group="O+",
             genotype="AA",
             important_conditions="Private test condition",

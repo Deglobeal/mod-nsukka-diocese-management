@@ -113,7 +113,7 @@
             <thead><tr><th>Member</th><th>Permanent ID</th><th>Category</th><th>Parish</th><th>Deanery</th><th>Approved record</th></tr></thead>
             <tbody>{% for member in eligible_members %}<tr>
                 <td>{{ member.full_name }}</td>
-                <td>{{ member.membership_identity.official_membership_id }}</td>
+                <td>{{ member.active_official_membership_id }}</td>
                 <td>{{ member.latest_application_category_label }}</td>
                 <td>{{ member.parish.name|default:"—" }}</td>
                 <td>{% if member.parish_id %}{{ member.parish.deanery.name }}{% else %}{{ member.deanery.name|default:"—" }}{% endif %}</td>
@@ -189,7 +189,13 @@
                                         <input id="card-reason-{{ card.pk }}" name="reason" type="text" maxlength="2000" placeholder="Reason (required for revoke, replace, or reprint)" {% if card.status == "active" %}required{% endif %}>
                                         <label class="visually-hidden" for="card-action-{{ card.pk }}">Card action</label>
                                         <select id="card-action-{{ card.pk }}" name="action">
+                                            {% if not card.has_replacement and not card.has_other_active_card and card.status != "revoked" or card.identity_changed and not card.has_replacement and not card.has_other_active_card %}
                                             <option value="replace">Reprint and replace card</option>
+                                            {% elif card.has_replacement %}
+                                            <option disabled>Superseded card — use the latest card record</option>
+                                            {% elif card.has_other_active_card %}
+                                            <option disabled>A newer active card exists</option>
+                                            {% endif %}
                                             <option value="mark_lost">Mark lost</option>
                                             <option value="suspend">Suspend</option>
                                             <option value="activate">Reactivate</option>

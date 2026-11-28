@@ -673,7 +673,6 @@ class ChairmanCommandDashboardTests(TestCase):
         ):
             with self.subTest(label=label):
                 self.assertContains(response, label)
-        self.assertContains(response, "Coming later")
         self.assertContains(
             response,
             f'href="{reverse("chairman:notifications")}"',

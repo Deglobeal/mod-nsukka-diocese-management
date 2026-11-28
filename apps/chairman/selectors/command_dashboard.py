@@ -28,6 +28,22 @@ def _search(queryset, query, *fields):
     return queryset.filter(condition).distinct()
 
 
+def _search_members(queryset, query):
+    if not query:
+        return queryset
+    return queryset.filter(
+        Q(first_name__icontains=query)
+        | Q(middle_name__icontains=query)
+        | Q(last_name__icontains=query)
+        | Q(membership_identity__official_membership_id__icontains=query)
+        | Q(
+            office_appointments__ended_at__isnull=True,
+            office_appointments__reserved_office__is_active=True,
+            office_appointments__reserved_office__official_identifier__icontains=query,
+        )
+    ).distinct()
+
+
 def get_chairman_shell_data(*, diocese_ids):
     """Return labels and a scoped, expandable organizational navigation tree."""
     deaneries = (
@@ -161,14 +177,7 @@ def get_member_directory(*, diocese_ids, search_query="", page_number=1):
         )
         .order_by("last_name", "first_name", "pk")
     )
-    members = _search(
-        members,
-        search_query,
-        "first_name",
-        "middle_name",
-        "last_name",
-        "membership_identity__official_membership_id",
-    )
+    members = _search_members(members, search_query)
     return {
         "member_page": _page(members, page_number=page_number),
         "search_query": search_query,
@@ -277,14 +286,7 @@ def get_parish_detail(*, diocese_ids, parish_id, search_query="", page_number=1)
         .select_related("station", "membership_identity")
         .order_by("last_name", "first_name", "pk")
     )
-    members = _search(
-        members,
-        search_query,
-        "first_name",
-        "middle_name",
-        "last_name",
-        "membership_identity__official_membership_id",
-    )
+    members = _search_members(members, search_query)
     return {
         "organization": parish,
         "stations": stations,
@@ -338,14 +340,7 @@ def get_station_detail(*, diocese_ids, station_id, search_query="", page_number=
         .select_related("parish", "station", "membership_identity")
         .order_by("last_name", "first_name", "pk")
     )
-    members = _search(
-        members,
-        search_query,
-        "first_name",
-        "middle_name",
-        "last_name",
-        "membership_identity__official_membership_id",
-    )
+    members = _search_members(members, search_query)
     return {
         "organization": station,
         "member_page": _page(members, page_number=page_number),

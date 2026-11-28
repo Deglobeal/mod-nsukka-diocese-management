@@ -31,6 +31,22 @@ class AuditEvent(models.Model):
             "membership.superuser_decision",
             "Superuser membership application decision",
         )
+        DEANERY_CHAIRMAN_APPOINTED = (
+            "office.deanery_chairman_appointed",
+            "Deanery Chairman appointed",
+        )
+        DEANERY_CHAIRMAN_REPLACED = (
+            "office.deanery_chairman_replaced",
+            "Deanery Chairman appointment replaced",
+        )
+        OFFICIAL_IDENTITY_ACTIVATED = (
+            "identity.office_activated",
+            "Office identity activated",
+        )
+        OFFICIAL_IDENTITY_RESTORED = (
+            "identity.personal_restored",
+            "Permanent personal identity restored",
+        )
 
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -1,0 +1,138 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+<section class="review-panel" aria-labelledby="diocesan-offices-title">
+    <header class="review-panel__heading">
+        <h2 id="diocesan-offices-title">Diocesan office appointments</h2>
+        <p>Active Diocesan appointments use the office’s reserved ID. Ending an appointment restores the member’s permanent personal ID and invalidates any card printed with the previous office ID.</p>
+    </header>
+    <form method="post" class="review-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="appoint_diocesan_office">
+        {% if office_error %}<p class="review-message error" role="alert">{{ office_error }}</p>{% endif %}
+        <div class="review-form__field">
+            <label for="reserved-office">Reserved office</label>
+            <select id="reserved-office" name="reserved_office" required>
+                <option value="">Choose an office</option>
+                {% for office in reserved_offices %}
+                    <option value="{{ office.pk }}">{{ office.name }} — {{ office.official_identifier }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="review-form__field">
+            <label for="office-member">Active member</label>
+            <select id="office-member" name="office_member" required>
+                <option value="">Choose an active member</option>
+                {% for member in office_candidates %}
+                    <option value="{{ member.pk }}">{{ member.full_name }} — {{ member.active_official_membership_id|default:"Permanent ID not allocated" }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="review-form__field">
+            <label for="office-reason">Appointment reason or note</label>
+            <textarea id="office-reason" name="office_reason" rows="3" maxlength="2000"></textarea>
+        </div>
+        <button type="submit" {% if not reserved_offices or not office_candidates %}disabled{% endif %}>Appoint to Diocesan office</button>
+        {% if not office_candidates %}<p>No active eligible member without another Diocesan office appointment is available.</p>{% endif %}
+    </form>
+    <div class="table-responsive">
+        <table>
+            <thead><tr><th>Office</th><th>Appointee</th><th>Reserved ID</th><th>State</th><th>Appointment date</th><th>Action</th></tr></thead>
+            <tbody>
+                {% for appointment in diocesan_office_appointments %}
+                    <tr>
+                        <td>{{ appointment.reserved_office.name }}</td>
+                        <td>{{ appointment.member.full_name }}</td>
+                        <td>{{ appointment.reserved_office.official_identifier }}</td>
+                        <td>{% if appointment.ended_at %}Ended {{ appointment.ended_at|date:"d M Y, H:i" }}{% else %}Current{% endif %}</td>
+                        <td>{{ appointment.appointed_at|date:"d M Y, H:i" }}</td>
+                        <td>
+                            {% if not appointment.ended_at %}
+                                <form method="post" class="review-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="end_diocesan_appointment">
+                                    <input type="hidden" name="appointment_id" value="{{ appointment.pk }}">
+                                    <label class="visually-hidden" for="end-reason-{{ appointment.pk }}">Reason for ending this appointment</label>
+                                    <input id="end-reason-{{ appointment.pk }}" name="reason" type="text" maxlength="2000" placeholder="Reason required" required>
+                                    <button type="submit">End appointment</button>
+                                </form>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6">No Diocesan office appointments have been recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="review-panel" aria-labelledby="deanery-appointment-title">
+    <header class="review-panel__heading">
+        <h2 id="deanery-appointment-title">Appoint a Deanery Chairman</h2>
+        <p>The appointee must be an active member of the selected Deanery with an active linked account. The appointment grants access to that Deanery dashboard.</p>
+    </header>
+
+    {% if form_error %}<p class="review-message error" role="alert">{{ form_error }}</p>{% endif %}
+
+    <form method="get" class="review-form">
+        <div class="review-form__field">
+            <label for="deanery-filter">Deanery</label>
+            <select id="deanery-filter" name="deanery" required>
+                <option value="">Choose a Deanery</option>
+                {% for deanery in deaneries %}
+                    <option value="{{ deanery.pk }}" {% if selected_deanery.pk == deanery.pk %}selected{% endif %}>{{ deanery.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Load eligible members</button>
+    </form>
+
+    {% if selected_deanery %}
+        <form method="post" class="review-form">
+            {% csrf_token %}
+            <input type="hidden" name="deanery" value="{{ selected_deanery.pk }}">
+            <div class="review-form__field">
+                <label for="member">Active member</label>
+                <select id="member" name="member" required>
+                    <option value="">Choose a member</option>
+                    {% for member in eligible_members %}
+                        <option value="{{ member.pk }}">{{ member.full_name }} — {{ member.account_link.user.get_username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="review-form__field">
+                <label for="reason">Appointment reason or handover note</label>
+                <textarea id="reason" name="reason" rows="3" maxlength="2000"></textarea>
+            </div>
+            <button type="submit" {% if not eligible_members %}disabled{% endif %}>Appoint Deanery Chairman</button>
+            {% if not eligible_members %}<p>No eligible member with a linked account is available in {{ selected_deanery.name }}.</p>{% endif %}
+        </form>
+    {% endif %}
+</section>
+
+<section class="review-panel" aria-labelledby="deanery-appointment-history-title">
+    <header class="review-panel__heading">
+        <h2 id="deanery-appointment-history-title">Deanery appointment history</h2>
+        <p>Previous assignments remain listed after replacement.</p>
+    </header>
+    <div class="table-responsive">
+        <table>
+            <thead><tr><th>Deanery</th><th>Account</th><th>State</th><th>Appointed by</th><th>Date</th></tr></thead>
+            <tbody>
+                {% for appointment in appointments %}
+                    <tr>
+                        <td>{{ appointment.deanery.name }}</td>
+                        <td>{{ appointment.user.member_account.member.full_name }} ({{ appointment.user.get_username }})</td>
+                        <td>{% if appointment.is_active %}Current{% else %}Ended{% endif %}</td>
+                        <td>{{ appointment.assigned_by|default:"—" }}</td>
+                        <td>{{ appointment.assigned_at|date:"d M Y, H:i" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5">No Deanery Chairman appointments have been recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

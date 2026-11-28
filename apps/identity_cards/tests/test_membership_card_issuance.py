@@ -7,6 +7,7 @@ from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import MembershipCard, MembershipIdentity, OfficeAppointment, ReservedOffice
 from apps.identity_cards.services.membership_card_issuance import (
     issue_membership_card,
+    replace_membership_card,
 )
 from apps.members.models import Member, MemberAccount
 from apps.organizations.models import Diocese, Deanery, Parish
@@ -184,7 +185,6 @@ class MembershipCardIssuanceTests(TestCase):
         self.assertEqual(event.reason, "Member requested revocation")
 
     def test_replacement_creates_a_new_card_and_preserves_previous_history(self):
-        from apps.identity_cards.services.membership_card_issuance import replace_membership_card
         member = self.create_member()
         self.approve_member(member)
         old_card = self.issue(member)
@@ -202,6 +202,90 @@ class MembershipCardIssuanceTests(TestCase):
         event = new_card.status_events.get(action="replaced")
         self.assertEqual(event.actor, self.diocese_admin)
         self.assertEqual(event.reason, "Original card damaged")
+
+    def test_initial_issuance_cannot_create_a_second_active_card(self):
+        member = self.create_member()
+        self.approve_member(member)
+        first_card = self.issue(member)
+
+        with self.assertRaisesMessage(ValidationError, "card history already"):
+            self.issue(member)
+
+        first_card.refresh_from_db()
+        self.assertEqual(MembershipCard.objects.filter(member=member).count(), 1)
+        self.assertEqual(first_card.status, MembershipCard.Status.ACTIVE)
+
+    def test_superseded_card_cannot_be_replaced_again(self):
+        member = self.create_member()
+        self.approve_member(member)
+        old_card = self.issue(member)
+        current_card = replace_membership_card(
+            card_id=old_card.pk,
+            issuer=self.diocese_admin,
+            reason="Original card damaged",
+        )
+
+        with self.assertRaisesMessage(ValidationError, "superseded"):
+            replace_membership_card(
+                card_id=old_card.pk,
+                issuer=self.diocese_admin,
+                reason="Attempt to replace old card",
+            )
+
+        old_card.refresh_from_db()
+        current_card.refresh_from_db()
+        self.assertEqual(MembershipCard.objects.filter(member=member).count(), 2)
+        self.assertEqual(old_card.status, MembershipCard.Status.REVOKED)
+        self.assertEqual(current_card.status, MembershipCard.Status.ACTIVE)
+        self.assertEqual(current_card.status_events.count(), 1)
+
+    def test_replacement_is_rejected_when_another_active_card_exists(self):
+        member = self.create_member()
+        self.approve_member(member)
+        current_card = self.issue(member)
+        lost_card = MembershipCard.objects.create(
+            member=member,
+            official_membership_id=current_card.official_membership_id,
+            uniform_id=current_card.uniform_id,
+            issued_by=self.diocese_admin,
+            status=MembershipCard.Status.LOST,
+        )
+
+        with self.assertRaisesMessage(ValidationError, "newer active card"):
+            replace_membership_card(
+                card_id=lost_card.pk,
+                issuer=self.diocese_admin,
+                reason="Card replacement",
+            )
+
+        current_card.refresh_from_db()
+        lost_card.refresh_from_db()
+        self.assertEqual(MembershipCard.objects.filter(member=member).count(), 2)
+        self.assertEqual(current_card.status, MembershipCard.Status.ACTIVE)
+        self.assertEqual(lost_card.status, MembershipCard.Status.LOST)
+        self.assertFalse(lost_card.status_events.exists())
+
+    def test_non_chairman_cannot_replace_cards(self):
+        other_officer = get_user_model().objects.create_user(username="replacement-officer")
+        OfficeAssignment.objects.create(
+            user=other_officer,
+            role=OfficeAssignment.Role.DIOCESE_ADMIN,
+            diocese=self.diocese,
+        )
+        member = self.create_member()
+        self.approve_member(member)
+        card = self.issue(member)
+
+        with self.assertRaises(PermissionDenied):
+            replace_membership_card(
+                card_id=card.pk,
+                issuer=other_officer,
+                reason="Unauthorized replacement",
+            )
+
+        card.refresh_from_db()
+        self.assertEqual(card.status, MembershipCard.Status.ACTIVE)
+        self.assertEqual(MembershipCard.objects.filter(member=member).count(), 1)
 
     def test_latest_rejected_application_blocks_issuance(self):
         member = self.create_member()
@@ -298,7 +382,7 @@ class MembershipCardIssuanceTests(TestCase):
             official_membership_id="MOD036/002/043/000001",
             uniform_id="AB234567",
         )
-        with self.assertRaisesMessage(ValidationError, "permanent official Membership ID"):
+        with self.assertRaisesMessage(ValidationError, "currently active official identity"):
             self.issue(member, official_id="MOD-REPLACEMENT-001")
         self.assertFalse(MembershipCard.objects.exists())
 
@@ -311,7 +395,34 @@ class MembershipCardIssuanceTests(TestCase):
         )
         with self.assertRaisesMessage(ValidationError, "Reserved office identifiers"):
             self.issue(member, official_id=office.official_identifier)
-        self.assertFalse(MembershipCard.objects.exists())
+        self.assertFalse(MembershipCard.objects.filter(member=member).exists())
+
+    def test_active_officeholder_card_uses_reserved_id_without_changing_personal_id(self):
+        member = self.create_member()
+        self.approve_member(member)
+        permanent_identity = MembershipIdentity.objects.create(
+            member=member,
+            official_membership_id="MOD036/OFFICE/P001/000001",
+            uniform_id=f"OF{member.pk:06d}",
+        )
+        office = ReservedOffice.objects.get(
+            diocese=self.diocese,
+            office_type=ReservedOffice.OfficeType.CHIEF_CHAPLAIN,
+        )
+        OfficeAppointment.objects.create(
+            reserved_office=office,
+            member=member,
+            appointed_by=self.diocese_admin,
+        )
+
+        card = self.issue(member, official_id=office.official_identifier)
+
+        self.assertEqual(card.official_membership_id, office.official_identifier)
+        permanent_identity.refresh_from_db()
+        self.assertEqual(
+            permanent_identity.official_membership_id,
+            "MOD036/OFFICE/P001/000001",
+        )
 
     def test_blank_official_id_is_rejected(self):
         member = self.create_member()

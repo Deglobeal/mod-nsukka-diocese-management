@@ -6,6 +6,7 @@ from django.views.decorators.cache import never_cache
 
 from apps.identity_cards.models import MembershipCard, MembershipIdentity
 from apps.organizations.models import Diocese
+from apps.identity_cards.services.official_identity import resolve_active_official_identity
 
 
 @never_cache
@@ -47,7 +48,36 @@ def member_dashboard(request):
             ).exists()
             if invalid_or_inactive_card_exists:
                 card = None
-                error_message = "This membership card is no longer active. Contact the Diocese for assistance."
+                identity = MembershipIdentity.objects.filter(
+                    official_membership_id=official_id,
+                    uniform_id=uniform_id,
+                ).select_related("member").first()
+                active_identity = (
+                    resolve_active_official_identity(identity.member)
+                    if identity else None
+                )
+                if not active_identity or not active_identity.is_office_identity:
+                    identity = None
+                    error_message = "This membership card is no longer active. Contact the Diocese for assistance."
+
+            if card is not None:
+                active_identity = resolve_active_official_identity(card.member)
+                if (
+                    active_identity is not None
+                    and card.official_membership_id != active_identity.official_membership_id
+                ):
+                    identity = MembershipIdentity.objects.filter(
+                        official_membership_id=official_id,
+                        uniform_id=uniform_id,
+                    ).select_related("member").first()
+                    active_identity = (
+                        resolve_active_official_identity(identity.member)
+                        if identity else None
+                    )
+                    card = None
+                    if not active_identity or not active_identity.is_office_identity:
+                        identity = None
+                        error_message = "This membership card no longer matches the member's active official identity."
 
             if card is None and not invalid_or_inactive_card_exists:
                 identity = (
@@ -99,6 +129,11 @@ def member_dashboard(request):
             ),
             "diocese_name": (
                 str(diocese) if diocese else "Not available"
+            ),
+            "active_official_identity": member.active_official_identity,
+            "active_official_membership_id": (
+                member.active_official_membership_id
+                or (card.official_membership_id if card else identity.official_membership_id if identity else "")
             ),
         })
 

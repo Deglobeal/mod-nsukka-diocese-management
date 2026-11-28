@@ -17,6 +17,7 @@ from apps.chairman.views.command_dashboard_view import (
     manage_ranks,
     manage_parish_chaplain_appointments,
 )
+from apps.chairman.views.deanery_leadership_view import manage_deanery_chairmen
 from apps.verification.views.membership_application_detail_view import (
     membership_application_detail,
 )
@@ -29,6 +30,7 @@ urlpatterns = [
     path("transition/<int:task_id>/complete/", complete_chairman_transition_task, name="transition-task-complete"),
     path("ranks/", manage_ranks, name="manage-ranks"),
     path("parish-chaplains/", manage_parish_chaplain_appointments, name="parish-chaplains"),
+    path("deanery-leadership/", manage_deanery_chairmen, name="deanery-leadership"),
     path(
         "applications/<int:application_id>/",
         membership_application_detail,

@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
 
 from apps.accounts.models import OfficeAssignment
-from apps.identity_cards.models import OfficeAppointment, ReservedOffice
+from apps.identity_cards.models import MembershipIdentity, OfficeAppointment, ReservedOffice
 from apps.identity_cards.services.office_appointment import appoint_reserved_office
 from apps.members.models import Member, MemberAccount
 from apps.organizations.models import Diocese, Deanery, Parish
@@ -46,6 +46,12 @@ class ReservedOfficeAppointmentServiceTests(TestCase):
             parish=cls.parish,
             status=Member.Status.PENDING_REVIEW,
         )
+        for index, member in enumerate((cls.first_member, cls.second_member), start=1):
+            MembershipIdentity.objects.create(
+                member=member,
+                official_membership_id=f"MOD036/OS{index:02d}/000001",
+                uniform_id=f"OS{index:06d}",
+            )
 
         cls.chairman_office = ReservedOffice.objects.get(
             diocese=cls.diocese,
@@ -210,6 +216,23 @@ class ReservedOfficeAppointmentServiceTests(TestCase):
                 member_id=self.pending_member.pk,
             )
 
+    def test_active_member_without_permanent_identity_cannot_be_appointed(self):
+        member_without_identity = Member.objects.create(
+            first_name="Identityless",
+            last_name="Member",
+            parish=self.parish,
+            status=Member.Status.ACTIVE,
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError, "permanent personal membership ID"
+        ):
+            appoint_reserved_office(
+                actor=self.superuser,
+                reserved_office_id=self.chairman_office.pk,
+                member_id=member_without_identity.pk,
+            )
+
     def test_inactive_reserved_office_cannot_be_filled(self):
         self.appoint_first_chairman()
         self.link_current_chairman_account()
@@ -251,17 +274,18 @@ class ReservedOfficeAppointmentServiceTests(TestCase):
             1,
         )
 
-    def test_superuser_cannot_reclaim_bootstrap_after_chairman_history(self):
+    def test_superuser_can_appoint_chairman_successor_after_current_term_ends(self):
         first = self.appoint_first_chairman()
         first.ended_at = first.appointed_at
         first.save()
 
-        with self.assertRaises(PermissionDenied):
-            appoint_reserved_office(
-                actor=self.superuser,
-                reserved_office_id=self.chairman_office.pk,
-                member_id=self.second_member.pk,
-            )
+        successor = appoint_reserved_office(
+            actor=self.superuser,
+            reserved_office_id=self.chairman_office.pk,
+            member_id=self.second_member.pk,
+        )
+        self.assertEqual(successor.member, self.second_member)
+        self.assertTrue(successor.is_current)
 
     def test_chairman_without_linked_account_cannot_appoint(self):
         self.appoint_first_chairman()

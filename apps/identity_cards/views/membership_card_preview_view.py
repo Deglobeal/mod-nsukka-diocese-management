@@ -16,6 +16,9 @@ from apps.identity_cards.views.membership_card_dashboard_view import (
 from apps.identity_cards.services.membership_card_pdf import (
     render_membership_card_pdf,
 )
+from apps.identity_cards.services.official_identity import (
+    resolve_active_official_identity,
+)
 from apps.members.models import Member
 from apps.organizations.models import Diocese
 from apps.verification.models import MembershipApplication
@@ -45,6 +48,9 @@ def membership_card_preview_pdf(request, card_id):
         return HttpResponse("Membership card not found.", status=404)
     if card.status != MembershipCard.Status.ACTIVE or card.member.status != Member.Status.ACTIVE:
         return HttpResponse("Only an active member with an active card can receive a printable preview.", status=409)
+    active_identity = resolve_active_official_identity(card.member)
+    if active_identity is None or card.official_membership_id != active_identity.official_membership_id:
+        return HttpResponse("This card does not match the member's current official identity. Issue an authorized replacement card.", status=409)
 
     applications = MembershipApplication.objects.filter(
         member=card.member,
@@ -114,11 +120,6 @@ def membership_card_preview_pdf(request, card_id):
             chairman=chairman,
             chairman_application=chairman_application,
             contact=contact,
-            member_office_identifier=(
-                chairman_appointment.reserved_office.official_identifier
-                if card.member_id == chairman.pk
-                else ""
-            ),
         )
     except (OSError, ValueError) as error:
         return HttpResponse(f"Card preview could not be generated: {error}", status=409)

@@ -23,11 +23,11 @@
       <p><strong>Date:</strong> {{ current_appointment.appointed_at }}</p>
       <p>The first appointment is complete. Subsequent officeholder appointments belong to the Diocesan Chairman.</p>
       <p><a class="button" href="{% url 'chairman_activation_admin' %}">Manage Chairman account activation</a></p>
-    {% elif has_history %}
-      <p>A previous appointment exists for {{ office.official_identifier }}, but there is no current Chairman. The superuser first-appointment action is no longer available. Follow the approved succession or handover process.</p>
+    {% elif has_history and not form %}
+      <p>A previous appointment exists for {{ office.official_identifier }}, but there is no current Chairman. Follow the approved succession or handover process.</p>
       {% if latest_appointment %}<p><strong>Most recent appointee:</strong> {{ latest_appointment.member.full_name }} — {{ latest_appointment.appointed_at }}</p>{% endif %}
     {% else %}
-      <p>No first Diocesan Chairman has been appointed. The reserved office is {{ office.official_identifier }}. Select an existing Active Member below. This identifier is not the member’s personal Membership ID.</p>
+      <p>{% if has_history %}No Chairman is currently appointed. Select an active member to continue the succession appointment.{% else %}No first Diocesan Chairman has been appointed. Select an existing Active Member below.{% endif %} The reserved office is {{ office.official_identifier }}. This identifier is not the member’s personal Membership ID.</p>
       <form method="post" novalidate>
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -40,7 +40,7 @@
           </div>
         {% endfor %}
         <div class="submit-row">
-          <input type="submit" value="Appoint first Chairman" class="default">
+          <input type="submit" value="{% if has_history %}Appoint successor Chairman{% else %}Appoint first Chairman{% endif %}" class="default">
         </div>
       </form>
     {% endif %}
