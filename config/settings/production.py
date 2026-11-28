@@ -4,11 +4,9 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 
-# Registration email outbox entries are sent automatically after the database
-# transaction commits. Delivery still requires valid Gmail OAuth credentials.
-GMAIL_API_ENABLED = os.getenv("GMAIL_API_ENABLED", "True").strip().lower() in {
-    "1", "true", "yes", "on"
-}
+# Production registration and cron dispatch must use the configured Gmail API
+# credentials instead of silently leaving notifications queued.
+GMAIL_API_ENABLED = True
 
 # Vercel's deployed filesystem is read-only; sensitive uploads use a private,
 # project-connected Blob store with access limited to authenticated app views.
