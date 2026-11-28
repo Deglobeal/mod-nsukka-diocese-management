@@ -2,24 +2,50 @@
 
 {% block dashboard_content %}
     {% if chairman_transition and chairman_transition.transition_ends_at %}
-        <section class="chairman-panel" id="chairman-transition" aria-labelledby="chairman-transition-heading">
-            <header class="chairman-panel__heading">
-                <div><p class="chairman-panel__eyebrow">72-HOUR GUIDED TRANSITION</p><h2 id="chairman-transition-heading">Your Chairman dashboard transition</h2></div>
+        <section class="chairman-panel chairman-transition" id="chairman-transition" aria-labelledby="chairman-transition-heading">
+            <header class="chairman-transition__header">
+                <div>
+                    <p class="chairman-panel__eyebrow">72-HOUR GUIDED TRANSITION</p>
+                    <h2 id="chairman-transition-heading">Your Chairman dashboard transition</h2>
+                    <p class="chairman-transition__dates">
+                        Began <time datetime="{{ chairman_transition.first_dashboard_login_at|date:'c' }}">{{ chairman_transition.first_dashboard_login_at|date:"M j, Y · g:i A" }}</time>
+                        <span aria-hidden="true">·</span>
+                        Ends <time datetime="{{ chairman_transition.transition_ends_at|date:'c' }}">{{ chairman_transition.transition_ends_at|date:"M j, Y · g:i A" }}</time>
+                    </p>
+                </div>
+                <span class="chairman-transition__badge">Orientation in progress</span>
             </header>
-            <p>Started {{ chairman_transition.first_dashboard_login_at }} · scheduled to end {{ chairman_transition.transition_ends_at }}.</p>
-            <p>Orientation checklist: {{ chairman_transition_completed_count }} of {{ chairman_transition_task_count }} complete.</p>
-            <ul class="chairman-status-list">
+
+            <div class="chairman-transition__progress">
+                <div class="chairman-transition__progress-label">
+                    <span>Orientation checklist</span>
+                    <strong>{{ chairman_transition_completed_count }} of {{ chairman_transition_task_count }} complete</strong>
+                </div>
+                <progress value="{{ chairman_transition_completed_count }}" max="{{ chairman_transition_task_count }}" aria-label="Orientation checklist progress">
+                    {{ chairman_transition_completed_count }} of {{ chairman_transition_task_count }} complete
+                </progress>
+            </div>
+
+            <ol class="chairman-transition__tasks">
                 {% for task in chairman_transition_tasks %}
-                    <li>
-                        <span>{{ task.title }}{% if task.description %}<br><small>{{ task.description }}</small>{% endif %}</span>
-                        {% if task.completed_at %}<strong>Complete</strong>{% else %}
+                    <li class="chairman-transition-task{% if task.completed_at %} is-complete{% endif %}">
+                        <span class="chairman-transition-task__number" aria-hidden="true">{% if task.completed_at %}✓{% else %}{{ forloop.counter|stringformat:"02d" }}{% endif %}</span>
+                        <div class="chairman-transition-task__content">
+                            <h3>{{ task.title }}</h3>
+                            {% if task.description %}<p>{{ task.description }}</p>{% endif %}
+                        </div>
+                        <div class="chairman-transition-task__action">
+                        {% if task.completed_at %}
+                            <span class="chairman-transition-task__complete"><span aria-hidden="true">✓</span> Complete</span>
+                        {% else %}
                             <form method="post" action="{% url 'chairman:transition-task-complete' task.id %}">
-                                {% csrf_token %}<button class="chairman-primary-button" type="submit">Mark complete</button>
+                                {% csrf_token %}<button class="chairman-primary-button chairman-transition-task__button" type="submit">Mark complete</button>
                             </form>
                         {% endif %}
+                        </div>
                     </li>
                 {% endfor %}
-            </ul>
+            </ol>
         </section>
     {% endif %}
     <section class="chairman-stats" aria-label="Diocesan operational statistics">
