@@ -403,6 +403,32 @@ class EmailOutboxTests(TestCase):
             "Gmail OAuth credential and token file paths are not configured.",
         )
 
+    @override_settings(GMAIL_API_ENABLED=True)
+    def test_gmail_configuration_failure_logs_only_its_safe_reason(self):
+        notification = EmailNotification.objects.create(
+            application=self.application,
+            kind=EmailNotification.Kind.PARISH_VERIFIED,
+            recipient_email="submitted@example.test",
+            subject="Parish verified",
+            idempotency_key="safe-gmail-configuration-log-test",
+        )
+        safe_reason = "Both Gmail OAuth JSON environment variables must be configured."
+        with (
+            patch(
+                "apps.notifications.services.email_outbox.send_gmail_message",
+                side_effect=GmailConfigurationError(safe_reason),
+            ),
+            self.assertLogs(
+                "apps.notifications.services.email_outbox", level="WARNING"
+            ) as captured,
+        ):
+            process_email_outbox(simulate=False)
+
+        self.assertIn(safe_reason, "\n".join(captured.output))
+        notification.refresh_from_db()
+        self.assertEqual(notification.status, EmailNotification.Status.FAILED)
+        self.assertEqual(notification.last_error, safe_reason)
+
     def test_stale_processing_row_is_quarantined_for_review(self):
         notification = EmailNotification.objects.create(
             application=self.application,
