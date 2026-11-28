@@ -25,7 +25,11 @@ JSON may instead be supplied through the secret environment variables
 `GMAIL_OAUTH_CREDENTIALS_JSON` and `GMAIL_OAUTH_TOKEN_JSON`. Set both values;
 the application refreshes access tokens in memory and does not write secrets to
 the deployment filesystem. Production enables Gmail sending by default, and
-registration emails are dispatched after the registration transaction commits.
+forces Gmail sending on so an old or accidental `GMAIL_API_ENABLED=False`
+environment value cannot silently leave new registration messages queued.
+Registration emails are dispatched immediately after the registration
+transaction commits. Local development continues to use `GMAIL_API_ENABLED`
+to control sending.
 Delivery failures remain visible in the email outbox and never roll back a
 saved registration.
 
@@ -49,7 +53,7 @@ Before production:
 1. Use a production Google Cloud project and publish its OAuth consent screen to In production.
 2. Complete the required verification for the sensitive `gmail.send` scope, including the consent-screen details and any Google review requirements.
 3. Reauthorize the actual sending account in that production project and store its resulting OAuth client and token JSON in production-only secrets. On Vercel, use `GMAIL_OAUTH_CREDENTIALS_JSON` and `GMAIL_OAUTH_TOKEN_JSON`; do not add them to the repository.
-4. Set `GMAIL_API_SENDER`. Production enables automatic registration email delivery by default; set `GMAIL_API_ENABLED=False` only to pause it.
+4. Set `GMAIL_API_SENDER`. Production enables automatic registration email delivery; `GMAIL_API_ENABLED` does not disable Production delivery.
 5. Confirm server egress to Google's OAuth and Gmail API endpoints. The registration request dispatches the applicant and sponsor messages after commit; other queued notices still use the supervised outbox worker.
 6. Review Gmail account sending limits and quota responses. Gmail API acceptance is not proof of inbox delivery; the outbox records only the Gmail message ID and acceptance time.
 
