@@ -29,6 +29,13 @@ registration emails are dispatched after the registration transaction commits.
 Delivery failures remain visible in the email outbox and never roll back a
 saved registration.
 
+The Vercel production deployment also runs the outbox retry endpoint once per
+day at 07:00 UTC. `CRON_SECRET` must be set as a sensitive production variable;
+the endpoint rejects calls without the matching bearer token. Vercel Hobby
+supports daily cron execution only, so retries scheduled sooner by the outbox
+backoff are picked up by the next daily run. Pro and Enterprise can use a more
+frequent schedule if the project plan supports it.
+
 Keep both OAuth files outside the repository and media directories. Restrict filesystem access to the application operator. The application checks paths before loading them; it never prints their contents. The worker refreshes expired access tokens and atomically writes a refreshed token file with owner-only permissions. Production must use its own secret mount or protected persistent secret store; do not copy a developer's local token file to a production host.
 
 The sender also embeds the approved `static/images/branding/mainmodlogo.jpg` crest as a CID image, so recipients do not need access to a development filesystem or a publicly hosted static file.
