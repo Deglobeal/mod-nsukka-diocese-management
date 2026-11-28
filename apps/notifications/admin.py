@@ -7,6 +7,7 @@ from django.core.validators import validate_email
 from django.utils import timezone
 
 from apps.notifications.models import EmailNotification
+from apps.notifications.services.email_outbox import process_email_outbox
 
 
 @admin.register(EmailNotification)
@@ -28,9 +29,13 @@ class EmailNotificationAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
     actions = ("retry_failed_notifications",)
 
-    @admin.action(description="Retry failed email notifications")
+    @admin.action(
+        description="Retry selected failed email notifications now",
+        permissions=["retry"],
+    )
     def retry_failed_notifications(self, request, queryset):
         retried = 0
+        notification_ids = []
         for notification in queryset.filter(status=EmailNotification.Status.FAILED):
             if notification.sponsor_verification_id:
                 profile = getattr(
@@ -55,17 +60,55 @@ class EmailNotificationAdmin(admin.ModelAdmin):
                 "processing_started_at", "last_error", "updated_at",
             ))
             retried += 1
+            notification_ids.append(notification.pk)
+
+        if not retried:
+            self.message_user(
+                request,
+                "No selected failed notifications had a valid recipient email.",
+                level=messages.WARNING,
+            )
+            return
+
+        try:
+            result = process_email_outbox(
+                batch_size=min(retried, 250),
+                simulate=False,
+                notification_ids=notification_ids,
+            )
+        except RuntimeError:
+            self.message_user(
+                request,
+                f"Requeued {retried} notification(s), but Gmail delivery is disabled. They remain queued.",
+                level=messages.ERROR,
+            )
+            return
+
         self.message_user(
             request,
-            f"Requeued {retried} failed notification(s). Records with no valid current email remain failed.",
-            level=messages.SUCCESS if retried else messages.WARNING,
+            f"Retried {retried} notification(s): accepted by Gmail={result['accepted_by_gmail']}, "
+            f"retry scheduled={result['retry_scheduled']}, failed={result['failed']}.",
+            level=(
+                messages.SUCCESS
+                if result["accepted_by_gmail"]
+                else messages.WARNING
+            ),
         )
+
+    def has_retry_permission(self, request):
+        return request.user.is_superuser
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
 
     def has_add_permission(self, request):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return super().has_change_permission(request, obj)
+        return request.user.is_superuser
 
     def has_delete_permission(self, request, obj=None):
         return False
