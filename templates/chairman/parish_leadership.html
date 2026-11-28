@@ -1,0 +1,72 @@
+{% extends "chairman/layout.html" %}
+
+{% block dashboard_content %}
+<section class="review-panel" aria-labelledby="parish-chairman-appointment-title">
+    <header class="review-panel__heading">
+        <h2 id="parish-chairman-appointment-title">Appoint a Parish Chairman</h2>
+        <p>The Diocesan Chairman may appoint an active member of a Parish. If the member does not yet have a login, the system creates a disabled account and emails a one-time link to set a password and accept the appointment.</p>
+    </header>
+
+    {% if form_error %}<p class="review-message error" role="alert">{{ form_error }}</p>{% endif %}
+
+    <form method="get" class="review-form">
+        <div class="review-form__field">
+            <label for="parish-filter">Parish</label>
+            <select id="parish-filter" name="parish" required>
+                <option value="">Choose a Parish</option>
+                {% for parish in parishes %}
+                    <option value="{{ parish.pk }}" {% if selected_parish.pk == parish.pk %}selected{% endif %}>{{ parish.name }} — {{ parish.deanery.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Load eligible members</button>
+    </form>
+
+    {% if selected_parish %}
+        <form method="post" class="review-form">
+            {% csrf_token %}
+            <input type="hidden" name="parish" value="{{ selected_parish.pk }}">
+            <div class="review-form__field">
+                <label for="parish-chairman-member">Active member</label>
+                <select id="parish-chairman-member" name="member" required>
+                    <option value="">Choose a member</option>
+                    {% for member in eligible_members %}
+                        <option value="{{ member.pk }}">
+                            {{ member.full_name }} — {{ member.active_official_membership_id }}
+                            {% if member.account_link.is_active and member.account_link.user.is_active %}(existing account){% else %}(account setup will be emailed){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" {% if not eligible_members %}disabled{% endif %}>Appoint Parish Chairman</button>
+            {% if not eligible_members %}<p>No active eligible members are available in {{ selected_parish.name }}.</p>{% endif %}
+        </form>
+    {% endif %}
+</section>
+
+<section class="review-panel" aria-labelledby="parish-chairman-history-title">
+    <header class="review-panel__heading">
+        <h2 id="parish-chairman-history-title">Parish Chairman appointment history</h2>
+        <p>Previous assignments remain recorded after a new Parish Chairman is appointed.</p>
+    </header>
+    <div class="table-responsive">
+        <table>
+            <thead><tr><th>Parish</th><th>Account</th><th>State</th><th>Account status</th><th>Appointed by</th><th>Date</th></tr></thead>
+            <tbody>
+                {% for assignment in assignments %}
+                    <tr>
+                        <td>{{ assignment.parish.name }}</td>
+                        <td>{{ assignment.user.member_account.member.full_name|default:assignment.user.get_username }} ({{ assignment.user.get_username }})</td>
+                        <td>{% if assignment.is_active %}Current{% else %}Ended{% endif %}</td>
+                        <td>{% if assignment.user.is_active and assignment.user.member_account.is_active %}Active{% else %}Setup pending{% endif %}</td>
+                        <td>{{ assignment.assigned_by|default:"—" }}</td>
+                        <td>{{ assignment.assigned_at|date:"d M Y, H:i" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6">No Parish Chairman appointments have been recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
