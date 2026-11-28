@@ -39,7 +39,7 @@
                             <span class="chairman-transition-task__complete"><span aria-hidden="true">✓</span> Complete</span>
                         {% else %}
                             <form method="post" action="{% url 'chairman:transition-task-complete' task.id %}">
-                                {% csrf_token %}<button class="chairman-primary-button chairman-transition-task__button" type="submit">Mark complete</button>
+                                {% csrf_token %}<button class="chairman-primary-button chairman-transition-task__button" type="submit" aria-label="Mark {{ task.title }} complete">Complete</button>
                             </form>
                         {% endif %}
                         </div>
