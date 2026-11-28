@@ -24,6 +24,7 @@ from apps.verification.selectors.membership_review_queue import (
     get_membership_review_queue,
 )
 from apps.organizations.models import Diocese
+from apps.identity_cards.models import MembershipCard
 
 
 STAGE_CONFIG = {
@@ -387,7 +388,9 @@ def membership_application_detail(request, application_id):
             ),
             "application": application,
             "membership_card": (
-                getattr(application.member, "membership_card", None)
+                application.member.membership_cards.filter(
+                    status=MembershipCard.Status.ACTIVE,
+                ).order_by("-issued_at", "-pk").first()
                 if application.member_id else None
             ),
             "membership_identity": (

@@ -10,9 +10,11 @@ from apps.identity_cards.forms.membership_card_issuance_form import (
 )
 from apps.identity_cards.models import (
     MembershipCard,
+    MembershipCardStatusEvent,
     OfficeAppointment,
     ReservedOffice,
 )
+from apps.members.models import Member
 from apps.verification.models import MembershipApplication
 from apps.identity_cards.selectors.membership_card_dashboard import (
     eligible_members_for_card_issuance,
@@ -22,16 +24,38 @@ from apps.identity_cards.services.membership_card_issuance import (
 )
 
 
-def _get_diocese_assignment(user):
+def _get_active_chairman_assignment(user):
+    if user.is_superuser:
+        raise PermissionDenied(
+            "Card issuance is reserved to the active Diocesan Chairman account."
+        )
+    appointments = list(
+        OfficeAppointment.objects.filter(
+            reserved_office__office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            reserved_office__is_active=True,
+            ended_at__isnull=True,
+            member__status=Member.Status.ACTIVE,
+            member__account_link__user=user,
+            member__account_link__is_active=True,
+        )
+        .select_related("reserved_office__diocese", "member")
+        .order_by("-appointed_at", "-pk")[:2]
+    )
+    if len(appointments) != 1:
+        raise PermissionDenied(
+            "Only the currently active Diocesan Chairman can manage membership cards."
+        )
+    appointment = appointments[0]
     assignments = list(
         OfficeAssignment.objects.filter(
             user=user,
             role=OfficeAssignment.Role.DIOCESE_ADMIN,
             is_active=True,
+            diocese=appointment.reserved_office.diocese,
             deanery__isnull=True,
             parish__isnull=True,
         )
-        .select_related("diocese")
+            .select_related("diocese")
         .order_by("diocese__name", "diocese_id")[:2]
     )
 
@@ -50,12 +74,31 @@ def _get_diocese_assignment(user):
     return assignments[0]
 
 
+def _get_diocese_assignment(user):
+    """Read-only Diocese scope for legacy membership identity records."""
+    assignments = list(
+        OfficeAssignment.objects.filter(
+            user=user,
+            role=OfficeAssignment.Role.DIOCESE_ADMIN,
+            is_active=True,
+            deanery__isnull=True,
+            parish__isnull=True,
+        ).select_related("diocese").order_by("diocese__name", "diocese_id")[:2]
+    )
+    if len(assignments) != 1:
+        raise PermissionDenied(
+            "A single active Diocese Administrator assignment is required."
+        )
+    return assignments[0]
+
+
 @login_required
 def membership_card_dashboard(request):
-    assignment = _get_diocese_assignment(request.user)
+    assignment = _get_active_chairman_assignment(request.user)
     diocese = assignment.diocese
 
     form = MembershipCardIssuanceForm(diocese=diocese)
+    eligible_members = eligible_members_for_card_issuance(diocese=diocese)
 
     if request.method == "POST":
         form = MembershipCardIssuanceForm(
@@ -71,6 +114,7 @@ def membership_card_dashboard(request):
                     official_membership_id=(
                         form.cleaned_data["official_membership_id"]
                     ),
+                    reason=form.cleaned_data["reason"],
                 )
             except PermissionDenied as exc:
                 raise PermissionDenied(str(exc)) from exc
@@ -118,8 +162,11 @@ def membership_card_dashboard(request):
         "eligible_member_count": eligible_members_for_card_issuance(
             diocese=diocese
         ).count(),
+        "eligible_members": eligible_members,
         "cards": cards,
         "issued_card_count": cards.count(),
+        "card_history": MembershipCardStatusEvent.objects.filter(card__in=cards)
+        .select_related("card__member", "actor", "chairman_appointment__member")[:250],
         "chairman_is_available": OfficeAppointment.objects.filter(
             reserved_office__diocese=diocese,
             reserved_office__office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,

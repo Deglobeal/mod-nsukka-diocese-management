@@ -4,7 +4,7 @@
 {% block title %}Membership Cards | M.O.D. Nsukka Diocese{% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/identity-card-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/identity-card-dashboard.css' %}?v=20261128">
 {% endblock %}
 
 {% block content %}
@@ -13,8 +13,8 @@
         <p class="dashboard-eyebrow">MAN OF ORDER AND DISCIPLINE</p>
         <h1 class="dashboard-title">Membership identity management</h1>
         <p class="dashboard-description">
-            Issue official membership identities and access QR verification
-            codes for members approved by the Diocese.
+            Issue, preview, and download complete two-sided membership ID cards
+            for members approved by the Diocese.
         </p>
         <div class="diocese-label">
             <span class="diocese-label-caption">Your authorized Diocese</span>
@@ -54,8 +54,8 @@
     <section class="dashboard-panel" aria-labelledby="issue-card-heading">
         <div class="panel-heading">
             <p class="panel-eyebrow">ISSUANCE</p>
-            <h2 id="issue-card-heading">Issue a membership identity</h2>
-            <p>Select an eligible member and enter their official membership ID.</p>
+            <h2 id="issue-card-heading">Issue a membership ID card</h2>
+            <p>Select an eligible member, confirm their permanent membership ID, and record the issuance reason.</p>
         </div>
 
         <form method="post" class="issuance-form">
@@ -76,6 +76,12 @@
             </div>
 
             <div class="form-field">
+                <label for="{{ form.reason.id_for_label }}">Issuance reason</label>
+                {{ form.reason }}
+                {% for error in form.reason.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+
+            <div class="form-field">
                 <label for="{{ form.official_membership_id.id_for_label }}">
                     Official membership ID
                 </label>
@@ -91,9 +97,30 @@
             </div>
 
             <button class="dashboard-button" type="submit">
-                Issue membership identity
+                Authorize and issue membership ID card
             </button>
         </form>
+    </section>
+
+    <section class="dashboard-panel" aria-labelledby="eligible-members-heading">
+        <div class="panel-heading">
+            <p class="panel-eyebrow">FINAL APPROVAL COMPLETE</p>
+            <h2 id="eligible-members-heading">Members awaiting ID cards</h2>
+            <p>Review the approved application and permanent identity before issuing a card.</p>
+        </div>
+        {% if eligible_members %}
+        <div class="table-wrapper"><table class="membership-table">
+            <thead><tr><th>Member</th><th>Permanent ID</th><th>Category</th><th>Parish</th><th>Deanery</th><th>Approved record</th></tr></thead>
+            <tbody>{% for member in eligible_members %}<tr>
+                <td>{{ member.full_name }}</td>
+                <td>{{ member.membership_identity.official_membership_id }}</td>
+                <td>{{ member.latest_application_category_label }}</td>
+                <td>{{ member.parish.name|default:"—" }}</td>
+                <td>{% if member.parish_id %}{{ member.parish.deanery.name }}{% else %}{{ member.deanery.name|default:"—" }}{% endif %}</td>
+                <td><a class="table-link" href="{% url 'chairman:membership-application-detail' member.latest_application_id %}">Inspect approved membership details</a></td>
+            </tr>{% endfor %}</tbody>
+        </table></div>
+        {% else %}<div class="empty-state"><p>No eligible members are awaiting cards.</p></div>{% endif %}
     </section>
 
     <section class="dashboard-panel" aria-labelledby="issued-cards-heading">
@@ -110,11 +137,12 @@
                         <tr>
                             <th scope="col">Member</th>
                             <th scope="col">Official ID</th>
+                            <th scope="col">Card number</th>
                             <th scope="col">Uniform ID</th>
                             <th scope="col">Parish</th>
                             <th scope="col">Date issued</th>
                             <th scope="col">Card status</th>
-                            <th scope="col">QR code</th>
+                            <th scope="col">Card and QR actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -126,6 +154,7 @@
                                 <td data-label="Official ID">
                                     {{ card.official_membership_id }}
                                 </td>
+                                <td data-label="Card number">{{ card.card_number|upper }}</td>
                                 <td data-label="Uniform ID">
                                     <span class="uniform-id">{{ card.uniform_id }}</span>
                                 </td>
@@ -137,25 +166,30 @@
                                 </td>
                                 <td data-label="Card status">
                                     {{ card.get_status_display }}
+                                    {% if card.replaces_card_id %}<small>Replacement of card {{ card.replaces_card_id }}</small>{% endif %}
                                 </td>
-                                <td data-label="QR code">
-                                    {% if card.status == "active" %}<a class="table-link"
-                                       href="{% url 'api:identity_cards:download-membership-qr' card.pk %}">
-                                        Download QR
-                                    </a>{% endif %}
+                                <td data-label="Card and QR actions">
                                     {% if card.status == "active" and card.member.status == "active" %}
                                     <a class="table-link"
                                        href="{% url 'identity_cards_web:card-preview' card.pk %}">
-                                        Print preview PDF
+                                        View / Print full ID card
+                                    </a>
+                                    <a class="table-link"
+                                       href="{% url 'identity_cards_web:card-preview' card.pk %}?download=1">
+                                        Download full ID card PDF
                                     </a>
                                     {% endif %}
+                                    {% if card.status == "active" %}<a class="table-link"
+                                       href="{% url 'api:identity_cards:download-membership-qr' card.pk %}">
+                                        Download verification QR only
+                                    </a>{% endif %}
                                     <form method="post" action="{% url 'identity_cards_web:card-lifecycle' card.pk %}">
                                         {% csrf_token %}
                                         <label class="visually-hidden" for="card-reason-{{ card.pk }}">Reason for card status change</label>
-                                        <input id="card-reason-{{ card.pk }}" name="reason" type="text" maxlength="2000" placeholder="Reason (optional)">
+                                        <input id="card-reason-{{ card.pk }}" name="reason" type="text" maxlength="2000" placeholder="Reason (required for revoke, replace, or reprint)" {% if card.status == "active" %}required{% endif %}>
                                         <label class="visually-hidden" for="card-action-{{ card.pk }}">Card action</label>
                                         <select id="card-action-{{ card.pk }}" name="action">
-                                            <option value="replace">Replace card and revoke old QR</option>
+                                            <option value="replace">Reprint and replace card</option>
                                             <option value="mark_lost">Mark lost</option>
                                             <option value="suspend">Suspend</option>
                                             <option value="activate">Reactivate</option>
@@ -177,10 +211,33 @@
         {% endif %}
     </section>
 
+    <section class="dashboard-panel" aria-labelledby="card-history-heading">
+        <div class="panel-heading">
+            <p class="panel-eyebrow">AUDIT</p>
+            <h2 id="card-history-heading">Card issuance history</h2>
+            <p>Issuance, replacement, revocation, status, and print-preview activity.</p>
+        </div>
+        {% if card_history %}
+        <div class="table-wrapper"><table class="membership-table">
+            <thead><tr><th>Date</th><th>Member</th><th>Card ID</th><th>Previous card</th><th>Action</th><th>Chairman</th><th>Actor</th><th>Reason</th></tr></thead>
+            <tbody>{% for event in card_history %}<tr>
+                <td>{{ event.created_at|date:"j M Y H:i" }}</td>
+                <td>{{ event.card.member.full_name }}</td>
+                <td>{{ event.card.card_number|upper }}</td>
+                <td>{% if event.card.replaces_card_id %}Replacement for {{ event.card.replaces_card_id }}{% else %}—{% endif %}</td>
+                <td>{{ event.get_action_display }}</td>
+                <td>{{ event.chairman_appointment.member.full_name|default:"—" }}</td>
+                <td>{{ event.actor.get_full_name|default:event.actor.get_username|default:"System" }}</td>
+                <td>{{ event.reason|default:"—" }}</td>
+            </tr>{% endfor %}</tbody>
+        </table></div>
+        {% else %}<p>No card history recorded yet.</p>{% endif %}
+    </section>
+
     <footer class="dashboard-footer">
         <p>
-            Access is restricted to your active Diocese Administrator
-            assignment. QR downloads require a valid public HTTPS base URL
+            Access is restricted to the currently active Diocesan Chairman.
+            QR downloads require a valid public HTTPS base URL
             in the application configuration.
         </p>
         <form method="post" action="{% url 'accounts:logout' %}">

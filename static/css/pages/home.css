@@ -27,7 +27,7 @@
     background: var(--color-brand-950);
     color: var(--color-gold-300);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 25px;
+    font-size: 21.875px;
 }
 
 .home-brand-copy {
@@ -37,14 +37,14 @@
 
 .home-brand-copy strong {
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 21px;
+    font-size: 18.375px;
     line-height: 1;
     letter-spacing: 0.04em;
 }
 
 .home-brand-copy > span {
     color: var(--color-text-muted);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.16em;
 }
@@ -58,7 +58,7 @@
 .home-nav a,
 .home-footer-links a {
     color: var(--color-home-navigation-text);
-    font-size: 13px;
+    font-size: 11.375px;
     font-weight: 600;
     text-decoration: none;
     transition: color var(--transition-fast, 160ms ease);
@@ -141,7 +141,7 @@
     align-items: center;
     gap: 10px;
     margin: 0;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.15em;
     line-height: 1.7;
@@ -161,7 +161,7 @@
     max-width: 650px;
     margin: 24px 0 22px;
     font-family: var(--font-heading, Georgia, serif);
-    font-size: clamp(38px, 4.6vw, 62px);
+    font-size: clamp(33.25px, 4.025vw, 54.25px);
     font-weight: 500;
     letter-spacing: -0.045em;
     line-height: 1.1;
@@ -175,7 +175,7 @@
     max-width: 525px;
     margin: 0;
     color: var(--color-hero-text-78);
-    font-size: 15px;
+    font-size: 13.125px;
     line-height: 1.9;
 }
 
@@ -195,7 +195,7 @@
     padding: 13px 18px;
     border: 1px solid transparent;
     border-radius: var(--radius-sm, 6px);
-    font-size: 13px;
+    font-size: 11.375px;
     font-weight: 700;
     text-decoration: none;
     transition: background var(--transition-fast, 160ms ease), color var(--transition-fast, 160ms ease), border-color var(--transition-fast, 160ms ease);
@@ -275,7 +275,7 @@
 .home-art-small,
 .home-art-diocese {
     color: var(--color-gold-300);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.22em;
 }
@@ -284,7 +284,7 @@
     margin-top: 5px;
     color: var(--color-hero-text);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 78px;
+    font-size: 68.25px;
     line-height: 1;
 }
 
@@ -298,7 +298,7 @@
 .home-art-star {
     position: absolute;
     color: var(--color-gold-300);
-    font-size: 25px;
+    font-size: 21.875px;
 }
 
 .home-art-star-one {
@@ -317,7 +317,7 @@
     bottom: 0;
     left: 0;
     color: var(--color-hero-text-58);
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 0.19em;
     text-align: center;
 }
@@ -331,7 +331,7 @@
     align-items: center;
     gap: 15px;
     color: var(--color-hero-text-52);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.16em;
 }
@@ -369,7 +369,7 @@
     margin: 0;
     color: var(--color-brand-950);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: clamp(34px, 4vw, 48px);
+    font-size: clamp(29.75px, 3.5vw, 42px);
     font-weight: 500;
     letter-spacing: -0.04em;
     line-height: 1.16;
@@ -386,7 +386,7 @@
 .home-membership-heading > p {
     margin: 0 0 16px;
     color: var(--color-home-body-on-light);
-    font-size: 14px;
+    font-size: 12.25px;
     line-height: 1.9;
 }
 
@@ -396,7 +396,7 @@
     gap: 12px;
     margin-top: 8px;
     color: var(--color-brand-700);
-    font-size: 13px;
+    font-size: 11.375px;
     font-weight: 700;
     text-decoration: none;
 }
@@ -420,7 +420,7 @@
 
 .home-principle-number {
     color: var(--color-home-principle-number);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -429,14 +429,14 @@
     margin: 20px 0 8px;
     color: var(--color-home-principle-heading);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 24px;
+    font-size: 21px;
     font-weight: 500;
 }
 
 .home-principle p {
     margin: 0;
     color: var(--color-home-principle-body);
-    font-size: 13px;
+    font-size: 11.375px;
     line-height: 1.8;
 }
 
@@ -502,19 +502,19 @@
 
 .home-hierarchy-index {
     color: var(--color-gold-300);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
 
 .home-hierarchy-symbol {
     color: var(--color-gold-300);
-    font-size: 25px;
+    font-size: 21.875px;
 }
 
 .home-hierarchy-level {
     color: var(--color-hero-text-54);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -523,7 +523,7 @@
     margin: 7px 0;
     color: var(--color-hero-text);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 23px;
+    font-size: 20.125px;
     font-weight: 500;
 }
 
@@ -592,7 +592,7 @@
 
 .home-membership-index {
     color: var(--color-home-membership-body);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;
 }
@@ -606,21 +606,21 @@
     border-radius: 50%;
     background: var(--color-home-membership-icon-background);
     color: var(--color-home-membership-icon-text);
-    font-size: 24px;
+    font-size: 21px;
 }
 
 .home-membership-card h3 {
     margin: 18px 0 8px;
     color: var(--color-home-membership-heading);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 23px;
+    font-size: 20.125px;
     font-weight: 500;
 }
 
 .home-membership-card p {
     margin: 0 0 22px;
     color: var(--color-home-membership-body);
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.8;
 }
 
@@ -630,7 +630,7 @@
     gap: 12px;
     margin-top: auto;
     color: var(--color-home-membership-link);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     text-decoration: none;
 }
@@ -652,7 +652,7 @@
 
 .home-ranks-eyebrow {
     color: var(--color-home-ranks-eyebrow);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.13em;
 }
@@ -661,7 +661,7 @@
     margin: 9px 0 0;
     color: var(--color-home-ranks-heading);
     font-family: var(--font-heading, Georgia, serif);
-    font-size: 22px;
+    font-size: 19.25px;
     font-weight: 500;
 }
 
@@ -709,7 +709,7 @@
 .home-cta h2 {
     margin: 14px 0 10px;
     font-family: var(--font-heading, Georgia, serif);
-    font-size: clamp(29px, 3.5vw, 42px);
+    font-size: clamp(25.375px, 3.0625vw, 36.75px);
     font-weight: 500;
     letter-spacing: -0.035em;
     line-height: 1.15;
@@ -719,7 +719,7 @@
     max-width: 520px;
     margin: 0;
     color: var(--color-hero-text-72);
-    font-size: 13px;
+    font-size: 11.375px;
     line-height: 1.8;
 }
 
@@ -742,11 +742,11 @@
 
 .home-brand-footer .home-brand-mark {
     width: 40px;
-    font-size: 21px;
+    font-size: 18.375px;
 }
 
 .home-brand-footer .home-brand-copy strong {
-    font-size: 18px;
+    font-size: 15.75px;
 }
 
 .home-footer > p {
@@ -770,7 +770,7 @@
 .home-footer-copy {
     justify-self: end;
     color: var(--color-text-muted);
-    font-size: 10px;
+    font-size: 11px;
 }
 
 @media (max-width: 900px) {
@@ -839,7 +839,7 @@
     }
 
     .home-nav a {
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .home-nav .home-nav-register {
@@ -855,16 +855,16 @@
     }
 
     .home-eyebrow {
-        font-size: 8px;
+        font-size: 11px;
         letter-spacing: 0.1em;
     }
 
     .home-hero h1 {
-        font-size: clamp(35px, 10vw, 48px);
+        font-size: clamp(30.625px, 8.75vw, 42px);
     }
 
     .home-hero-description {
-        font-size: 13px;
+        font-size: 11.375px;
     }
 
     .home-hero-actions {
@@ -895,18 +895,18 @@
     }
 
     .home-art-letter {
-        font-size: 62px;
+        font-size: 54.25px;
     }
 
     .home-art-caption {
-        font-size: 8px;
+        font-size: 11px;
     }
 
     .home-hero-bottom {
         right: 22px;
         left: 22px;
         gap: 8px;
-        font-size: 7px;
+        font-size: 11px;
         letter-spacing: 0.08em;
     }
 

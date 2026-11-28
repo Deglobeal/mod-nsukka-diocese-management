@@ -13,7 +13,7 @@ class MembershipCardIssueAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        allowed_fields = {"member_id", "official_membership_id"}
+        allowed_fields = {"member_id", "official_membership_id", "reason"}
         unexpected_fields = set(request.data.keys()) - allowed_fields
 
         if unexpected_fields:
@@ -71,6 +71,7 @@ class MembershipCardIssueAPIView(APIView):
                 member_id=member_id,
                 issuer=request.user,
                 official_membership_id=official_membership_id,
+                reason=request.data.get("reason", "Initial card issuance"),
             )
         except PermissionDenied as exc:
             return Response(
@@ -85,6 +86,7 @@ class MembershipCardIssueAPIView(APIView):
 
         return Response(
             {
+                "card_number": str(card.card_number),
                 "official_membership_id": card.official_membership_id,
                 "uniform_id": card.uniform_id,
                 "member_id": card.member_id,

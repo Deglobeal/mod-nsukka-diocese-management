@@ -5,7 +5,8 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import OfficeAssignment
 from apps.identity_cards.models import MembershipCard
-from apps.members.models import Member
+from apps.identity_cards.models import MembershipIdentity, OfficeAppointment, ReservedOffice
+from apps.members.models import Member, MemberAccount
 from apps.organizations.models import Diocese, Deanery, Parish
 from apps.verification.models import MembershipApplication
 
@@ -36,6 +37,23 @@ class MembershipCardIssueAPITests(TestCase):
             diocese=cls.diocese,
         )
 
+        cls.chairman_member = Member.objects.create(
+            first_name="Card", last_name="Chairman", parish=cls.parish,
+            status=Member.Status.ACTIVE,
+        )
+        MemberAccount.objects.create(
+            user=cls.admin_user, member=cls.chairman_member,
+            linked_by=cls.admin_user,
+        )
+        OfficeAppointment.objects.create(
+            reserved_office=ReservedOffice.objects.get(
+                diocese=cls.diocese,
+                office_type=ReservedOffice.OfficeType.DIOCESAN_CHAIRMAN,
+            ),
+            member=cls.chairman_member,
+            appointed_by=cls.admin_user,
+        )
+
         cls.member = Member.objects.create(
             first_name="Ada",
             last_name="Okafor",
@@ -46,6 +64,11 @@ class MembershipCardIssueAPITests(TestCase):
             member=cls.member,
             stage=MembershipApplication.Stage.APPROVED,
             final_decision_at=timezone.now(),
+        )
+        MembershipIdentity.objects.create(
+            member=cls.member,
+            official_membership_id="MOD-TEST-API-0001",
+            uniform_id="AB234567",
         )
 
     def setUp(self):

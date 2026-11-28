@@ -51,6 +51,11 @@ class MembershipVerificationAPIView(APIView):
                 .filter(verification_token=card_token)
                 .first()
             )
+            if card is not None and card.status == MembershipCard.Status.REVOKED:
+                return Response(
+                    {"detail": "This card has been revoked or replaced."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
         if card is None:
             card = (
@@ -60,7 +65,10 @@ class MembershipVerificationAPIView(APIView):
                     "member__deanery__diocese",
                     "member__station",
                 )
-                .filter(official_membership_id=identifier)
+                .filter(
+                    official_membership_id=identifier,
+                    status=MembershipCard.Status.ACTIVE,
+                )
                 .first()
             )
 
@@ -72,7 +80,10 @@ class MembershipVerificationAPIView(APIView):
                     "member__deanery__diocese",
                     "member__station",
                 )
-                .filter(uniform_id=identifier.upper())
+                .filter(
+                    uniform_id=identifier.upper(),
+                    status=MembershipCard.Status.ACTIVE,
+                )
                 .first()
             )
 
@@ -103,17 +114,6 @@ class MembershipVerificationAPIView(APIView):
         if card is None and identity is None:
             return Response(
                 {"detail": "No recognized membership identity was found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if (
-            card is not None
-            and identifier.upper() == card.uniform_id
-            and card.status == MembershipCard.Status.ACTIVE
-            and card.status_events.filter(action="replaced").exists()
-        ):
-            return Response(
-                {"detail": "This card verification credential is no longer valid."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

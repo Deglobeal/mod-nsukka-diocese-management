@@ -10,4 +10,34 @@ body {
     font-family: var(--font-family-base);
     font-size: var(--font-size-base);
     line-height: var(--line-height-base);
+    overflow-wrap: anywhere;
+}
+
+nav {
+    font-size: var(--font-size-nav);
+}
+
+table {
+    font-size: var(--font-size-table);
+}
+
+label {
+    font-size: var(--font-size-label);
+}
+
+input,
+select,
+textarea {
+    font-size: inherit;
+}
+
+button,
+.button {
+    font-size: var(--font-size-button);
+}
+
+small,
+figcaption,
+caption {
+    font-size: var(--font-size-caption);
 }

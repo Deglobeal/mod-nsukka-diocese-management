@@ -11,7 +11,7 @@ from apps.identity_cards.models import (
     ReservedOffice,
 )
 from apps.identity_cards.views.membership_card_dashboard_view import (
-    _get_diocese_assignment,
+    _get_active_chairman_assignment,
 )
 from apps.identity_cards.services.membership_card_pdf import (
     render_membership_card_pdf,
@@ -24,7 +24,7 @@ from apps.verification.models import MembershipApplication
 @login_required
 @require_GET
 def membership_card_preview_pdf(request, card_id):
-    assignment = _get_diocese_assignment(request.user)
+    assignment = _get_active_chairman_assignment(request.user)
     diocese = assignment.diocese
     scope = Q(member__parish__deanery__diocese=diocese) | Q(
         member__deanery__diocese=diocese
@@ -62,7 +62,7 @@ def membership_card_preview_pdf(request, card_id):
             ended_at__isnull=True,
             member__status=Member.Status.ACTIVE,
         )
-        .select_related("member")
+        .select_related("member", "reserved_office")
         .order_by("-appointed_at", "-pk")
         .first()
     )
@@ -82,9 +82,9 @@ def membership_card_preview_pdf(request, card_id):
             "The current Chairman's approved signature is unavailable. Resolve the appointment record before card printing.",
             status=409,
         )
-    if not application.passport_photo or not application.signature_image:
+    if not application.passport_photo:
         return HttpResponse(
-            "The approved member photograph and registration signature must be available before card printing.",
+            "The approved member photograph must be available before card printing.",
             status=409,
         )
 
@@ -114,6 +114,11 @@ def membership_card_preview_pdf(request, card_id):
             chairman=chairman,
             chairman_application=chairman_application,
             contact=contact,
+            member_office_identifier=(
+                chairman_appointment.reserved_office.official_identifier
+                if card.member_id == chairman.pk
+                else ""
+            ),
         )
     except (OSError, ValueError) as error:
         return HttpResponse(f"Card preview could not be generated: {error}", status=409)
@@ -123,11 +128,13 @@ def membership_card_preview_pdf(request, card_id):
         action=MembershipCardStatusEvent.Action.PREVIEW_GENERATED,
         actor=request.user,
         chairman_appointment=chairman_appointment,
+        reason="Authorized card preview or reprint generated.",
     )
 
     response = HttpResponse(pdf, content_type="application/pdf")
+    disposition = "attachment" if request.GET.get("download") == "1" else "inline"
     response["Content-Disposition"] = (
-        f'attachment; filename="membership-card-{card.uniform_id}.pdf"'
+        f'{disposition}; filename="membership-card-{card.uniform_id}.pdf"'
     )
     response["Cache-Control"] = "private, no-store"
     response["X-Content-Type-Options"] = "nosniff"

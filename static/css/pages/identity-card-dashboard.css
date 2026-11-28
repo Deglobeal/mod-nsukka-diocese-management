@@ -10,14 +10,14 @@
 .panel-eyebrow {
     margin: 0 0 var(--space-2);
     color: var(--color-primary);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
 }
 
 .dashboard-title {
     margin: 0 0 var(--space-3);
-    font-size: clamp(28px, 4vw, 38px);
+    font-size: clamp(24.5px, 3.5vw, 33.25px);
     line-height: 1.2;
 }
 
@@ -40,11 +40,11 @@
 
 .diocese-label-caption {
     color: var(--color-text-muted);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .diocese-label strong {
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .dashboard-messages {
@@ -95,19 +95,19 @@
 
 .stat-label {
     color: var(--color-text-muted);
-    font-size: 14px;
+    font-size: 12.25px;
 }
 
 .stat-value {
     display: block;
     margin: var(--space-2) 0;
-    font-size: 32px;
+    font-size: 28px;
     line-height: 1.2;
 }
 
 .stat-note {
     color: var(--color-text-muted);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .dashboard-panel {
@@ -120,14 +120,14 @@
 
 .panel-heading h2 {
     margin: 0 0 var(--space-2);
-    font-size: 22px;
+    font-size: 19.25px;
     line-height: 1.3;
 }
 
 .panel-heading > p:last-child {
     margin: 0;
     color: var(--color-text-muted);
-    font-size: 14px;
+    font-size: 12.25px;
 }
 
 .issuance-form {
@@ -141,7 +141,7 @@
 .form-field label {
     display: block;
     margin-bottom: var(--space-2);
-    font-size: 14px;
+    font-size: 12.25px;
     font-weight: 600;
 }
 
@@ -165,13 +165,13 @@
 .field-help {
     margin: var(--space-2) 0 0;
     color: var(--color-text-muted);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .field-error,
 .form-errors {
     color: var(--color-danger-text);
-    font-size: 13px;
+    font-size: 11.375px;
 }
 
 .field-error {
@@ -211,7 +211,7 @@
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    font-size: 13px;
+    font-size: 11.375px;
 }
 
 .membership-table th,
@@ -264,13 +264,13 @@
 
 .empty-state h3 {
     margin: 0 0 var(--space-2);
-    font-size: 17px;
+    font-size: 14.875px;
 }
 
 .empty-state p {
     margin: 0;
     color: var(--color-page-text-muted);
-    font-size: 14px;
+    font-size: 12.25px;
 }
 
 .dashboard-footer {
@@ -279,7 +279,7 @@
     justify-content: space-between;
     gap: var(--space-4);
     color: var(--color-page-text-muted);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .dashboard-footer p {

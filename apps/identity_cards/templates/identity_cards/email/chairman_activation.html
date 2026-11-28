@@ -1,0 +1,26 @@
+{% extends "notifications/email/base.html" %}
+{% block title %}Chairman Appointment and Account Activation | M.O.D. Nsukka Diocese{% endblock %}
+{% block content %}
+<div style="display:inline-block;padding:6px 10px;background:{{ institutional.colors.ivory }};color:{{ institutional.colors.green }};font-size:11px;font-weight:bold;letter-spacing:.7px;">OFFICIAL APPOINTMENT · ACTION REQUIRED</div>
+<h1 style="margin:18px 0 12px;color:{{ email_green }};font-size:21.875px;line-height:1.3;">Accept your appointment</h1>
+<p style="font-size:13.125px;line-height:1.7;">Dear {{ applicant_name }},</p>
+<p style="font-size:13.125px;line-height:1.7;">You have been appointed Diocesan Chairman of the Man of Order and Discipline Movement of Nigeria, Nsukka Diocese. Accept the appointment and create your account password using the secure button below.</p>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:22px 0;background:{{ institutional.colors.ivory }};border-left:4px solid {{ institutional.colors.gold }};">
+  <tr><td style="padding:16px 18px;color:{{ email_green }};font-size:11.375px;line-height:1.8;">
+    <strong style="display:block;font-size:11px;letter-spacing:.6px;">APPOINTMENT DETAILS</strong>
+    <span><strong>Personal Membership ID:</strong> {{ membership_id }}</span><br>
+    <span><strong>Reserved office:</strong> {{ reserved_office }}</span><br>
+    <span><strong>Accept by:</strong> {{ expires_at }}</span>
+  </td></tr>
+</table>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:26px auto;">
+  <tr><td align="center" bgcolor="{{ institutional.colors.green }}" style="background:{{ institutional.colors.green }};border-radius:3px;">
+    <a href="{{ activation_url }}" style="display:inline-block;padding:15px 24px;color:{{ institutional.colors.white }};font-size:12.25px;font-weight:bold;line-height:1.2;text-decoration:none;">Accept appointment and activate account</a>
+  </td></tr>
+</table>
+
+<p style="font-size:11.375px;line-height:1.7;">This secure link expires at the time shown above and can be used once. Do not forward or share it. If you did not expect this appointment, contact the Diocesan M.O.D. Council using the details in this email.</p>
+<p style="margin-top:24px;color:{{ email_muted }};font-size:11px;line-height:1.6;">If the button does not open, copy this address into your browser:<br><a href="{{ activation_url }}" style="color:{{ email_green }};word-break:break-all;">{{ activation_url }}</a></p>
+{% endblock %}

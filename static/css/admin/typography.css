@@ -1,0 +1,79 @@
+/* Django Admin uses its own stylesheets, so apply the shared compact scale here. */
+:root {
+    --admin-font-size-body: 0.7109rem;
+    --admin-font-size-small: 0.6875rem;
+    --admin-font-size-heading: 1.0938rem;
+    --admin-font-size-section: 0.875rem;
+}
+
+body,
+input,
+textarea,
+select,
+button,
+.button,
+.submit-row input,
+.submit-row input.default,
+.object-tools a,
+#header,
+#user-tools,
+.breadcrumbs,
+#content,
+#content-main,
+#content-related,
+.change-list .filtered,
+.paginator,
+.selector-chosen h2,
+.inline-group .tabular td,
+.inline-group .tabular th {
+    font-size: var(--admin-font-size-body);
+}
+
+#content h1,
+.dashboard .module caption,
+.module caption,
+.inline-group h2,
+#changelist-filter h2,
+.selector-chosen h2 {
+    font-size: var(--admin-font-size-heading);
+}
+
+.module h2,
+.module h3,
+fieldset.module h2,
+.inline-group h2,
+#changelist-filter h2 {
+    font-size: var(--admin-font-size-section);
+}
+
+.help,
+.help-tooltip,
+.quiet,
+.mini,
+small,
+.form-row .help,
+.aligned .help,
+.inline-related h3 .inline_label,
+.submit-row .deletelink-box {
+    font-size: var(--admin-font-size-small);
+}
+
+#changelist table thead th,
+#changelist table tbody th,
+#changelist table tbody td,
+.results table thead th,
+.results table tbody th,
+.results table tbody td,
+.inline-group .tabular th,
+.inline-group .tabular td {
+    font-size: var(--admin-font-size-body);
+}
+
+@media (max-width: 767px) {
+    body,
+    #content,
+    #content-main,
+    #content-related {
+        font-size: var(--admin-font-size-body);
+    }
+}

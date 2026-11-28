@@ -11,10 +11,12 @@ from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import OfficeAssignment
+from apps.core.services.institutional_branding import institutional_branding_context
 from apps.identity_cards.models import (
     ChairmanActivation,
     ChairmanActivationAttempt,
@@ -194,7 +196,9 @@ def _mark_notification_queued(activation):
     activation.save(update_fields=("notification_sent_at", "expires_at"))
 
 
-def _send_email(*, activation, application, message, recipient):
+def _send_email(
+    *, activation, member, identity, office, url, expires_at, message, recipient,
+):
     delivery = _record_delivery(
         activation=activation,
         channel=ChairmanActivationDelivery.Channel.EMAIL,
@@ -206,12 +210,27 @@ def _send_email(*, activation, application, message, recipient):
         delivery.save(update_fields=("last_error", "updated_at"))
         return False
     try:
+        email_context = {
+            **institutional_branding_context(),
+            "applicant_name": member.full_name,
+            "membership_id": identity.official_membership_id,
+            "reserved_office": office.official_identifier,
+            "activation_url": url,
+            "expires_at": timezone.localtime(expires_at).strftime(
+                "%d %B %Y at %I:%M %p %Z"
+            ),
+        }
+        html_message = render_to_string(
+            "identity_cards/email/chairman_activation.html",
+            email_context,
+        )
         sent = send_mail(
             subject="Diocesan Chairman Appointment and Account Activation",
             message=message,
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", ""),
             recipient_list=[recipient],
             fail_silently=False,
+            html_message=html_message,
         )
     except Exception as error:
         delivery.status = ChairmanActivationDelivery.Status.FAILED
@@ -465,7 +484,11 @@ def issue_chairman_activation(*, appointment_id, actor):
     if email:
         _send_email(
             activation=activation,
-            application=application,
+            member=member,
+            identity=identity,
+            office=office,
+            url=url,
+            expires_at=provisional_expiry,
             message=message,
             recipient=email,
         )

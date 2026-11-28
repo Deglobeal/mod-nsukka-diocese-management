@@ -28,6 +28,13 @@ class MembershipCardIssuanceForm(forms.Form):
         ),
     )
 
+    reason = forms.CharField(
+        max_length=1000,
+        strip=True,
+        label="Issuance reason",
+        widget=forms.TextInput(attrs={"class": "form-control", "required": True}),
+    )
+
     def __init__(self, *args, diocese, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["member"].queryset = (

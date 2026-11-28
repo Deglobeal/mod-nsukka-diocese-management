@@ -12,7 +12,7 @@
     background: var(--color-surface);
     color: var(--color-text);
     font: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     cursor: pointer;
     transition:
@@ -32,7 +32,7 @@
 
 .home-theme-toggle-indicator {
     color: var(--color-accent-text);
-    font-size: 17px;
+    font-size: 14.875px;
     line-height: 1;
 }
 
@@ -118,7 +118,7 @@ body[data-mod-theme="command"] .home-theme-toggle-indicator {
     background: transparent;
     box-shadow: none;
     font: inherit;
-    font-size: 0.65rem;
+    font-size: 0.6875rem;
     line-height: 1.2;
     opacity: 0.7;
     cursor: pointer;
@@ -130,7 +130,7 @@ body[data-mod-theme="command"] .home-theme-toggle-indicator {
 }
 
 .home-theme-toggle-compact .home-theme-toggle-indicator {
-    font-size: 0.7rem;
+    font-size: 0.6875rem;
 }
 
 .home-theme-toggle-compact .home-theme-toggle-label {
@@ -165,7 +165,7 @@ body[data-mod-theme="command"] .home-theme-toggle-indicator {
 }
 
 .home-theme-toggle-compact .home-theme-toggle-indicator {
-    font-size: 15px;
+    font-size: 13.125px;
 }
 
 .home-theme-toggle-compact:focus-visible {

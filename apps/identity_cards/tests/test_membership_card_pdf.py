@@ -67,6 +67,7 @@ class MembershipCardPdfTests(TestCase):
         )
         self.card = SimpleNamespace(
             member=self.member,
+            card_number=uuid.uuid4(),
             official_membership_id="MOD036/T7A110C22/P001/000001",
             uniform_id="AB234567",
             verification_token=uuid.uuid4(),
@@ -87,10 +88,12 @@ class MembershipCardPdfTests(TestCase):
         self.assertEqual(len(reader.pages), 2)
         self.assertAlmostEqual(float(reader.pages[0].mediabox.width), CARD_WIDTH, places=1)
         self.assertAlmostEqual(float(reader.pages[0].mediabox.height), CARD_HEIGHT, places=1)
+        self.assertLess(float(reader.pages[0].mediabox.width), float(reader.pages[0].mediabox.height))
         card_text = " ".join(page.extract_text() or "" for page in reader.pages)
         self.assertIn("Ada Ngozi Okafor", card_text)
+        self.assertIn("Card No:", card_text)
         self.assertIn("Chidi Okeke", card_text)
-        self.assertIn("SECURE MEDICAL ACCESS", card_text)
+        self.assertIn("SECURE MEDICAL REFERENCE", card_text)
         self.assertIn("not a national identity card", card_text.lower())
         self.assertNotIn("Confidential allergy details", card_text)
 
